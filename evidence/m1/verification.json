@@ -1,0 +1,42 @@
+{
+  "milestone": "M1 - Local end-to-end MVP",
+  "date": "2026-11-08",
+  "offline_checks": {
+    "command": "uv run --locked python -m unittest discover -s tests -v",
+    "passed": 25,
+    "external_api_calls": false,
+    "description": "GitHub requests and model responses are simulated in these tests."
+  },
+  "type_checks": {
+    "python_sdk_parameters": "passed - Pyright reported zero errors",
+    "frontend_typescript": "passed",
+    "next_production_build": "passed"
+  },
+  "live_smoke_test": {
+    "input_url": "https://github.com/pallets/flask/issues/6146",
+    "github_api": "real",
+    "model_api": "real",
+    "status": "completed",
+    "model_requests": 3,
+    "tool_calls": 2,
+    "tools_selected": ["get_issue", "get_issue_comments"],
+    "sources": 5,
+    "total_tokens": 3593,
+    "elapsed_seconds": 6.58,
+    "quality_benchmark": false,
+    "description": "One live functional check verifies connectivity and data flow, not general model quality."
+  },
+  "browser_checks": {
+    "result_rendered": true,
+    "source_links_rendered": true,
+    "refresh_restored_same_job": true,
+    "copy_draft_confirmed": true,
+    "narrow_layout_horizontal_overflow": false,
+    "screenshot": "evidence/m1-live-analysis.jpg"
+  },
+  "limitations": [
+    "Jobs are in-process and in-memory; a backend restart clears them.",
+    "Source-ID validation does not prove semantic correctness of the model's claims.",
+    "Duplicate detection, label recommendations, durable jobs and public deployment are outside M1."
+  ]
+}

@@ -1,0 +1,137 @@
+{
+  "review_kind": "assistant_observation",
+  "human_review_status": "pending",
+  "raw_report": "evidence/live-acceptance/20261109T220345_892233Z/report.json",
+  "raw_report_sha256": "f0a4f3e035874867f361fed940d7808de57ee83970721f65334a9a0a6736f84e",
+  "common_rule": "backend.app.quality.is_pr_only_label",
+  "common_checker_sha256": "8ca343780b613429c3f23e1bf62ea769bf0a05ca957da414076ced5947df49b0",
+  "retained_output_comparison": [
+    {
+      "report": "evidence/live-acceptance/20261109T212458_183451Z/report.json",
+      "sha256": "9434b57dfc548a99876a4573b397c3b67fd4f75ba7c4aa708ce6da1c48304df5",
+      "cases": [
+        {
+          "case_id": "complete_bug",
+          "outcome": "completed",
+          "final_answer_accepted": true,
+          "recommended_labels": [
+            "bug",
+            "python"
+          ],
+          "known_pr_only_recommendations": [
+            "python"
+          ],
+          "scope_check": "failed"
+        },
+        {
+          "case_id": "missing_reproduction",
+          "outcome": "partial",
+          "final_answer_accepted": true,
+          "recommended_labels": [
+            "bug",
+            "testing"
+          ],
+          "known_pr_only_recommendations": [],
+          "scope_check": "passed"
+        },
+        {
+          "case_id": "cache_control_feature",
+          "outcome": "completed",
+          "final_answer_accepted": true,
+          "recommended_labels": [
+            "standards"
+          ],
+          "known_pr_only_recommendations": [],
+          "scope_check": "passed"
+        }
+      ]
+    },
+    {
+      "report": "evidence/live-acceptance/20261109T215427_768430Z/report.json",
+      "sha256": "f21f014e25684e7a5a4629997d32ac90e6732bb2026addba58e8bf2666d2cc84",
+      "cases": [
+        {
+          "case_id": "complete_bug",
+          "outcome": "partial",
+          "final_answer_accepted": true,
+          "recommended_labels": [
+            "bug",
+            "python"
+          ],
+          "known_pr_only_recommendations": [
+            "python"
+          ],
+          "scope_check": "failed"
+        },
+        {
+          "case_id": "missing_reproduction",
+          "outcome": "completed",
+          "final_answer_accepted": true,
+          "recommended_labels": [
+            "bug",
+            "testing"
+          ],
+          "known_pr_only_recommendations": [],
+          "scope_check": "passed"
+        },
+        {
+          "case_id": "cache_control_feature",
+          "outcome": "completed",
+          "final_answer_accepted": true,
+          "recommended_labels": [
+            "standards",
+            "python"
+          ],
+          "known_pr_only_recommendations": [
+            "python"
+          ],
+          "scope_check": "failed"
+        }
+      ]
+    },
+    {
+      "report": "evidence/live-acceptance/20261109T220345_892233Z/report.json",
+      "sha256": "f0a4f3e035874867f361fed940d7808de57ee83970721f65334a9a0a6736f84e",
+      "cases": [
+        {
+          "case_id": "complete_bug",
+          "outcome": "partial",
+          "final_answer_accepted": true,
+          "recommended_labels": [
+            "bug"
+          ],
+          "known_pr_only_recommendations": [],
+          "scope_check": "passed"
+        },
+        {
+          "case_id": "missing_reproduction",
+          "outcome": "partial",
+          "final_answer_accepted": true,
+          "recommended_labels": [
+            "discussion",
+            "question"
+          ],
+          "known_pr_only_recommendations": [],
+          "scope_check": "passed"
+        },
+        {
+          "case_id": "cache_control_feature",
+          "outcome": "completed",
+          "final_answer_accepted": true,
+          "recommended_labels": [
+            "standards"
+          ],
+          "known_pr_only_recommendations": [],
+          "scope_check": "passed"
+        }
+      ]
+    }
+  ],
+  "interpretation": "These are narrow applicability checks on known development cases, not a measure of overall label relevance or production accuracy.",
+  "remaining_concerns": [
+    "The rule recognizes explicit known English scope forms and can miss other languages, paraphrases or ambiguous restrictions.",
+    "A shared issue/PR description or a mere mention of a PR is not automatically excluded. Passing this rule does not prove semantic relevance.",
+    "Output-field consistency, redundant questions, historical/current-state attribution and the original needs-info instability remain separate open quality issues.",
+    "One live regression cannot establish stability or held-out quality; all user human review remains pending."
+  ]
+}

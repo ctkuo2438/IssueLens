@@ -1,0 +1,369 @@
+"""Store analysis snapshots, checkpoints and traces and coordinate the job queue."""
+
+import asyncio
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from dataclasses import dataclass, field
+from datetime import timedelta
+from typing import Protocol
+
+import psycopg
+from psycopg.types.json import Jsonb
+
+from backend.app.checkpoint import AgentCheckpoint
+from backend.app.models import GitHubUser, JobSnapshot, JobStatus, ProgressEvent
+from backend.app.trace import AnalysisTrace, TraceLog
+
+
+STORAGE_UNAVAILABLE = "PostgreSQL storage is unavailable. Check DATABASE_URL and the database service."
+INTERRUPTED = "The previous analysis process stopped before this analysis finished. Start a new analysis to investigate again."
+INVALID_CHECKPOINT = "The saved checkpoint is incompatible with this Worker. Start a new analysis to investigate again."
+WORKER_LOCK = 0x49737375654C656E  # Reuse the lock held by the old in-process backend.
+SCHEMA_LOCK = WORKER_LOCK + 1
+ENQUEUE_LOCK = WORKER_LOCK + 2
+POLL_SECONDS = 0.25
+
+
+class StorageError(RuntimeError):
+    """A sanitized storage failure that is safe to return through the API."""
+
+
+class AnalysisStore(Protocol):
+    async def open(self) -> None: ...
+    async def save(self, snapshot: JobSnapshot) -> None: ...
+    async def get(self, job_id: str) -> JobSnapshot | None: ...
+    async def close(self) -> None: ...
+
+
+def interrupted_snapshot(snapshot: JobSnapshot, reason: str = INTERRUPTED) -> JobSnapshot:
+    """Preserve available evidence and make an abandoned record terminal."""
+    restored = snapshot.model_copy(deep=True)
+    restored.status = "cancelled"
+    restored.error = reason
+    next_id = max((event.id for event in restored.events), default=0) + 1
+    restored.events.extend([
+        ProgressEvent(id=next_id, kind="warning", message=reason),
+        ProgressEvent(id=next_id + 1, kind="status", message="Analysis cancelled after an interruption."),
+    ])
+    return restored
+
+
+@dataclass
+class ClaimedAnalysis:
+    snapshot: JobSnapshot
+    checkpoint: AgentCheckpoint
+    resumed: bool = False
+    trace: TraceLog = field(default_factory=TraceLog)
+
+
+class PostgresAnalysisStore:
+    """One async connection per process, with a separate lock for Worker ownership."""
+
+    def __init__(self, database_url: str, *, auth_enabled: bool = False) -> None:
+        self._database_url = database_url
+        self._auth_enabled = auth_enabled
+        self._connection: psycopg.AsyncConnection | None = None
+        self._lock = asyncio.Lock()
+
+    async def open(self, *, worker: bool = False) -> None:
+        connection: psycopg.AsyncConnection | None = None
+        try:
+            connection = await psycopg.AsyncConnection.connect(
+                self._database_url, autocommit=True, connect_timeout=3,
+                options="-c statement_timeout=5000 -c lock_timeout=3000",
+            )
+            if worker:
+                cursor = await connection.execute("SELECT pg_try_advisory_lock(%s)", (WORKER_LOCK,))
+                owner = await cursor.fetchone()
+                if not owner or not owner[0]:
+                    raise StorageError("Another IssueLens Worker or legacy backend already owns this database.")
+            async with connection.transaction():
+                await connection.execute("SELECT pg_advisory_xact_lock(%s)", (SCHEMA_LOCK,))
+                await connection.execute("""
+                    CREATE TABLE IF NOT EXISTS issuelens_analyses (
+                        job_id text PRIMARY KEY,
+                        snapshot jsonb NOT NULL,
+                        updated_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        CHECK (jsonb_typeof(snapshot) = 'object'),
+                        CHECK (snapshot->>'job_id' = job_id)
+                    )
+                """)
+                columns = await connection.execute("""
+                    SELECT attname FROM pg_attribute
+                    WHERE attrelid = 'issuelens_analyses'::regclass
+                      AND attname IN ('cancel_requested', 'checkpoint', 'trace', 'owner_github_id')
+                      AND NOT attisdropped
+                """)
+                present = {row[0] for row in await columns.fetchall()}
+                if "cancel_requested" not in present:
+                    await connection.execute("""
+                        ALTER TABLE issuelens_analyses
+                        ADD COLUMN cancel_requested boolean NOT NULL DEFAULT false
+                    """)
+                if "checkpoint" not in present:
+                    # Keep the exact JSON replay order used by the local token estimator.
+                    await connection.execute("ALTER TABLE issuelens_analyses ADD COLUMN checkpoint text")
+                if "trace" not in present:
+                    await connection.execute("""
+                        ALTER TABLE issuelens_analyses ADD COLUMN trace jsonb NOT NULL DEFAULT '{}'::jsonb
+                    """)
+                if "owner_github_id" not in present:
+                    await connection.execute("""
+                        ALTER TABLE issuelens_analyses ADD COLUMN owner_github_id bigint CHECK (owner_github_id > 0)
+                    """)
+                await connection.execute("""
+                    CREATE INDEX IF NOT EXISTS issuelens_analyses_pending
+                    ON issuelens_analyses (updated_at, job_id)
+                    WHERE snapshot->>'status' IN ('queued', 'running')
+                """)
+                if self._auth_enabled:
+                    await connection.execute("""
+                        CREATE TABLE IF NOT EXISTS issuelens_oauth_requests (
+                            state_hash text PRIMARY KEY,
+                            code_verifier text NOT NULL,
+                            return_job_id text,
+                            expires_at timestamptz NOT NULL
+                        )
+                    """)
+                    await connection.execute("""
+                        CREATE TABLE IF NOT EXISTS issuelens_sessions (
+                            token_hash text PRIMARY KEY,
+                            github_id bigint NOT NULL CHECK (github_id > 0),
+                            github_login text NOT NULL,
+                            expires_at timestamptz NOT NULL
+                        )
+                    """)
+            if worker:
+                async with connection.transaction():
+                    cursor = await connection.execute("""
+                        SELECT snapshot, trace FROM issuelens_analyses
+                        WHERE snapshot->>'status' = 'running' AND checkpoint IS NULL
+                        FOR UPDATE
+                    """)
+                    for row in await cursor.fetchall():
+                        restored = interrupted_snapshot(JobSnapshot.model_validate(row[0]))
+                        trace = TraceLog.model_validate(row[1])
+                        trace.mark_interrupted()
+                        trace.stop_reason = "checkpoint_unavailable"
+                        await self._update(connection, restored, "running", trace=trace)
+            self._connection = connection
+        except BaseException as exc:
+            if connection is not None:
+                await connection.close()
+            if isinstance(exc, (psycopg.Error, ValueError, TypeError)):
+                raise StorageError(STORAGE_UNAVAILABLE) from None
+            raise
+
+    @staticmethod
+    async def _update(
+        connection: psycopg.AsyncConnection, snapshot: JobSnapshot, previous_status: JobStatus,
+        checkpoint: AgentCheckpoint | None = None, *, trace: TraceLog | None = None,
+    ) -> None:
+        running = snapshot.status == "running"
+        cursor = await connection.execute("""
+            UPDATE issuelens_analyses
+            SET snapshot = %s, updated_at = CURRENT_TIMESTAMP,
+                cancel_requested = cancel_requested AND %s,
+                checkpoint = CASE WHEN %s THEN COALESCE(%s, checkpoint) ELSE NULL END,
+                trace = COALESCE(%s, trace)
+            WHERE job_id = %s AND snapshot->>'status' = %s
+        """, (
+            Jsonb(snapshot.model_dump(mode="json")), running, running,
+            checkpoint.model_dump_json() if checkpoint else None,
+            Jsonb(trace.model_dump(mode="json")) if trace is not None else None, snapshot.job_id, previous_status,
+        ))
+        if cursor.rowcount != 1:
+            raise StorageError("The analysis changed before the Worker could save it.")
+
+    def _connected(self) -> psycopg.AsyncConnection:
+        if self._connection is None or self._connection.closed:
+            raise StorageError(STORAGE_UNAVAILABLE)
+        return self._connection
+
+    @asynccontextmanager
+    async def _operation(self) -> AsyncIterator[psycopg.AsyncConnection]:
+        async with self._lock:
+            try:
+                yield self._connected()
+            except (psycopg.Error, ValueError, TypeError):
+                raise StorageError(STORAGE_UNAVAILABLE) from None
+
+    async def save(self, snapshot: JobSnapshot) -> None:
+        async with self._operation() as connection:
+            await connection.execute("""
+                INSERT INTO issuelens_analyses (job_id, snapshot)
+                VALUES (%s, %s)
+                ON CONFLICT (job_id) DO UPDATE
+                SET snapshot = EXCLUDED.snapshot, updated_at = CURRENT_TIMESTAMP
+            """, (snapshot.job_id, Jsonb(snapshot.model_dump(mode="json"))))
+
+    async def get(self, job_id: str, *, owner_id: int | None = None) -> JobSnapshot | None:
+        async with self._operation() as connection:
+            cursor = await connection.execute("""
+                SELECT snapshot FROM issuelens_analyses
+                WHERE job_id = %s AND owner_github_id IS NOT DISTINCT FROM %s
+            """, (job_id, owner_id))
+            row = await cursor.fetchone()
+            return JobSnapshot.model_validate(row[0]) if row else None
+
+    async def get_trace(self, job_id: str, *, owner_id: int | None = None) -> AnalysisTrace | None:
+        async with self._operation() as connection:
+            cursor = await connection.execute("""
+                SELECT snapshot->>'status', trace FROM issuelens_analyses
+                WHERE job_id = %s AND owner_github_id IS NOT DISTINCT FROM %s
+            """, (job_id, owner_id))
+            row = await cursor.fetchone()
+            return AnalysisTrace.model_validate({**row[1], "job_id": job_id, "status": row[0]}) if row else None
+
+    async def enqueue(self, snapshot: JobSnapshot, capacity: int, *, owner_id: int | None = None) -> bool:
+        async with self._operation() as connection, connection.transaction():
+            await connection.execute("SELECT pg_advisory_xact_lock(%s)", (ENQUEUE_LOCK,))
+            cursor = await connection.execute("""
+                SELECT count(*) FROM issuelens_analyses WHERE snapshot->>'status' IN ('queued', 'running')
+            """)
+            count = await cursor.fetchone()
+            if count is None or count[0] >= capacity:
+                return False
+            await connection.execute(
+                "INSERT INTO issuelens_analyses (job_id, snapshot, owner_github_id) VALUES (%s, %s, %s)",
+                (snapshot.job_id, Jsonb(snapshot.model_dump(mode="json")), owner_id),
+            )
+            return True
+
+    async def claim(self, active_job_ids: list[str], signature: str) -> ClaimedAnalysis | None:
+        async with self._operation() as connection, connection.transaction():
+            cursor = await connection.execute("""
+                SELECT snapshot, checkpoint, cancel_requested, trace FROM issuelens_analyses
+                WHERE snapshot->>'status' IN ('queued', 'running') AND NOT (job_id = ANY(%s))
+                ORDER BY (snapshot->>'status' = 'running') DESC, updated_at, job_id
+                LIMIT 1 FOR UPDATE
+            """, (active_job_ids,))
+            row = await cursor.fetchone()
+            if row is None:
+                return None
+            snapshot = JobSnapshot.model_validate(row[0])
+            if snapshot.status == "queued":
+                checkpoint = AgentCheckpoint.start(signature)
+                snapshot.status = "running"
+                await self._update(connection, snapshot, "queued", checkpoint)
+                return ClaimedAnalysis(snapshot, checkpoint)
+
+            trace = TraceLog.model_validate(row[3])
+            interrupted = trace.mark_interrupted()
+            try:
+                checkpoint = AgentCheckpoint.model_validate_json(row[1])
+            except ValueError:
+                trace.stop_reason = "checkpoint_incompatible"
+                await self._update(connection, interrupted_snapshot(snapshot, INVALID_CHECKPOINT), "running", trace=trace)
+                return None
+            if row[2]:
+                snapshot.result = checkpoint.result
+                if not checkpoint.finished:
+                    snapshot.result.usage.elapsed_seconds = round(checkpoint.elapsed_seconds(), 2)
+                if checkpoint.tools:
+                    snapshot.result.limitations.extend(checkpoint.tools.limitations)
+                snapshot.result.limitations.append("The analysis was cancelled before completion.")
+                self._cancel_snapshot(snapshot)
+                trace.stop_reason = "job_cancelled"
+                await self._update(connection, snapshot, "running", trace=trace)
+                return None
+            if not checkpoint.finished and checkpoint.signature != signature:
+                snapshot.result = checkpoint.result
+                trace.stop_reason = "checkpoint_incompatible"
+                await self._update(connection, interrupted_snapshot(snapshot, INVALID_CHECKPOINT), "running", trace=trace)
+                return None
+            if interrupted:
+                await self._update(connection, snapshot, "running", trace=trace)
+            return ClaimedAnalysis(snapshot, checkpoint, resumed=True, trace=trace)
+
+    async def save_running(
+        self, snapshot: JobSnapshot, checkpoint: AgentCheckpoint | None = None, *, trace: TraceLog | None = None,
+    ) -> None:
+        async with self._operation() as connection:
+            await self._update(connection, snapshot, "running", checkpoint, trace=trace)
+
+    @staticmethod
+    def _cancel_snapshot(snapshot: JobSnapshot) -> None:
+        snapshot.status = "cancelled"
+        snapshot.events.append(ProgressEvent(
+            id=len(snapshot.events) + 1, kind="status", message="Analysis cancelled.",
+        ))
+
+    async def request_cancel(self, job_id: str, *, owner_id: int | None = None) -> JobSnapshot | None:
+        async with self._operation() as connection, connection.transaction():
+            cursor = await connection.execute("""
+                SELECT snapshot FROM issuelens_analyses
+                WHERE job_id = %s AND owner_github_id IS NOT DISTINCT FROM %s FOR UPDATE
+            """, (job_id, owner_id))
+            row = await cursor.fetchone()
+            if row is None:
+                return None
+            snapshot = JobSnapshot.model_validate(row[0])
+            if snapshot.status == "queued":
+                self._cancel_snapshot(snapshot)
+                await self._update(connection, snapshot, "queued", trace=TraceLog(stop_reason="job_cancelled"))
+            elif snapshot.status == "running":
+                await connection.execute(
+                    "UPDATE issuelens_analyses SET cancel_requested = true WHERE job_id = %s", (job_id,),
+                )
+            return snapshot
+
+    async def cancellation_requests(self, job_ids: list[str]) -> list[str]:
+        if not job_ids:
+            return []
+        async with self._operation() as connection:
+            cursor = await connection.execute("""
+                SELECT job_id FROM issuelens_analyses WHERE job_id = ANY(%s) AND cancel_requested
+            """, (job_ids,))
+            return [row[0] for row in await cursor.fetchall()]
+
+    async def save_oauth_request(
+        self, state_hash: str, verifier: str, return_job_id: str | None, lifetime: timedelta,
+    ) -> None:
+        async with self._operation() as connection, connection.transaction():
+            await connection.execute("DELETE FROM issuelens_oauth_requests WHERE expires_at <= CURRENT_TIMESTAMP")
+            await connection.execute("""
+                INSERT INTO issuelens_oauth_requests (state_hash, code_verifier, return_job_id, expires_at)
+                VALUES (%s, %s, %s, CURRENT_TIMESTAMP + %s)
+            """, (state_hash, verifier, return_job_id, lifetime))
+
+    async def consume_oauth_request(self, state_hash: str) -> tuple[str, str | None] | None:
+        async with self._operation() as connection:
+            cursor = await connection.execute("""
+                DELETE FROM issuelens_oauth_requests
+                WHERE state_hash = %s AND expires_at > CURRENT_TIMESTAMP
+                RETURNING code_verifier, return_job_id
+            """, (state_hash,))
+            row = await cursor.fetchone()
+            return (row[0], row[1]) if row else None
+
+    async def create_session(
+        self, token_hash: str, user: GitHubUser, lifetime: timedelta, previous_hash: str | None,
+    ) -> None:
+        async with self._operation() as connection, connection.transaction():
+            await connection.execute("""
+                DELETE FROM issuelens_sessions WHERE expires_at <= CURRENT_TIMESTAMP OR token_hash = %s
+            """, (previous_hash,))
+            await connection.execute("""
+                INSERT INTO issuelens_sessions (token_hash, github_id, github_login, expires_at)
+                VALUES (%s, %s, %s, CURRENT_TIMESTAMP + %s)
+            """, (token_hash, user.id, user.login, lifetime))
+
+    async def session_user(self, token_hash: str) -> GitHubUser | None:
+        async with self._operation() as connection:
+            cursor = await connection.execute("""
+                SELECT github_id, github_login FROM issuelens_sessions
+                WHERE token_hash = %s AND expires_at > CURRENT_TIMESTAMP
+            """, (token_hash,))
+            row = await cursor.fetchone()
+            return GitHubUser(id=row[0], login=row[1]) if row else None
+
+    async def delete_session(self, token_hash: str) -> None:
+        async with self._operation() as connection:
+            await connection.execute("DELETE FROM issuelens_sessions WHERE token_hash = %s", (token_hash,))
+
+    async def close(self) -> None:
+        async with self._lock:
+            if self._connection is not None:
+                await self._connection.close()
+                self._connection = None

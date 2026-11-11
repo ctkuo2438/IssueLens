@@ -1,0 +1,44 @@
+{
+  "verified_on": "2026-11-10",
+  "scope": "Keep a running analysis alive when only the API process restarts.",
+  "checks": {
+    "unittest_total_passed": 283,
+    "postgresql_integration_passed": 9,
+    "offline_passed": 274,
+    "pyright_errors": 0,
+    "pyright_warnings": 0,
+    "typescript": "passed",
+    "next_production_build": "passed"
+  },
+  "in_flight_process_restart": {
+    "database": "Dedicated test database on PostgreSQL 14.15",
+    "model_and_github": "Simulated, with controlled progress and completion",
+    "api_exit": "SIGKILL",
+    "api_pids": [70585, 70650],
+    "worker_pid": 70586,
+    "next_pid": 70587,
+    "proxy_http_status_during_outage": 502,
+    "worker_committed_activity_during_outage": true,
+    "queued_analysis_preserved": true,
+    "active_status_before_and_after": ["running", "running"],
+    "resumed_after_event_id": 3,
+    "final_event_count": 5,
+    "same_job_id_completed": true,
+    "sse_get_and_database_match": true,
+    "executions_per_job": [1, 1],
+    "chrome_reconnected_without_reload": true,
+    "chrome_showed_completion_at_original_url": true,
+    "isolated_processes_and_fixture_rows_removed": true
+  },
+  "dev_launcher_restart_and_legacy_snapshot": {
+    "api_exit": "SIGTERM",
+    "api_pids": [71112, 71515],
+    "worker_pid": 71113,
+    "job_id": "5f418c45a83e4f0db3bc112f126507f3",
+    "legacy_snapshot_unchanged": true,
+    "status": "completed",
+    "sources": 8,
+    "activity_events": 35,
+    "new_analysis_requested": false
+  }
+}

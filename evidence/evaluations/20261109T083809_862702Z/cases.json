@@ -1,0 +1,187 @@
+{
+  "id": "issuelens-small-evaluation",
+  "version": 1,
+  "description": "Five fictional cases for an initial controlled regression evaluation. These are not captured GitHub issues or a representative quality benchmark.",
+  "annotation_status": "assistant_authored_reference_pending_human_review",
+  "labels": [
+    {"name": "bug", "description": "Reports a malfunction of existing behavior.", "color": "d73a4a"},
+    {"name": "docs", "description": "Requests a change to project documentation.", "color": "0075ca"},
+    {"name": "enhancement", "description": "Requests new product behavior or a new capability.", "color": "a2eeef"},
+    {"name": "needs-info", "description": "Essential details needed to investigate the report are missing.", "color": "d876e3"},
+    {"name": "question", "description": "Asks how existing product behavior works.", "color": "d876e3"},
+    {"name": "security", "description": "Reports a concrete security vulnerability with supporting evidence.", "color": "ee0701"}
+  ],
+  "cases": [
+    {
+      "id": "possible_duplicate",
+      "description": "Two CSV export reports share a distinctive path condition and error.",
+      "snapshot": {
+        "target_url": "https://github.com/example/eval-export/issues/101",
+        "issues": [
+          {
+            "number": 101,
+            "title": "CSV export fails on Windows when the output folder contains non-ASCII characters",
+            "body": "Version 1.4.0 on Windows 11. Steps: open the sample table, choose Export CSV, and save to C:/Users/tester/Desktop/café. Expected: a CSV file. Actual: export stops with UnicodeEncodeError: 'ascii' codec can't encode character. Saving the same table to C:/Temp works. No cause or fix has been confirmed.",
+            "labels": []
+          },
+          {
+            "number": 91,
+            "title": "CSV export UnicodeEncodeError on Windows with an accented output directory",
+            "body": "Version 1.4.0 on Windows 11. CSV export fails when a non-ASCII character is present in the output folder path. The error is UnicodeEncodeError: 'ascii' codec can't encode character. Export to C:/Temp succeeds. This issue was closed without a linked patch or a documented resolution.",
+            "state": "closed"
+          },
+          {
+            "number": 90,
+            "title": "Toolbar icon alignment",
+            "body": "The help icon is two pixels lower than the settings icon. This is a visual layout report."
+          }
+        ],
+        "comments": []
+      },
+      "expected": {
+        "comparisons": [{"issue_number": 91, "relationship": "possible_duplicate"}],
+        "required_labels": ["bug"],
+        "allowed_labels": ["bug"]
+      },
+      "reference_notes": "Shared CSV format, Windows version, non-ASCII output path and exact error support a possible duplicate. Closure does not establish a fix or a confirmed shared root cause.",
+      "review_questions": [
+        "Does the comparison cite the shared path condition and exact error rather than only the word export?",
+        "Does the answer avoid saying that closure proves a fix or a confirmed duplicate?",
+        "Are the summary and draft supported by the retrieved excerpts?"
+      ]
+    },
+    {
+      "id": "related_but_different",
+      "description": "A hosting documentation request and a hosting runtime defect share provider keywords.",
+      "snapshot": {
+        "target_url": "https://github.com/example/eval-hosting/issues/102",
+        "issues": [
+          {
+            "number": 102,
+            "title": "Add FreeHost deployment guide to the hosting documentation",
+            "body": "Please add a link to the FreeHost deployment guide in the Hosting Platforms documentation. This is a documentation listing request. I am not reporting an application error, session bug, or broken deployment. I would like maintainers to decide whether the provider belongs in that list.",
+            "labels": []
+          },
+          {
+            "number": 82,
+            "title": "FreeHost deployment loses sessions after worker restarts",
+            "body": "Version 2.0 on Linux. A deployed application on FreeHost loses its session after a worker restarts because each worker is configured with a different signing key. Steps and logs demonstrate the session loss. This report asks about session configuration, not adding a provider to the hosting documentation."
+          }
+        ],
+        "comments": [
+          {"id": 201, "author": "maintainer", "body": "We have not decided whether to include this provider. Keep any proposed documentation entry factual and neutral."}
+        ]
+      },
+      "expected": {
+        "comparisons": [{"issue_number": 82, "relationship": "related_but_different"}],
+        "required_labels": ["docs"],
+        "allowed_labels": ["docs"]
+      },
+      "reference_notes": "The provider and deployment context overlap, but the target requests a docs entry and the candidate reports session loss. The target does not support bug or security labels.",
+      "review_questions": [
+        "Does the answer distinguish a documentation inclusion decision from a runtime session defect?",
+        "Does the reply avoid claiming that maintainers have already approved the provider?",
+        "Does the docs recommendation follow the catalog description?"
+      ]
+    },
+    {
+      "id": "insufficient_evidence",
+      "description": "A vague export report cannot establish whether a detailed prior report is the same failure.",
+      "snapshot": {
+        "target_url": "https://github.com/example/eval-incomplete/issues/103",
+        "issues": [
+          {
+            "number": 103,
+            "title": "Export fails",
+            "body": "Export does not work. I have no further details to share yet.",
+            "labels": []
+          },
+          {
+            "number": 73,
+            "title": "Export fails with permission denied on an encrypted Linux folder",
+            "body": "Version 2.0 on Linux. CSV export fails with PermissionError when the destination is an encrypted read-only folder. Export to a writable folder works."
+          }
+        ],
+        "comments": []
+      },
+      "expected": {
+        "comparisons": [{"issue_number": 73, "relationship": "insufficient_evidence"}],
+        "required_labels": ["needs-info"],
+        "allowed_labels": ["bug", "needs-info"],
+        "missing_information_required": true
+      },
+      "reference_notes": "Only a generic export symptom overlaps. The target lacks the details needed to compare conditions. Ask useful investigation questions without treating the candidate's Linux permission error as the target's confirmed cause.",
+      "review_questions": [
+        "Does the answer preserve uncertainty about the operating system and error?",
+        "Do the questions request useful missing details, such as version, platform, steps or exact error?",
+        "Does the reply avoid asserting that the target has a Linux permissions problem?"
+      ]
+    },
+    {
+      "id": "no_candidate_feature_request",
+      "description": "A concrete feature request has no eligible keyword matches in the fixed snapshot.",
+      "snapshot": {
+        "target_url": "https://github.com/example/eval-shortcuts/issues/104",
+        "issues": [
+          {
+            "number": 104,
+            "title": "Allow a custom keyboard shortcut for saving a document",
+            "body": "Please add a keyboard shortcut setting for the Save action. The current Ctrl+S shortcut works correctly. I want to choose Ctrl+Shift+S instead because of a conflict with another application. This requests a new setting, not a fix for a broken existing shortcut.",
+            "labels": []
+          },
+          {
+            "number": 64,
+            "title": "Toolbar icon alignment",
+            "body": "The help icon is two pixels lower than the settings icon. This is a visual layout report."
+          }
+        ],
+        "comments": []
+      },
+      "expected": {
+        "comparisons": [],
+        "required_labels": ["enhancement"],
+        "allowed_labels": ["enhancement"],
+        "no_candidates_expected": true
+      },
+      "reference_notes": "The snapshot contains no related shortcut issue. A successful empty search only establishes no eligible matches for the recorded queries. The existing shortcut is working; the requested setting is new behavior.",
+      "review_questions": [
+        "Does the answer describe this as a new capability rather than a malfunction?",
+        "Does it limit the no-match statement to the recorded searches?",
+        "Does it avoid inventing an existing customization option or promising an implementation?"
+      ]
+    },
+    {
+      "id": "no_additional_label",
+      "description": "A detailed defect report already has its supported classification label.",
+      "snapshot": {
+        "target_url": "https://github.com/example/eval-png/issues/105",
+        "issues": [
+          {
+            "number": 105,
+            "title": "PNG export writes a zero-byte image",
+            "body": "Version 2.1.0 on Ubuntu 24.04. Steps: create a blank document, draw a rectangle, choose Export PNG, and save to a writable local directory. Expected: an image of the rectangle. Actual: a zero-byte file and the log message PNG encoder returned no bytes. The result repeats with the bundled sample document. SVG output works. No fix or cause has been confirmed.",
+            "labels": ["bug"]
+          },
+          {
+            "number": 55,
+            "title": "Theme contrast",
+            "body": "The light theme needs a darker border around its navigation panel."
+          }
+        ],
+        "comments": []
+      },
+      "expected": {
+        "comparisons": [],
+        "required_labels": [],
+        "allowed_labels": [],
+        "no_candidates_expected": true
+      },
+      "reference_notes": "Bug already describes the report. The other catalog labels are not supported by the provided details. An accepted empty recommendation is correct here, but a skipped catalog or missing final answer is not equivalent to abstention.",
+      "review_questions": [
+        "Does the answer avoid repeating bug as a new suggestion?",
+        "Does it avoid inventing a security issue or a confirmed encoder root cause?",
+        "Does it use the version, platform and steps already present rather than asking for them again?"
+      ]
+    }
+  ]
+}

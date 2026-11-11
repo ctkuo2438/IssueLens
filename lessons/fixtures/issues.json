@@ -1,0 +1,14 @@
+{
+  "123": {
+    "number": 123,
+    "title": "App closes when exporting a report",
+    "body": "I am using ReportDemo version 1.4.0 on Windows 11.\nWhen I click Export, the app closes unexpectedly.\nThe error dialog says: PermissionError: access denied.\nThe report is being saved to C:\\Program Files\\ReportDemo\\report.csv.",
+    "source": "Local teaching fixture: lessons/fixtures/issues.json, issue 123. Not a live GitHub issue."
+  },
+  "124": {
+    "number": 124,
+    "title": "App freezes when opening a large report",
+    "body": "Sometimes the app freezes when I open a large report. I have not collected any logs yet.",
+    "source": "Local teaching fixture: lessons/fixtures/issues.json, issue 124. Not a live GitHub issue."
+  }
+}

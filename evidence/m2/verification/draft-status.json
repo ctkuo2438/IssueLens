@@ -1,0 +1,966 @@
+{
+  "milestone": "M2 draft action and closure claims",
+  "verified_at_utc": "2026-11-10T02:24:21.819468+00:00",
+  "model_api": "not_called",
+  "github_api": "not_called",
+  "human_review_status": "pending",
+  "offline_checks": {
+    "command": "uv run --locked python -W error::RuntimeWarning -m unittest discover -s tests -q",
+    "passed": 229,
+    "new_tests": 21,
+    "provider_responses": "simulated",
+    "full_lookup_policy_integration_included": true
+  },
+  "type_check": {
+    "command": "pyright --pythonpath .venv/bin/python backend evaluation lessons scripts",
+    "errors": 0,
+    "warnings": 0
+  },
+  "configuration_unchanged": {
+    "path": "backend/app/config.py",
+    "sha256": "02b40fd63268b27ff44c38b02550612b44c55894f2e53896f20aa84bb3227f12"
+  },
+  "limits_unchanged": {
+    "model_requests": 8,
+    "tool_calls": 15,
+    "runtime_seconds": 90.0,
+    "context_tokens": 12000,
+    "candidates": 20,
+    "candidate_reads": 5
+  },
+  "instruction_tokens": {
+    "encoding": "o200k_base",
+    "before": 1976,
+    "after": 1997,
+    "delta": 21,
+    "interpretation": "Local static-instruction count only, not a guarantee that a full request fits."
+  },
+  "code_before_sha256": {
+    "backend/app/agent.py": "bfb9156fad8c0556a813c5882901798033d6e45c0064974f2ce57b8f6eb38911",
+    "backend/app/quality.py": "01a46fcc3e2564b8082688bb996447d33345e5d8525618a0d590686e98c45b2f",
+    "evaluation/checks.py": "fd0b341a8dedbff67124e12a46ebaab279b496dfbf757e09153afb5a13fc5c78",
+    "scripts/acceptance.py": "959d68341f44d34aba2895af2971c28451aee33c27c800f0177930ec1b9f6439"
+  },
+  "code_after_sha256": {
+    "backend/app/agent.py": "b39360110a97cf7aab57e70d47e88803a27ee8e9b06965bfadebeecc09fb195a",
+    "backend/app/quality.py": "5e4c8e519db87c8ef5cacab3379802835437990f0f736fe9aef7d3f3ae3bc689",
+    "evaluation/checks.py": "706a6e2b7bdf3bd69254a6e5d801343ecaf8c093940d7a3ccb10d006738305ed",
+    "scripts/acceptance.py": "e67b46f168c90c220da28417dd4794c1bd17ee81074aaf2246454222494def6d",
+    "tests/test_draft_actions.py": "210f6331eded432de9f659ece45b906ff984f55ca94301cad6d8d0359d149863"
+  },
+  "preservation_checks": {
+    "evidence/draft-style-verification.json": {
+      "sha256": "49302d90533c695ce7cdbe2df015e996426120125747630e8f0f72c73765133e",
+      "unchanged": true
+    },
+    "evidence/evaluations/20261109T051034_358768Z/cases.json": {
+      "sha256": "e488909338cf330d27a6f2a27bc7f323fccf8af40f2c7283c1839e29fd97585b",
+      "unchanged": true
+    },
+    "evidence/evaluations/20261109T051034_358768Z/report.json": {
+      "sha256": "8718716c54fd3f013a0d93a9975d2df95ac176f0d5394d714771cc1d7df119ac",
+      "unchanged": true
+    },
+    "evidence/evaluations/20261109T051034_358768Z/review-observations.json": {
+      "sha256": "dfbfc359ac84009ac0885ed979f405f226ce761f13460f8158c5d1da652f7603",
+      "unchanged": true
+    },
+    "evidence/evaluations/20261109T053353_585136Z/cases.json": {
+      "sha256": "e488909338cf330d27a6f2a27bc7f323fccf8af40f2c7283c1839e29fd97585b",
+      "unchanged": true
+    },
+    "evidence/evaluations/20261109T053353_585136Z/report.json": {
+      "sha256": "5407d886796a093cf3bef57c9a684b739bf653f2334558ec77bf53ede3f82843",
+      "unchanged": true
+    },
+    "evidence/evaluations/20261109T055654_100989Z/cases.json": {
+      "sha256": "e488909338cf330d27a6f2a27bc7f323fccf8af40f2c7283c1839e29fd97585b",
+      "unchanged": true
+    },
+    "evidence/evaluations/20261109T055654_100989Z/report.json": {
+      "sha256": "41ac9f801945a45b4bdb3c91cffa72a8d57ffcceaffc903b669bde8504b59cdb",
+      "unchanged": true
+    },
+    "evidence/evaluations/20261109T071019_500148Z/cases.json": {
+      "sha256": "e488909338cf330d27a6f2a27bc7f323fccf8af40f2c7283c1839e29fd97585b",
+      "unchanged": true
+    },
+    "evidence/evaluations/20261109T071019_500148Z/report.json": {
+      "sha256": "e797bf3f0bf3dbf3679bd9198f98641a216e83eaae046d41b7f0f8f63eb10b79",
+      "unchanged": true
+    },
+    "evidence/evaluations/20261109T083809_862702Z/cases.json": {
+      "sha256": "e488909338cf330d27a6f2a27bc7f323fccf8af40f2c7283c1839e29fd97585b",
+      "unchanged": true
+    },
+    "evidence/evaluations/20261109T083809_862702Z/report.json": {
+      "sha256": "1c6067a1006e0e9ce393806eaccc6eb8d95858a4183e29e306e87e92af420484",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261109T212458_183451Z/assistant-review.json": {
+      "sha256": "4a96f774314779f82159e129e403bf6aeab0f87d6fab64703816727b27e3c172",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261109T212458_183451Z/cases.json": {
+      "sha256": "a5dc99dcb0a34150ddb7ab868fe3269ea32d6e305ceeb5e4aef4d7b5e04ea08d",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261109T212458_183451Z/report.json": {
+      "sha256": "9434b57dfc548a99876a4573b397c3b67fd4f75ba7c4aa708ce6da1c48304df5",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261109T212458_183451Z/review.md": {
+      "sha256": "61a4aa8baf2c1fb8351981c82e51e82df858fc29b7da43d972322316c127f159",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261109T212458_183451Z/selection.json": {
+      "sha256": "998f28b71472d2edd6f985d66b0fefa773ad5adf5687f3ffc6500dc667493f89",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261109T215427_768430Z/assistant-review.json": {
+      "sha256": "a788b1e4aee3e7ffe1e0ec2d73143d60c48777c117f15dd7efc00c53db200cb3",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261109T215427_768430Z/cases.json": {
+      "sha256": "a5dc99dcb0a34150ddb7ab868fe3269ea32d6e305ceeb5e4aef4d7b5e04ea08d",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261109T215427_768430Z/report.json": {
+      "sha256": "f21f014e25684e7a5a4629997d32ac90e6732bb2026addba58e8bf2666d2cc84",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261109T215427_768430Z/review.md": {
+      "sha256": "d9cb950c711648fee503f0064c30b98e0c0d71428929ceeb7ea2eddb6b15481c",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261109T215427_768430Z/selection.json": {
+      "sha256": "998f28b71472d2edd6f985d66b0fefa773ad5adf5687f3ffc6500dc667493f89",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261109T220345_892233Z/assistant-review.json": {
+      "sha256": "69295c252e493e990ff76572c231d2ecc813c1bdf568534fe469f7882300f37f",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261109T220345_892233Z/cases.json": {
+      "sha256": "a5dc99dcb0a34150ddb7ab868fe3269ea32d6e305ceeb5e4aef4d7b5e04ea08d",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261109T220345_892233Z/report.json": {
+      "sha256": "f0a4f3e035874867f361fed940d7808de57ee83970721f65334a9a0a6736f84e",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261109T220345_892233Z/review.md": {
+      "sha256": "a36f67019747b434c43038f8c4ed8b7ada01024e4ffbd74f58f60754e4cced64",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261109T220345_892233Z/selection.json": {
+      "sha256": "998f28b71472d2edd6f985d66b0fefa773ad5adf5687f3ffc6500dc667493f89",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261109T221126_201141Z/assistant-review.json": {
+      "sha256": "55b41b9f61f01e8206cd817b91e5dd46438c5a9e12dbb7517e18171a8118041e",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261109T221126_201141Z/cases.json": {
+      "sha256": "a5dc99dcb0a34150ddb7ab868fe3269ea32d6e305ceeb5e4aef4d7b5e04ea08d",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261109T221126_201141Z/report.json": {
+      "sha256": "78abd6ebea722f4c2b81f4c20cce48c77139834450ceaab4d3f12ae7da997059",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261109T221126_201141Z/review.md": {
+      "sha256": "d7834a6de5773bc24e04273951f198b160bb34ced8a7d38b9b4e4b28df8880ef",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261109T221126_201141Z/selection.json": {
+      "sha256": "998f28b71472d2edd6f985d66b0fefa773ad5adf5687f3ffc6500dc667493f89",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261109T222509_737957Z/assistant-review.json": {
+      "sha256": "4707488703ce5823c0a3839ad2f40c22664a955e6dfbc3b328799bdf916fe318",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261109T222509_737957Z/cases.json": {
+      "sha256": "a5dc99dcb0a34150ddb7ab868fe3269ea32d6e305ceeb5e4aef4d7b5e04ea08d",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261109T222509_737957Z/report.json": {
+      "sha256": "26ca64cf738cf66ce8c7040509dbfdfd6b09ee8683aea705d0f85fb67d5e2ad7",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261109T222509_737957Z/review.md": {
+      "sha256": "304f36ada60c2ffa54135c584a4f8f94c13bc73c9b53046e3c46ecd656568118",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261109T222509_737957Z/selection.json": {
+      "sha256": "998f28b71472d2edd6f985d66b0fefa773ad5adf5687f3ffc6500dc667493f89",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261109T234613_939464Z/assistant-review.json": {
+      "sha256": "558a180b8b865b57d8193738d780d3cb2107813fdc6b60979bb5fcb6e99a82bd",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261109T234613_939464Z/cases.json": {
+      "sha256": "a5dc99dcb0a34150ddb7ab868fe3269ea32d6e305ceeb5e4aef4d7b5e04ea08d",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261109T234613_939464Z/report.json": {
+      "sha256": "003441d97f35d7c023e1a0b975b4efa8c8d0246e4e86d8f4aa3d849a0676a2eb",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261109T234613_939464Z/review.md": {
+      "sha256": "de23ca1cf9185cfdf1b82cfbfc874d9cc9cbfafe55edaf644315925e8b04fd3d",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261109T234613_939464Z/selection.json": {
+      "sha256": "998f28b71472d2edd6f985d66b0fefa773ad5adf5687f3ffc6500dc667493f89",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261109T235404_357915Z/assistant-review.json": {
+      "sha256": "02849bdbd403ed295aeeaaeac146adc07b869671242898ece09bd5a87bc56876",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261109T235404_357915Z/cases.json": {
+      "sha256": "a5dc99dcb0a34150ddb7ab868fe3269ea32d6e305ceeb5e4aef4d7b5e04ea08d",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261109T235404_357915Z/report.json": {
+      "sha256": "6b2320d8cec69437a3301aef5626bf715397211fc1569629528c53ba5c0ce7f0",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261109T235404_357915Z/review.md": {
+      "sha256": "41c437536c3c0c883f71ff7bc9415623b1bb9fa4aedc656b17f45a493bdae260",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261109T235404_357915Z/selection.json": {
+      "sha256": "998f28b71472d2edd6f985d66b0fefa773ad5adf5687f3ffc6500dc667493f89",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261110T003707_981988Z/assistant-review.json": {
+      "sha256": "98cb6883a5a2b9ccd63b900d91a1db182b7c815b655a871a2de428c87c4a6820",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261110T003707_981988Z/cases.json": {
+      "sha256": "a5dc99dcb0a34150ddb7ab868fe3269ea32d6e305ceeb5e4aef4d7b5e04ea08d",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261110T003707_981988Z/edited-drafts.md": {
+      "sha256": "c4d138c78270d77ab3c941f884982f8f2729676a2cb0012c397e0b67cd12b0f6",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261110T003707_981988Z/editorial-review.json": {
+      "sha256": "10c6c101bd3ea60f021fedf258a8cb71ae4a3082d7f133fea1b8101d57de0657",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261110T003707_981988Z/report.json": {
+      "sha256": "180997b17ad335481b55e2ed5dde3b78acf9b75ab6b2d268739a895f79df4769",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261110T003707_981988Z/review.md": {
+      "sha256": "ee8976530238277f43bd3e71e7ca98c44f74230ff2a1f4d4b7cb9f6868176416",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261110T003707_981988Z/selection.json": {
+      "sha256": "998f28b71472d2edd6f985d66b0fefa773ad5adf5687f3ffc6500dc667493f89",
+      "unchanged": true
+    },
+    "evidence/m1-live-analysis.jpg": {
+      "sha256": "eb1cd29d26f024cacd3c1699a5e82f282a53159e13ef436793e816bb400f9880",
+      "unchanged": true
+    },
+    "evidence/m1-verification.json": {
+      "sha256": "7e85e373ed70fe4b7e8afd2e65807820a09235a0d449880d2d90ffcab1b0c2e1",
+      "unchanged": true
+    },
+    "evidence/m2-answer-repair-verification.json": {
+      "sha256": "3c80bdbce91beccef8d14a39f25c3c9257a0d2e8cab38f4babdfe5bff99198da",
+      "unchanged": true
+    },
+    "evidence/m2-behavior-verification.json": {
+      "sha256": "ace6de02c077f0046cdbfc5d6559a70d6370c49f4688e0e6f492f478715c8fe5",
+      "unchanged": true
+    },
+    "evidence/m2-comments-verification.json": {
+      "sha256": "8005f1aba4c80910e50e6e4daa68b86540aa3ebae24cda73623e6bb2775bcdfd",
+      "unchanged": true
+    },
+    "evidence/m2-context-verification.json": {
+      "sha256": "2578de89a81afc6b62655579f5b56e17e08c872a00d3b9b69e730608c5df001a",
+      "unchanged": true
+    },
+    "evidence/m2-draft-grounding-final-verification.json": {
+      "sha256": "d6ece1f93807e4ac3b0f77039bb24a2be9454f7f320900a8f5751b32d8edc298",
+      "unchanged": true
+    },
+    "evidence/m2-draft-grounding-verification.json": {
+      "sha256": "b2d892d6e85ada6b4cb287b52833eb2cfa3ebba7cf8ae09e3f9bb60c99c0cf10",
+      "unchanged": true
+    },
+    "evidence/m2-editable-draft-mobile-offline.jpg": {
+      "sha256": "1a879d8d6606e7b7d4b2689330de6218a451dcb1eb8f469dc1c951da6bb5c669",
+      "unchanged": true
+    },
+    "evidence/m2-editable-draft-offline.jpg": {
+      "sha256": "86df865de035d9f5556f077a6a2b9f1a5441d3c8efbda7cde418d8c331c39b59",
+      "unchanged": true
+    },
+    "evidence/m2-editable-draft-verification.json": {
+      "sha256": "c83299e797f2e3529b0fa96227d49369c06e29432de1cb75726878f54ce1719a",
+      "unchanged": true
+    },
+    "evidence/m2-evaluation-verification.json": {
+      "sha256": "d844de5cd873e38ec25be7d325fadf3dd101fb6cff475887c84236c29bb511bc",
+      "unchanged": true
+    },
+    "evidence/m2-label-consistency-verification.json": {
+      "sha256": "41d0b8f337e9765f68ccc0413c53b6c70eef71438653e9cc8467516916e5d69d",
+      "unchanged": true
+    },
+    "evidence/m2-label-scope-verification.json": {
+      "sha256": "a4f7faaeee35975dcddca44b08407e2f5b8d565af2914554942732d570ff6949",
+      "unchanged": true
+    },
+    "evidence/m2-labels-verification.json": {
+      "sha256": "18973567bc59fe1748af4b4bd96d68035469133adb293fd809feebc4e79a6743",
+      "unchanged": true
+    },
+    "evidence/m2-live-acceptance-verification.json": {
+      "sha256": "12ef71f16acd7b3f3578c392579b647d96a4e0c7cce69123ea20432964ec8891",
+      "unchanged": true
+    },
+    "evidence/m2-live-comparison.jpg": {
+      "sha256": "d34b1c2f30d42312e5c40aa30a3480024b827164987d6ff4b9b2bfb69c7f9827",
+      "unchanged": true
+    },
+    "evidence/m2-live-labels.jpg": {
+      "sha256": "4bca42742ada9e3571572405b9c4e373b9ba4a9c7fe2deb55edb952939b8d1b7",
+      "unchanged": true
+    },
+    "evidence/m2-live-templates.jpg": {
+      "sha256": "6a0b79dec68f1c1a7db62bd194bd523e24d350783c609ec7f49d2cd80edf2903",
+      "unchanged": true
+    },
+    "evidence/m2-required-lookups-verification.json": {
+      "sha256": "ace53ef0105c5ed757509920ea3f93a0271b9d88c5eaaa9e7a3a233e96433d1c",
+      "unchanged": true
+    },
+    "evidence/m2-template-yaml-offline.jpg": {
+      "sha256": "6383791ef18b7753e3e74da486dc8545a041f8e0ffe9379b4030db7ce033bc4a",
+      "unchanged": true
+    },
+    "evidence/m2-templates-verification.json": {
+      "sha256": "3e8ab7cfc45bbff6a5ee11de4747cf08843560a904b0a3e810e7b171078d5124",
+      "unchanged": true
+    },
+    "evidence/m2-verification.json": {
+      "sha256": "f664a21aac443f10af87a259ec071663c7f313924144dd1cd2211b5143b98f4b",
+      "unchanged": true
+    },
+    "tests/fixtures/bug-report.yml": {
+      "sha256": "e8584a3a96bf859e694a9830e4b3624e1f66f3d5238e91f137663cff43848e8c",
+      "unchanged": true
+    },
+    "tests/fixtures/feature-request.md": {
+      "sha256": "121508708272b43cf6c83d73058a4725d6352517a350917fa9058a3614a74e3c",
+      "unchanged": true
+    },
+    "tests/fixtures/label_recommendations.json": {
+      "sha256": "3e08ca79a899ede088a7881cbaf5349a1e859cb9bfbec18bab934634d4e0ee50",
+      "unchanged": true
+    },
+    "tests/fixtures/reproduction_claims.json": {
+      "sha256": "2b3be3520d7d96105f9507b00c8994145e79f30f5b6f5dcecf1bae90ad68bd36",
+      "unchanged": true
+    },
+    "tests/fixtures/similar_issues.json": {
+      "sha256": "3202fbacc22add1b1cfdd24a20bd4efe4929a1896239cf941e550c12089db561",
+      "unchanged": true
+    },
+    "evaluation/cases.json": {
+      "sha256": "e488909338cf330d27a6f2a27bc7f323fccf8af40f2c7283c1839e29fd97585b",
+      "unchanged": true
+    },
+    "evaluation/live_acceptance_cases.json": {
+      "sha256": "a5dc99dcb0a34150ddb7ab868fe3269ea32d6e305ceeb5e4aef4d7b5e04ea08d",
+      "unchanged": true
+    },
+    "evaluation/live_acceptance_selection.json": {
+      "sha256": "998f28b71472d2edd6f985d66b0fefa773ad5adf5687f3ffc6500dc667493f89",
+      "unchanged": true
+    },
+    "uv.lock": {
+      "sha256": "593563d1e2c1c0055da69b0511645e7ba892df7bd555001600eb523874148e03",
+      "unchanged": true
+    },
+    "pyproject.toml": {
+      "sha256": "2a2d86351f995868acc801ee7aa0c970d5b0bf091af22227c26f003825a12f64",
+      "unchanged": true
+    }
+  },
+  "retained_output_audit": [
+    {
+      "report": "evidence/evaluations/20261109T051034_358768Z/report.json",
+      "sha256": "8718716c54fd3f013a0d93a9975d2df95ac176f0d5394d714771cc1d7df119ac",
+      "cases": [
+        {
+          "case_id": "possible_duplicate",
+          "original_outcome": "completed",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        },
+        {
+          "case_id": "related_but_different",
+          "original_outcome": "completed",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        },
+        {
+          "case_id": "insufficient_evidence",
+          "original_outcome": "completed",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        },
+        {
+          "case_id": "no_candidate_feature_request",
+          "original_outcome": "completed",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        },
+        {
+          "case_id": "no_additional_label",
+          "original_outcome": "completed",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        }
+      ]
+    },
+    {
+      "report": "evidence/evaluations/20261109T053353_585136Z/report.json",
+      "sha256": "5407d886796a093cf3bef57c9a684b739bf653f2334558ec77bf53ede3f82843",
+      "cases": [
+        {
+          "case_id": "possible_duplicate",
+          "original_outcome": "completed",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        },
+        {
+          "case_id": "related_but_different",
+          "original_outcome": "completed",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        },
+        {
+          "case_id": "insufficient_evidence",
+          "original_outcome": "completed",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        },
+        {
+          "case_id": "no_candidate_feature_request",
+          "original_outcome": "completed",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        },
+        {
+          "case_id": "no_additional_label",
+          "original_outcome": "completed",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        }
+      ]
+    },
+    {
+      "report": "evidence/evaluations/20261109T055654_100989Z/report.json",
+      "sha256": "41ac9f801945a45b4bdb3c91cffa72a8d57ffcceaffc903b669bde8504b59cdb",
+      "cases": [
+        {
+          "case_id": "possible_duplicate",
+          "original_outcome": "completed",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        },
+        {
+          "case_id": "related_but_different",
+          "original_outcome": "completed",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        },
+        {
+          "case_id": "insufficient_evidence",
+          "original_outcome": "completed",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        },
+        {
+          "case_id": "no_candidate_feature_request",
+          "original_outcome": "completed",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        },
+        {
+          "case_id": "no_additional_label",
+          "original_outcome": "completed",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        }
+      ]
+    },
+    {
+      "report": "evidence/evaluations/20261109T071019_500148Z/report.json",
+      "sha256": "e797bf3f0bf3dbf3679bd9198f98641a216e83eaae046d41b7f0f8f63eb10b79",
+      "cases": [
+        {
+          "case_id": "possible_duplicate",
+          "original_outcome": "completed",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        },
+        {
+          "case_id": "related_but_different",
+          "original_outcome": "completed",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        },
+        {
+          "case_id": "insufficient_evidence",
+          "original_outcome": "completed",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        },
+        {
+          "case_id": "no_candidate_feature_request",
+          "original_outcome": "completed",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        },
+        {
+          "case_id": "no_additional_label",
+          "original_outcome": "completed",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        }
+      ]
+    },
+    {
+      "report": "evidence/evaluations/20261109T083809_862702Z/report.json",
+      "sha256": "1c6067a1006e0e9ce393806eaccc6eb8d95858a4183e29e306e87e92af420484",
+      "cases": [
+        {
+          "case_id": "possible_duplicate",
+          "original_outcome": "completed",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        },
+        {
+          "case_id": "related_but_different",
+          "original_outcome": "completed",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        },
+        {
+          "case_id": "insufficient_evidence",
+          "original_outcome": "completed",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        },
+        {
+          "case_id": "no_candidate_feature_request",
+          "original_outcome": "completed",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        },
+        {
+          "case_id": "no_additional_label",
+          "original_outcome": "completed",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        }
+      ]
+    },
+    {
+      "report": "evidence/live-acceptance/20261109T212458_183451Z/report.json",
+      "sha256": "9434b57dfc548a99876a4573b397c3b67fd4f75ba7c4aa708ce6da1c48304df5",
+      "cases": [
+        {
+          "case_id": "complete_bug",
+          "original_outcome": "completed",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        },
+        {
+          "case_id": "missing_reproduction",
+          "original_outcome": "partial",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        },
+        {
+          "case_id": "cache_control_feature",
+          "original_outcome": "completed",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        }
+      ]
+    },
+    {
+      "report": "evidence/live-acceptance/20261109T215427_768430Z/report.json",
+      "sha256": "f21f014e25684e7a5a4629997d32ac90e6732bb2026addba58e8bf2666d2cc84",
+      "cases": [
+        {
+          "case_id": "complete_bug",
+          "original_outcome": "partial",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        },
+        {
+          "case_id": "missing_reproduction",
+          "original_outcome": "completed",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        },
+        {
+          "case_id": "cache_control_feature",
+          "original_outcome": "completed",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        }
+      ]
+    },
+    {
+      "report": "evidence/live-acceptance/20261109T220345_892233Z/report.json",
+      "sha256": "f0a4f3e035874867f361fed940d7808de57ee83970721f65334a9a0a6736f84e",
+      "cases": [
+        {
+          "case_id": "complete_bug",
+          "original_outcome": "partial",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        },
+        {
+          "case_id": "missing_reproduction",
+          "original_outcome": "partial",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        },
+        {
+          "case_id": "cache_control_feature",
+          "original_outcome": "completed",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        }
+      ]
+    },
+    {
+      "report": "evidence/live-acceptance/20261109T221126_201141Z/report.json",
+      "sha256": "78abd6ebea722f4c2b81f4c20cce48c77139834450ceaab4d3f12ae7da997059",
+      "cases": [
+        {
+          "case_id": "complete_bug",
+          "original_outcome": "no_final_answer",
+          "current_draft_checks": {
+            "action_status": "not_scored",
+            "closure_status": "not_scored",
+            "patterns": []
+          }
+        },
+        {
+          "case_id": "missing_reproduction",
+          "original_outcome": "partial",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        },
+        {
+          "case_id": "cache_control_feature",
+          "original_outcome": "completed",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        }
+      ]
+    },
+    {
+      "report": "evidence/live-acceptance/20261109T222509_737957Z/report.json",
+      "sha256": "26ca64cf738cf66ce8c7040509dbfdfd6b09ee8683aea705d0f85fb67d5e2ad7",
+      "cases": [
+        {
+          "case_id": "complete_bug",
+          "original_outcome": "partial",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        },
+        {
+          "case_id": "missing_reproduction",
+          "original_outcome": "completed",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        },
+        {
+          "case_id": "cache_control_feature",
+          "original_outcome": "completed",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        }
+      ]
+    },
+    {
+      "report": "evidence/live-acceptance/20261109T234613_939464Z/report.json",
+      "sha256": "003441d97f35d7c023e1a0b975b4efa8c8d0246e4e86d8f4aa3d849a0676a2eb",
+      "cases": [
+        {
+          "case_id": "complete_bug",
+          "original_outcome": "no_final_answer",
+          "current_draft_checks": {
+            "action_status": "not_scored",
+            "closure_status": "not_scored",
+            "patterns": []
+          }
+        },
+        {
+          "case_id": "missing_reproduction",
+          "original_outcome": "partial",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        },
+        {
+          "case_id": "cache_control_feature",
+          "original_outcome": "completed",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        }
+      ]
+    },
+    {
+      "report": "evidence/live-acceptance/20261109T235404_357915Z/report.json",
+      "sha256": "6b2320d8cec69437a3301aef5626bf715397211fc1569629528c53ba5c0ce7f0",
+      "cases": [
+        {
+          "case_id": "complete_bug",
+          "original_outcome": "partial",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        },
+        {
+          "case_id": "missing_reproduction",
+          "original_outcome": "partial",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        },
+        {
+          "case_id": "cache_control_feature",
+          "original_outcome": "completed",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        }
+      ]
+    },
+    {
+      "report": "evidence/live-acceptance/20261110T003707_981988Z/report.json",
+      "sha256": "180997b17ad335481b55e2ed5dde3b78acf9b75ab6b2d268739a895f79df4769",
+      "cases": [
+        {
+          "case_id": "complete_bug",
+          "original_outcome": "partial",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        },
+        {
+          "case_id": "missing_reproduction",
+          "original_outcome": "completed",
+          "current_draft_checks": {
+            "action_status": "passed",
+            "closure_status": "passed",
+            "patterns": []
+          }
+        },
+        {
+          "case_id": "cache_control_feature",
+          "original_outcome": "completed",
+          "current_draft_checks": {
+            "action_status": "failed",
+            "closure_status": "failed",
+            "patterns": [
+              "unperformed_maintainer_action",
+              "closure_implies_resolution"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "edited_draft_audit": {
+    "source": "evidence/live-acceptance/20261110T003707_981988Z/editorial-review.json",
+    "sha256": "10c6c101bd3ea60f021fedf258a8cb71ae4a3082d7f133fea1b8101d57de0657",
+    "cases": [
+      {
+        "case_id": "complete_bug",
+        "action_status": "passed",
+        "closure_status": "passed",
+        "patterns": []
+      },
+      {
+        "case_id": "missing_reproduction",
+        "action_status": "passed",
+        "closure_status": "passed",
+        "patterns": []
+      },
+      {
+        "case_id": "cache_control_feature",
+        "action_status": "passed",
+        "closure_status": "passed",
+        "patterns": []
+      }
+    ]
+  },
+  "interpretation": "The same two current narrow checkers inspect all retained drafts offline. Original scores, outcomes, source excerpts and human-review statuses are unchanged. These are known development examples, not a new model run or quality estimate.",
+  "implementation": [
+    "Draft-only known positive first-person tracker mutation patterns require a bounded correction.",
+    "Known positive closure-to-fix links, closed/resolved pairs and resolved/handled-in-tracker wording require correction.",
+    "Aggregate both kinds in one feedback message; retain the existing evidence checkpoint, request caps, feedback reserve and rejection audit.",
+    "Known negations, modal suggestions, questions and local attribution remain allowed. Source excerpts are never rewritten.",
+    "Both evaluation paths use the same helpers and leave missing final content unscored."
+  ],
+  "remaining_limitations": [
+    "Limited English forms can miss paraphrases, cross-sentence relations or malformed attribution, and can produce false positives.",
+    "Attribution is recognized syntactically; source truth and current code/release status are not verified.",
+    "Question-shaped assertions and future commitments are not exhaustively checked.",
+    "Only draft_reply is scanned by these new checks; other prose fields may retain semantic issues.",
+    "No real API regression was run after this change. Simulated correction is not a model response.",
+    "Known historical-time wording, optional labels, templates coverage, needs-info instability and user acceptance remain open."
+  ],
+  "next_recommended_step": "Run one bounded live regression on the same three issues, inspect source use and draft wording, preserve all outcomes, then reassess M2 acceptance without expanding the milestone."
+}

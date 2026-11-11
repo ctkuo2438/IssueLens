@@ -1,0 +1,28 @@
+{
+  "description": "Offline examples for a narrow English output rule. The first two positive forms were observed in retained real-model evaluation reports.",
+  "positive_claims": [
+    "I can reproduce the described symptom from your steps.",
+    "I can reproduce the core symptom from your description.",
+    "We reproduced the crash locally.",
+    "I've reproduced the failure.",
+    "We’ve replicated the issue.",
+    "I have successfully reproduced the error.",
+    "We were able to replicate the failure.",
+    "I managed to reproduce this behavior.",
+    "I am reproducing the issue.",
+    "Thanks for the report. We can consistently reproduce it.",
+    "The reporter wrote, 'I can reproduce the failure.'"
+  ],
+  "allowed_attribution_or_negation": [
+    "The reporter can reproduce the failure using the supplied steps.",
+    "The issue describes a reproducible failure.",
+    "The maintainer reports reproducing the issue.",
+    "I have not reproduced this issue.",
+    "We cannot reproduce issues with these read-only tools.",
+    "I could not reproduce this issue.",
+    "We did not replicate the failure.",
+    "I haven't reproduced this issue.",
+    "Could you share the steps needed to reproduce it?",
+    "I read the issue and checked its existing labels."
+  ]
+}

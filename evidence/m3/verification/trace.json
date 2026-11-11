@@ -1,0 +1,38 @@
+{
+  "verified_on_utc": "2026-11-11",
+  "scope": "Persist model and tool attempt metadata and read it by the same analysis job ID across Worker replacement.",
+  "checks": {
+    "unittest_total_passed": 299,
+    "postgresql_integration_passed": 12,
+    "offline_passed": 287,
+    "pyright_errors": 0,
+    "pyright_warnings": 0
+  },
+  "environment": "Local PostgreSQL test database, real Worker processes, in-process FastAPI HTTP tests, and the real OpenAI SDK with a mock transport. Model and GitHub responses were simulated.",
+  "process_cases": [
+    {
+      "interruption": "SIGTERM during the saved four-second retry wait after a simulated GitHub HTTP 503",
+      "result": "The same job ID completed. Its trace retained the failed attempt, timing and saved retry time. The replacement Worker waited until that time and added a successful label retry linked to the original attempt ID."
+    },
+    {
+      "interruption": "SIGTERM and SIGKILL in separate runs while the label tool was in flight",
+      "result": "Both jobs completed with their original job IDs. The first three trace entries matched their pre-restart values. The in-flight entry retained its ID and start time, became interrupted and kept a null duration."
+    }
+  ],
+  "process_checks": {
+    "attempts_per_job": 10,
+    "model_attempts_per_job": 5,
+    "tool_attempts_per_job": 5,
+    "attempt_ids_contiguous": true,
+    "fresh_api_reads_same_trace_after_worker_exit": true,
+    "checkpoint_cleared_at_terminal_commit": true,
+    "public_snapshot_shape_preserved": true,
+    "trace_excluded_fixture_key_and_private_replay_markers": true
+  },
+  "offline_checks": [
+    "A successful model retry links to its failed attempt and retains both measured durations.",
+    "Exhausted model and tool budgets, an exhausted retry, a wait beyond the runtime limit, and non-retryable model failures record the corresponding stop reasons.",
+    "A context limit before dispatch records a job stop with no attempt.",
+    "A timed-out attempt records its duration, and an unknown job ID returns HTTP 404."
+  ]
+}

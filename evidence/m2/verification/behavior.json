@@ -1,0 +1,264 @@
+{
+  "milestone": "M2 step 4 - Classification boundaries and reproduction attribution",
+  "date": "2026-11-08",
+  "architecture": "single agent",
+  "offline_checks": {
+    "passed": 75,
+    "new_behavior_tests": 7,
+    "command": "uv run --locked python -W error::RuntimeWarning -m unittest discover -s tests -v",
+    "github_and_model_responses": "simulated"
+  },
+  "type_checks": {
+    "command": "pyright --pythonpath .venv/bin/python backend evaluation lessons scripts",
+    "errors": 0,
+    "warnings": 0
+  },
+  "preservation": {
+    "original_files_sha256": {
+      "evaluation/cases.json": "e488909338cf330d27a6f2a27bc7f323fccf8af40f2c7283c1839e29fd97585b",
+      "evidence/evaluations/20261109T051034_358768Z/report.json": "8718716c54fd3f013a0d93a9975d2df95ac176f0d5394d714771cc1d7df119ac",
+      "evidence/evaluations/20261109T053353_585136Z/report.json": "5407d886796a093cf3bef57c9a684b739bf653f2334558ec77bf53ede3f82843"
+    },
+    "all_original_files_unchanged": true
+  },
+  "comparison": {
+    "dataset_sha256": "e488909338cf330d27a6f2a27bc7f323fccf8af40f2c7283c1839e29fd97585b",
+    "same_model_and_limits": true,
+    "grader": "Current evaluation/checks.py including no_first_person_reproduction_claim",
+    "grader_sha256": "928d83301e54c261778d740a1482a663ae5456ee960d58f61424c8b1e5ab18ae",
+    "quality_rule_sha256": "a5b6b3c8cbb9f28135c83bd7429eb98713e42669b2a0786343a6a0540d490d2a",
+    "model_calls_for_rescoring": 0,
+    "reports_in_chronological_order": [
+      {
+        "report": "evidence/evaluations/20261109T051034_358768Z/report.json",
+        "report_sha256": "8718716c54fd3f013a0d93a9975d2df95ac176f0d5394d714771cc1d7df119ac",
+        "model_api": "real",
+        "github_data": "fixed_fictional_snapshots",
+        "model": "gpt-5.4-mini",
+        "agent_code_sha256": "61975beed02227a5c82f2474e839c763b6e5581ceb60cc368e292916605de8e8",
+        "limits_per_case": {
+          "model_requests": 8,
+          "tool_calls": 15,
+          "runtime_seconds": 90.0,
+          "context_tokens": 12000,
+          "candidates": 20,
+          "candidate_reads": 5
+        },
+        "original_summary": {
+          "cases_attempted": 5,
+          "cases_meeting_automated_expectations": 4,
+          "check_counts": {
+            "passed": 43,
+            "failed": 1,
+            "not_scored": 0
+          },
+          "human_review_status": "pending",
+          "interpretation": "A development checklist on five fictional cases, not a production accuracy estimate.",
+          "cases_with_accepted_answers": 5
+        },
+        "rescored_summary": {
+          "cases_attempted": 5,
+          "cases_meeting_automated_expectations": 3,
+          "check_counts": {
+            "passed": 47,
+            "failed": 2,
+            "not_scored": 0
+          },
+          "human_review_status": "pending",
+          "interpretation": "A development checklist on five fictional cases, not a production accuracy estimate."
+        },
+        "cases_with_accepted_answers": 5,
+        "case_outcomes": {
+          "possible_duplicate": "completed",
+          "related_but_different": "completed",
+          "insufficient_evidence": "completed",
+          "no_candidate_feature_request": "completed",
+          "no_additional_label": "completed"
+        },
+        "rescored_failed_checks": {
+          "possible_duplicate": [],
+          "related_but_different": [],
+          "insufficient_evidence": [
+            {
+              "name": "candidate_73_relationship",
+              "status": "failed",
+              "detail": "Expected insufficient_evidence; observed related_but_different. Reason quality still needs review."
+            }
+          ],
+          "no_candidate_feature_request": [],
+          "no_additional_label": [
+            {
+              "name": "no_first_person_reproduction_claim",
+              "status": "failed",
+              "detail": "Known English first-person reproduction forms found in: ['draft_reply']. This is a narrow pattern check, not semantic verification."
+            }
+          ]
+        },
+        "usage": {
+          "model_requests": 28,
+          "tool_calls": 23,
+          "reported_total_tokens": 63575
+        },
+        "elapsed_seconds": 42.18,
+        "warnings": []
+      },
+      {
+        "report": "evidence/evaluations/20261109T053353_585136Z/report.json",
+        "report_sha256": "5407d886796a093cf3bef57c9a684b739bf653f2334558ec77bf53ede3f82843",
+        "model_api": "real",
+        "github_data": "fixed_fictional_snapshots",
+        "model": "gpt-5.4-mini",
+        "agent_code_sha256": "61975beed02227a5c82f2474e839c763b6e5581ceb60cc368e292916605de8e8",
+        "limits_per_case": {
+          "model_requests": 8,
+          "tool_calls": 15,
+          "runtime_seconds": 90.0,
+          "context_tokens": 12000,
+          "candidates": 20,
+          "candidate_reads": 5
+        },
+        "original_summary": {
+          "cases_attempted": 5,
+          "cases_meeting_automated_expectations": 3,
+          "check_counts": {
+            "passed": 42,
+            "failed": 2,
+            "not_scored": 0
+          },
+          "human_review_status": "pending",
+          "interpretation": "A development checklist on five fictional cases, not a production accuracy estimate.",
+          "cases_with_accepted_answers": 5
+        },
+        "rescored_summary": {
+          "cases_attempted": 5,
+          "cases_meeting_automated_expectations": 3,
+          "check_counts": {
+            "passed": 46,
+            "failed": 3,
+            "not_scored": 0
+          },
+          "human_review_status": "pending",
+          "interpretation": "A development checklist on five fictional cases, not a production accuracy estimate."
+        },
+        "cases_with_accepted_answers": 5,
+        "case_outcomes": {
+          "possible_duplicate": "completed",
+          "related_but_different": "completed",
+          "insufficient_evidence": "completed",
+          "no_candidate_feature_request": "completed",
+          "no_additional_label": "completed"
+        },
+        "rescored_failed_checks": {
+          "possible_duplicate": [],
+          "related_but_different": [],
+          "insufficient_evidence": [
+            {
+              "name": "candidate_73_relationship",
+              "status": "failed",
+              "detail": "Expected insufficient_evidence; observed related_but_different. Reason quality still needs review."
+            }
+          ],
+          "no_candidate_feature_request": [],
+          "no_additional_label": [
+            {
+              "name": "no_first_person_reproduction_claim",
+              "status": "failed",
+              "detail": "Known English first-person reproduction forms found in: ['draft_reply']. This is a narrow pattern check, not semantic verification."
+            },
+            {
+              "name": "labels_within_reference",
+              "status": "failed",
+              "detail": "Allowed additional labels: []. This reference is pending human review."
+            }
+          ]
+        },
+        "usage": {
+          "model_requests": 28,
+          "tool_calls": 23,
+          "reported_total_tokens": 63501
+        },
+        "elapsed_seconds": 44.21,
+        "warnings": []
+      },
+      {
+        "report": "evidence/evaluations/20261109T055654_100989Z/report.json",
+        "report_sha256": "41ac9f801945a45b4bdb3c91cffa72a8d57ffcceaffc903b669bde8504b59cdb",
+        "model_api": "real",
+        "github_data": "fixed_fictional_snapshots",
+        "model": "gpt-5.4-mini",
+        "agent_code_sha256": "4e29ebb89ba612cb2cd33c1b6f1489e4dc2b4df6004ccc483a185fe0ff0155f1",
+        "limits_per_case": {
+          "model_requests": 8,
+          "tool_calls": 15,
+          "runtime_seconds": 90.0,
+          "context_tokens": 12000,
+          "candidates": 20,
+          "candidate_reads": 5
+        },
+        "original_summary": {
+          "cases_attempted": 5,
+          "cases_meeting_automated_expectations": 5,
+          "check_counts": {
+            "passed": 49,
+            "failed": 0,
+            "not_scored": 0
+          },
+          "human_review_status": "pending",
+          "interpretation": "A development checklist on five fictional cases, not a production accuracy estimate.",
+          "cases_with_accepted_answers": 5
+        },
+        "rescored_summary": {
+          "cases_attempted": 5,
+          "cases_meeting_automated_expectations": 5,
+          "check_counts": {
+            "passed": 49,
+            "failed": 0,
+            "not_scored": 0
+          },
+          "human_review_status": "pending",
+          "interpretation": "A development checklist on five fictional cases, not a production accuracy estimate."
+        },
+        "cases_with_accepted_answers": 5,
+        "case_outcomes": {
+          "possible_duplicate": "completed",
+          "related_but_different": "completed",
+          "insufficient_evidence": "completed",
+          "no_candidate_feature_request": "completed",
+          "no_additional_label": "completed"
+        },
+        "rescored_failed_checks": {
+          "possible_duplicate": [],
+          "related_but_different": [],
+          "insufficient_evidence": [],
+          "no_candidate_feature_request": [],
+          "no_additional_label": []
+        },
+        "usage": {
+          "model_requests": 28,
+          "tool_calls": 23,
+          "reported_total_tokens": 72120
+        },
+        "elapsed_seconds": 40.75,
+        "warnings": []
+      }
+    ]
+  },
+  "new_live_regression_runs": 1,
+  "assistant_review_observations": [
+    "The incomplete report was classified insufficient_evidence and the detailed PNG report had no additional label recommendations.",
+    "No known first-person reproduction forms occurred in accepted output and the real-model run triggered no validation corrections. Correction behavior was verified with simulated responses.",
+    "The incomplete case still lists missing details under differences despite selecting the expected category; the reason acknowledges that matching conditions remain unknown.",
+    "The PNG draft uses the phrase clear enough to confirm instead of explicit reporter attribution. This deserves semantic review even though it does not claim first-person execution and does not match the narrow guard."
+  ],
+  "human_review_status": "pending",
+  "limitations": [
+    "Five known fictional cases, one post-change run and assistant-authored references do not establish production accuracy or stability.",
+    "The prompt was improved after examining these development failures; these are not held-out cases.",
+    "Comparison and missing-information label semantics remain model judgments, with no deterministic semantic validator.",
+    "The English pattern guard can miss other phrasing and requires rephrasing quoted first-person claims. Raw source excerpts remain unchanged.",
+    "Old reports were rescored using the same current checks. Their original summaries and outputs were not overwritten."
+  ],
+  "frontend": "unchanged; frontend checks were not rerun",
+  "test_servers_started": false,
+  "new_dependencies": []
+}

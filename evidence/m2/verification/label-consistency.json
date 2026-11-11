@@ -1,0 +1,372 @@
+{
+  "milestone": "M2 label-decision consistency follow-up",
+  "date": "2026-11-09",
+  "model_api": "real",
+  "github_data": "live_public_github",
+  "model": "gpt-5.4-mini",
+  "github_authenticated": false,
+  "human_review_status": "pending",
+  "live_report": "evidence/live-acceptance/20261109T221126_201141Z/report.json",
+  "live_report_sha256": "78abd6ebea722f4c2b81f4c20cce48c77139834450ceaab4d3f12ae7da997059",
+  "assistant_review": "evidence/live-acceptance/20261109T221126_201141Z/assistant-review.json",
+  "assistant_review_sha256": "55b41b9f61f01e8206cd817b91e5dd46438c5a9e12dbb7517e18171a8118041e",
+  "readable_review": "evidence/live-acceptance/20261109T221126_201141Z/review.md",
+  "limits_per_case": {
+    "model_requests": 8,
+    "tool_calls": 15,
+    "runtime_seconds": 90.0,
+    "context_tokens": 12000,
+    "candidates": 20,
+    "candidate_reads": 5
+  },
+  "usage": {
+    "model_requests": 20,
+    "tool_calls": 16,
+    "reported_total_tokens": 96980
+  },
+  "elapsed_seconds": 40.01,
+  "outcomes": [
+    {
+      "case_id": "complete_bug",
+      "outcome": "no_final_answer",
+      "functional_checks": {
+        "final_answer_accepted": false,
+        "label_decision_consistent": null,
+        "target_retrieved": true,
+        "same_repository_search_completed": true,
+        "label_catalog_retrieved": true,
+        "dispatched_contexts_within_budget": true,
+        "known_first_person_reproduction_pattern_absent": null,
+        "known_assistant_service_offer_pattern_absent": null,
+        "reported_comments_first_page_attempted": true,
+        "known_comment_claim_patterns_supported": null,
+        "no_known_pr_only_label_recommendations": null
+      },
+      "source_or_tool_limitations": [
+        "S5: Comment by relu101 was truncated to 350 text tokens.",
+        "Search candidates were found, but no grounded comparison was completed.",
+        "Some full candidate reads were not included in the final comparisons.",
+        "The local context budget was reached: protected evidence and unchanged replay history could not fit. Newly fetched evidence in this build was not sent to the model."
+      ]
+    },
+    {
+      "case_id": "missing_reproduction",
+      "outcome": "partial",
+      "functional_checks": {
+        "final_answer_accepted": true,
+        "label_decision_consistent": true,
+        "target_retrieved": true,
+        "same_repository_search_completed": true,
+        "label_catalog_retrieved": true,
+        "dispatched_contexts_within_budget": true,
+        "known_first_person_reproduction_pattern_absent": true,
+        "known_assistant_service_offer_pattern_absent": true,
+        "reported_comments_first_page_attempted": true,
+        "known_comment_claim_patterns_supported": true,
+        "no_known_pr_only_label_recommendations": true
+      },
+      "source_or_tool_limitations": [
+        "The agent reached its investigation budget; additional checks were not performed."
+      ]
+    },
+    {
+      "case_id": "cache_control_feature",
+      "outcome": "completed",
+      "functional_checks": {
+        "final_answer_accepted": true,
+        "label_decision_consistent": true,
+        "target_retrieved": true,
+        "same_repository_search_completed": true,
+        "label_catalog_retrieved": true,
+        "dispatched_contexts_within_budget": true,
+        "known_first_person_reproduction_pattern_absent": true,
+        "known_assistant_service_offer_pattern_absent": true,
+        "reported_comments_first_page_attempted": null,
+        "known_comment_claim_patterns_supported": true,
+        "no_known_pr_only_label_recommendations": true
+      },
+      "source_or_tool_limitations": []
+    }
+  ],
+  "context_observations": {
+    "maximum_sent_estimate": 11261,
+    "all_dispatched_estimates_within_budget": true,
+    "omitted_excerpts": 0,
+    "repeated_results_reused": 1,
+    "validation_correction_events": [
+      {
+        "case_id": "complete_bug",
+        "event": {
+          "id": 25,
+          "kind": "warning",
+          "message": "The answer failed validation: Each label recommendation must cite the target issue and label catalog sources. Requesting a correction.",
+          "created_at": "2026-11-09T22:11:39.784364Z"
+        }
+      },
+      {
+        "case_id": "missing_reproduction",
+        "event": {
+          "id": 25,
+          "kind": "warning",
+          "message": "The answer failed validation: Label-decision text conflicts with nonempty label_recommendations in limitations[2]. Current recommended labels: ['bug']. Reassess the evidence and make all prose agree with the list. Keep supported recommendations and state actual limitations; return an empty list only if none is justified. Requesting a correction.",
+          "created_at": "2026-11-09T22:11:50.781194Z"
+        }
+      }
+    ]
+  },
+  "offline_checks": {
+    "command": "uv run --locked python -W error::RuntimeWarning -m unittest discover -s tests -q",
+    "passed": 161,
+    "new_label_consistency_tests": 13,
+    "model_and_github_results": "simulated"
+  },
+  "type_check": {
+    "command": "pyright --pythonpath .venv/bin/python backend evaluation lessons scripts",
+    "errors": 0,
+    "warnings": 0
+  },
+  "preservation_checks": {
+    "evidence/evaluations/20261109T051034_358768Z/report.json": {
+      "sha256": "8718716c54fd3f013a0d93a9975d2df95ac176f0d5394d714771cc1d7df119ac",
+      "unchanged": true
+    },
+    "evidence/evaluations/20261109T053353_585136Z/report.json": {
+      "sha256": "5407d886796a093cf3bef57c9a684b739bf653f2334558ec77bf53ede3f82843",
+      "unchanged": true
+    },
+    "evidence/evaluations/20261109T055654_100989Z/report.json": {
+      "sha256": "41ac9f801945a45b4bdb3c91cffa72a8d57ffcceaffc903b669bde8504b59cdb",
+      "unchanged": true
+    },
+    "evidence/evaluations/20261109T071019_500148Z/report.json": {
+      "sha256": "e797bf3f0bf3dbf3679bd9198f98641a216e83eaae046d41b7f0f8f63eb10b79",
+      "unchanged": true
+    },
+    "evidence/evaluations/20261109T083809_862702Z/report.json": {
+      "sha256": "1c6067a1006e0e9ce393806eaccc6eb8d95858a4183e29e306e87e92af420484",
+      "unchanged": true
+    },
+    "evaluation/cases.json": {
+      "sha256": "e488909338cf330d27a6f2a27bc7f323fccf8af40f2c7283c1839e29fd97585b",
+      "unchanged": true
+    },
+    "evaluation/live_acceptance_cases.json": {
+      "sha256": "a5dc99dcb0a34150ddb7ab868fe3269ea32d6e305ceeb5e4aef4d7b5e04ea08d",
+      "unchanged": true
+    },
+    "evaluation/live_acceptance_selection.json": {
+      "sha256": "998f28b71472d2edd6f985d66b0fefa773ad5adf5687f3ffc6500dc667493f89",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261109T212458_183451Z/report.json": {
+      "sha256": "9434b57dfc548a99876a4573b397c3b67fd4f75ba7c4aa708ce6da1c48304df5",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261109T212458_183451Z/assistant-review.json": {
+      "sha256": "4a96f774314779f82159e129e403bf6aeab0f87d6fab64703816727b27e3c172",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261109T215427_768430Z/report.json": {
+      "sha256": "f21f014e25684e7a5a4629997d32ac90e6732bb2026addba58e8bf2666d2cc84",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261109T215427_768430Z/assistant-review.json": {
+      "sha256": "a788b1e4aee3e7ffe1e0ec2d73143d60c48777c117f15dd7efc00c53db200cb3",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261109T220345_892233Z/report.json": {
+      "sha256": "f0a4f3e035874867f361fed940d7808de57ee83970721f65334a9a0a6736f84e",
+      "unchanged": true
+    },
+    "evidence/live-acceptance/20261109T220345_892233Z/assistant-review.json": {
+      "sha256": "69295c252e493e990ff76572c231d2ecc813c1bdf568534fe469f7882300f37f",
+      "unchanged": true
+    }
+  },
+  "same_case_manifest": true,
+  "same_selection_manifest": true,
+  "current_code_matches_live_run": true,
+  "run_code_sha256": {
+    "backend/app/agent.py": "f981394a5f47af35bb29511c5fc8ba0d68d329826f37ee6975307458c43df3e8",
+    "backend/app/github.py": "b9a59a0d4f189fa26721cab17f8641767afe5b39038a0c4e843458c941bfb710",
+    "backend/app/models.py": "9a5efd25e1937dfc24cde65559f9bd4df2aa12c16d4864a30faa51e254fa9718",
+    "backend/app/config.py": "02b40fd63268b27ff44c38b02550612b44c55894f2e53896f20aa84bb3227f12",
+    "backend/app/quality.py": "46250b74ab67d83b8361ec67f96191f99f6ed8855aa0e344b5ce5925bef5332a",
+    "backend/app/templates.py": "93ed623e8c5b020171e94a1923e764364356d86dee9c201568c558d6bf24fd74",
+    "backend/app/context.py": "31b447880a034afda3aa84f05de40975338d5fdcee28410f48742f8013a1c4f9",
+    "scripts/acceptance.py": "50b2abbc559981a4a077b768bc28288451d324c40888f29eb822f99f0b630ffe"
+  },
+  "consistency_grader_sha256": "501d1b7da92ac97f74e29d477be9f743cf1ccc4b0efee155aa4edf95105db340",
+  "retained_output_comparison": [
+    {
+      "report": "evidence/live-acceptance/20261109T212458_183451Z/report.json",
+      "sha256": "9434b57dfc548a99876a4573b397c3b67fd4f75ba7c4aa708ce6da1c48304df5",
+      "cases": [
+        {
+          "case_id": "complete_bug",
+          "outcome": "completed",
+          "final_answer_accepted": true,
+          "recommended_labels": [
+            "bug",
+            "python"
+          ],
+          "conflicting_fields": [],
+          "consistency_check": "passed"
+        },
+        {
+          "case_id": "missing_reproduction",
+          "outcome": "partial",
+          "final_answer_accepted": true,
+          "recommended_labels": [
+            "bug",
+            "testing"
+          ],
+          "conflicting_fields": [
+            "limitations[2]"
+          ],
+          "consistency_check": "failed"
+        },
+        {
+          "case_id": "cache_control_feature",
+          "outcome": "completed",
+          "final_answer_accepted": true,
+          "recommended_labels": [
+            "standards"
+          ],
+          "conflicting_fields": [],
+          "consistency_check": "passed"
+        }
+      ]
+    },
+    {
+      "report": "evidence/live-acceptance/20261109T215427_768430Z/report.json",
+      "sha256": "f21f014e25684e7a5a4629997d32ac90e6732bb2026addba58e8bf2666d2cc84",
+      "cases": [
+        {
+          "case_id": "complete_bug",
+          "outcome": "partial",
+          "final_answer_accepted": true,
+          "recommended_labels": [
+            "bug",
+            "python"
+          ],
+          "conflicting_fields": [
+            "limitations[2]"
+          ],
+          "consistency_check": "failed"
+        },
+        {
+          "case_id": "missing_reproduction",
+          "outcome": "completed",
+          "final_answer_accepted": true,
+          "recommended_labels": [
+            "bug",
+            "testing"
+          ],
+          "conflicting_fields": [],
+          "consistency_check": "passed"
+        },
+        {
+          "case_id": "cache_control_feature",
+          "outcome": "completed",
+          "final_answer_accepted": true,
+          "recommended_labels": [
+            "standards",
+            "python"
+          ],
+          "conflicting_fields": [
+            "limitations[2]"
+          ],
+          "consistency_check": "failed"
+        }
+      ]
+    },
+    {
+      "report": "evidence/live-acceptance/20261109T220345_892233Z/report.json",
+      "sha256": "f0a4f3e035874867f361fed940d7808de57ee83970721f65334a9a0a6736f84e",
+      "cases": [
+        {
+          "case_id": "complete_bug",
+          "outcome": "partial",
+          "final_answer_accepted": true,
+          "recommended_labels": [
+            "bug"
+          ],
+          "conflicting_fields": [],
+          "consistency_check": "passed"
+        },
+        {
+          "case_id": "missing_reproduction",
+          "outcome": "partial",
+          "final_answer_accepted": true,
+          "recommended_labels": [
+            "discussion",
+            "question"
+          ],
+          "conflicting_fields": [
+            "limitations[2]"
+          ],
+          "consistency_check": "failed"
+        },
+        {
+          "case_id": "cache_control_feature",
+          "outcome": "completed",
+          "final_answer_accepted": true,
+          "recommended_labels": [
+            "standards"
+          ],
+          "conflicting_fields": [],
+          "consistency_check": "passed"
+        }
+      ]
+    },
+    {
+      "report": "evidence/live-acceptance/20261109T221126_201141Z/report.json",
+      "sha256": "78abd6ebea722f4c2b81f4c20cce48c77139834450ceaab4d3f12ae7da997059",
+      "cases": [
+        {
+          "case_id": "complete_bug",
+          "outcome": "no_final_answer",
+          "final_answer_accepted": false,
+          "recommended_labels": null,
+          "conflicting_fields": [],
+          "consistency_check": "not_scored"
+        },
+        {
+          "case_id": "missing_reproduction",
+          "outcome": "partial",
+          "final_answer_accepted": true,
+          "recommended_labels": [
+            "bug"
+          ],
+          "conflicting_fields": [],
+          "consistency_check": "passed"
+        },
+        {
+          "case_id": "cache_control_feature",
+          "outcome": "completed",
+          "final_answer_accepted": true,
+          "recommended_labels": [
+            "standards"
+          ],
+          "conflicting_fields": [],
+          "consistency_check": "passed"
+        }
+      ]
+    }
+  ],
+  "implementation": [
+    "Compare known zero-recommendation prose with the structured list in the same model answer, without another model call.",
+    "Scan model prose only; distinguish actual GitHub application state, known attribution/conditions and named recommendation exceptions.",
+    "Request correction within existing budgets or reject the final answer, preserving fetched evidence without silently deleting labels or rewriting prose.",
+    "Use the same narrow checker in live acceptance and fictional evaluation; preserve reference data, historical outputs and original summaries."
+  ],
+  "new_dependencies": [],
+  "limitations": [
+    "Sources and original model reports are not rewritten; old summaries and human review statuses remain unchanged.",
+    "Missing final content is not scored as consistent or treated as correct abstention.",
+    "Known qualification, application-state, conditional and attribution examples have simulated tests; complex wording can still be missed or misclassified.",
+    "Label relevance, numerical counts, positive recommendation claims with an empty list, and other output-field contradictions are outside this narrow checker.",
+    "One run on known live cases is not a stability or production-accuracy benchmark; user review remains pending."
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "started_at_utc": "2026-11-10T22:06:02.439770+00:00",
+  "milestone": "M3 live persistence acceptance",
+  "target_issue_url": "https://github.com/pallets/flask/issues/6146",
+  "providers": {
+    "model": "real",
+    "github": "real",
+    "postgresql": "real"
+  },
+  "model": "gpt-5.6",
+  "reasoning_effort": "medium",
+  "limits": {
+    "max_iterations": 8,
+    "max_tool_calls": 15,
+    "runtime_seconds": 90.0,
+    "context_tokens": 12000,
+    "max_candidates": 20,
+    "max_candidate_reads": 5,
+    "max_output_tokens": 2400
+  },
+  "existing_analysis_count": 0,
+  "postgresql_server_version": 140015,
+  "backend_pid_before": 54025,
+  "success_criteria": [
+    "One new UI analysis reaches a terminal outcome with accepted final content.",
+    "The completed JobSnapshot, including sources and events, matches its PostgreSQL row.",
+    "The actual backend process restarts while PostgreSQL remains running.",
+    "The original task URL reopens visibly and returns exactly the saved snapshot.",
+    "Reopening does not create another analysis or add model/tool requests."
+  ],
+  "partial_policy": "An accepted final answer with disclosed investigation limits is valid for persistence; no final answer is not a pass.",
+  "scope": "Functional persistence verification, not model quality evaluation or Agent resumption.",
+  "code_sha256": {
+    "backend/app/__init__.py": "2a86bd8d5a69f0b7e1c07505f0685a24132f6811fa9bac4f7787e6be3165a484",
+    "backend/app/agent.py": "76976ecde5e7fb28cb5b2ca37847e4115ef0aea43d28754177a5a6b55fe99515",
+    "backend/app/config.py": "99aee5dabe747b357eaa0ff9e6a7911c840ed964ffd288e07a0b76bf711c0b55",
+    "backend/app/context.py": "2c3435d3c2e74ba8f63e257518f4953d639115408cb602e633eb206806ce8216",
+    "backend/app/github.py": "77a1104744ba072d988052c4c0cbb27d60ecce9b4185eedf7015fdfe030f0ee4",
+    "backend/app/jobs.py": "5ca607a5f0a2d8050de4c11c9854fcba0e5a259fb0580ce49a4fd7caf8d57296",
+    "backend/app/main.py": "021dd42454ffe98382d94d1d0935be1cca49244c7ce9a20dddec8482f0ca4510",
+    "backend/app/models.py": "e3ce6515c7d2e5e9263ad0beb80c65920b2e189466d1a80a7b70c1060f1624d7",
+    "backend/app/quality.py": "647e983af7cf7d4837a27d4196143f73f1ad6572ca89a962cc6563ea0afd1e49",
+    "backend/app/storage.py": "7e3167706b24219c0277195fa74a82888ecddef5d0a157862991b466525f1548",
+    "backend/app/templates.py": "93ed623e8c5b020171e94a1923e764364356d86dee9c201568c558d6bf24fd74",
+    "pyproject.toml": "33d50969e35e39dc1db433180145464460984568d2595a5170cf03529aef57c3",
+    "uv.lock": "b078a7f91c5385846f95859b2b7bafdbf10d2f7d168e39d49ffb914295c8162d",
+    "scripts/dev.py": "53c7d04124b4e61cf55c5ca4683acaa5281c62122f01960ece5a5615ed96bd59"
+  }
+}

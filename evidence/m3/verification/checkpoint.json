@@ -1,0 +1,40 @@
+{
+  "verified_on": "2026-11-10",
+  "scope": "Resume the same PostgreSQL-backed analysis after replacing its Worker process.",
+  "checks": {
+    "unittest_total_passed": 286,
+    "postgresql_integration_passed": 11,
+    "offline_passed": 275,
+    "pyright_errors": 0,
+    "pyright_warnings": 0
+  },
+  "process_test": {
+    "test": "tests/test_checkpoint.py::WorkerCheckpointTests.test_same_analysis_completes_after_worker_process_replacement",
+    "database": "Dedicated local PostgreSQL test database",
+    "http_api": "FastAPI through ASGITransport",
+    "openai": "Actual SDK serialization and response parsing with a local mock transport",
+    "github": "Fictional responses through a local mock transport",
+    "first_worker_stopped_while": "Waiting for the label catalog after saving the first tool result and second model response",
+    "signals_tested": ["SIGTERM", "SIGKILL"],
+    "replacement_process_pid_changed": true,
+    "model_requests_by_first_worker": [1, 2],
+    "model_requests_by_replacement_worker": [3, 4, 5],
+    "completed_issue_read_reused": true,
+    "pending_label_call_id_reused": true,
+    "original_replay_prefix_preserved": true,
+    "original_source_s1_preserved": true,
+    "same_job_id_completed_in_each_trial": true,
+    "model_attempts_per_trial": 5,
+    "tool_attempts_per_trial_including_interruption": 5,
+    "persisted_activity_replayed_in_order": true,
+    "private_state_absent_from_api_and_sse": true,
+    "checkpoint_cleared_at_terminal_commit": true
+  },
+  "additional_cases": {
+    "interrupted_answer_repair_preserves_feedback_and_budget": true,
+    "completed_checkpoint_published_after_deadline": true,
+    "expired_active_checkpoint_returns_saved_evidence": true,
+    "cancel_requested_between_workers_honored": true,
+    "legacy_running_snapshot_without_checkpoint_cancelled": true
+  }
+}

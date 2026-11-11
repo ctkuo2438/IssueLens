@@ -1,0 +1,45 @@
+{
+  "id": "m2-live-acceptance-v1",
+  "selected_at": "2026-11-09T21:22:56.170Z",
+  "selection_source": "evaluation/live_acceptance_selection.json",
+  "annotation_status": "assistant_authored_checklist_pending_human_review",
+  "scope": "Three deliberately selected closed historical issues from Pallets repositories. Not a representative sample or production accuracy benchmark.",
+  "cases": [
+    {
+      "id": "complete_bug",
+      "kind": "complete_bug_report",
+      "issue_url": "https://github.com/pallets/flask/issues/5804",
+      "selection_reason": "Contains runnable example, 3.1.1/3.1.2 behavior comparison, versions and tracebacks; comments add historical resolution plans and user experiments.",
+      "review_checks": [
+        "Preserve the reported regression, versions and timing of teardown calls; do not re-request information already visible.",
+        "Attribute reproduction, workarounds and the 3.2 fix plan to their authors; do not claim code execution or a verified released fix.",
+        "Keep author suggestions separate from maintainer guidance and acknowledge closed status.",
+        "Use retrieved catalog labels and applicable templates conservatively; optional extra diagnostics do not prove essential information is absent."
+      ]
+    },
+    {
+      "id": "missing_reproduction",
+      "kind": "insufficient_information_report",
+      "issue_url": "https://github.com/pallets/flask/issues/4032",
+      "selection_reason": "Shows versions and partial client/endpoint snippets but no complete Flask-only application; a maintainer requests a minimal example and the reporter links an unverified cross-repository claim.",
+      "review_checks": [
+        "Identify the missing complete minimal application or route/integration details without asking again for the supplied Python and Flask versions.",
+        "Treat the reporter's Werkzeug issue link as an attributed claim; the current tools cannot read arbitrary cross-repository issues.",
+        "Do not manufacture confirmed root causes or affirmative differences from missing details.",
+        "Ask focused triage questions; any information-needed label must exist in the loaded catalog and satisfy its description."
+      ]
+    },
+    {
+      "id": "cache_control_feature",
+      "kind": "feature_request",
+      "issue_url": "https://github.com/pallets/werkzeug/issues/2948",
+      "selection_reason": "Requests two named Cache-Control extensions and explains CDN use cases; no crash or bug reproduction is alleged.",
+      "review_checks": [
+        "Recognize a feature request for stale-while-revalidate and stale-if-error in ResponseCacheControl.",
+        "Do not demand bug-only fields or repeat already supplied feature purpose and use cases.",
+        "Closed status alone does not establish implemented behavior, a release version or a confirmed resolution.",
+        "Ground comparisons and labels in retrieved evidence and preserve template required-state uncertainty."
+      ]
+    }
+  ]
+}

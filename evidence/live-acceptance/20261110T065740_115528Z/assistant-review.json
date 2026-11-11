@@ -1,0 +1,509 @@
+{
+  "reviewer": "assistant",
+  "reviewed_at_utc": "2026-11-10 07:05:40 UTC",
+  "review_basis": "The frozen predeclared protocol and case checks, plus source excerpts/metadata and outputs from this exact single live run. No extra documentation, repository-code or release retrieval was used to extend model evidence.",
+  "protocol": "protocol.json",
+  "manifest": "cases.json",
+  "selection": "selection.json",
+  "live_report": "report.json",
+  "live_report_sha256": "ab6051135015cb1d456ae3b2c419c787a30947206975a69c83c8b47b9dff25ca",
+  "scoped_acceptance": "passed_with_nonblocking_limitations",
+  "milestone_decision": "ready_for_user_signoff_for_scoped_M2_functionality",
+  "assistant_source_review_status": "completed",
+  "human_review_status": "pending",
+  "blocking_findings": [],
+  "decision_basis": "All three cases delivered accepted final content; no declared blocking finding was identified. The pre-run protocol explicitly allows honest bounded partial coverage. The pytest comparison-coverage automatic false is preserved and is not relabelled as passed.",
+  "gate_assessments": [
+    {
+      "criterion_id": "delivery",
+      "status": "met",
+      "reason": "Three accepted final answers; no timeout, API error, output exhaustion or missing final answer."
+    },
+    {
+      "criterion_id": "evidence",
+      "status": "met_with_nonblocking_caveats",
+      "reason": "Material conclusions are supported by retrieved visible evidence. Record Ruff's fine-grained PEP citation and recommendation-strength caveats; no verified execution, fixed release or GitHub mutation is invented."
+    },
+    {
+      "criterion_id": "labels",
+      "status": "met",
+      "reason": "release, topic: parametrize and rule are applicable loaded catalog entries with target/catalog source pairs. Existing needs-information is not repeated; decision prose is consistent."
+    },
+    {
+      "criterion_id": "coverage",
+      "status": "met_with_allowed_partial_coverage",
+      "reason": "HTTPX reports two successful empty scoped searches; pytest discloses 10/11 comments, two omissions and unread candidates; Ruff compares one full candidate and discloses the two unread ones."
+    },
+    {
+      "criterion_id": "repair_and_bounds",
+      "status": "met_for_exercised_paths",
+      "reason": "All dispatched estimates plus actual reserves fit the frozen budget. No repair event occurred, so real repair execution remains unexercised rather than newly proven."
+    },
+    {
+      "criterion_id": "draft",
+      "status": "met_with_nonblocking_caveats",
+      "reason": "Drafts use maintainer voice without service offers, invented execution or status actions. Ruff advice could be more conditional; HTTPX investigation unknowns are listed in missing_information."
+    }
+  ],
+  "cases": [
+    {
+      "case_id": "httpx_prerelease_transport",
+      "assessment": "meets_predeclared_scope",
+      "evidence": [
+        {
+          "finding": "S1 and issue metadata support the exact stable/prerelease versions, upgrade command, missing top-level attribute and closed state. The answer does not claim reproduction or a confirmed accidental API removal.",
+          "source_ids": [
+            "S1"
+          ]
+        },
+        {
+          "finding": "S2 questions the release information and S3 confirms a prerelease was available. The answer distinguishes that acknowledgement from proof that the BaseTransport change was intentional, and does not claim to have read the linked discussion.",
+          "source_ids": [
+            "S2",
+            "S3"
+          ]
+        },
+        {
+          "finding": "release is an active catalog entry described as a new package release, and its recommendation cites S1/S4. No PR-only labels or information-needed label are suggested.",
+          "source_ids": [
+            "S1",
+            "S4"
+          ]
+        },
+        {
+          "finding": "Both scoped searches succeeded with no eligible candidates; no comparison is fabricated and the answer does not rule out differently worded duplicates.",
+          "source_ids": [
+            "S5",
+            "S6"
+          ]
+        }
+      ],
+      "predeclared_check_assessments": [
+        {
+          "check_index": 0,
+          "status": "met",
+          "reason": "Preserves the supplied commands, versions and exception without repeating reproduction questions or claiming execution."
+        },
+        {
+          "check_index": 1,
+          "status": "met",
+          "reason": "The prerelease observation is separated from unknown intent and migration compatibility; no current fixed version is invented."
+        },
+        {
+          "check_index": 2,
+          "status": "met",
+          "reason": "Attributes lovelydinosaur's dated acknowledgement and explicitly leaves the linked discussion and eventual resolution uninspected."
+        },
+        {
+          "check_index": 3,
+          "status": "met_with_nonblocking_caveat",
+          "reason": "The release suggestion is grounded; empty scoped searches remain bounded. missing_information contains investigation unknowns rather than reporter-required fields."
+        }
+      ],
+      "nonblocking_observations": [
+        "The missing_information list would be clearer as investigation unknowns/limitations; no need-info label or redundant environment demand follows from it."
+      ],
+      "execution_outcome": "completed",
+      "original_functional_checks": {
+        "final_answer_accepted": true,
+        "no_known_unperformed_maintainer_action": true,
+        "no_known_closure_resolution_inference": true,
+        "label_decision_consistent": true,
+        "target_retrieved": true,
+        "same_repository_search_completed": true,
+        "minimum_similar_issue_checks_completed": true,
+        "label_catalog_retrieved": true,
+        "dispatched_contexts_within_budget": true,
+        "known_first_person_reproduction_pattern_absent": true,
+        "known_assistant_service_offer_pattern_absent": true,
+        "draft_time_claims_attributed": true,
+        "reported_comments_first_page_attempted": true,
+        "known_comment_claim_patterns_supported": true,
+        "no_known_pr_only_label_recommendations": true
+      },
+      "predeclared_checks": [
+        "Preserve the supplied upgrade command, 0.28.1-to-1.0.dev1 comparison and missing BaseTransport attribute; do not re-request these supplied details or claim execution.",
+        "Treat this as a reported compatibility observation involving a prerelease. Do not invent accidental removal, a confirmed stable-release defect, an interchangeable replacement API, or a verified fix/release.",
+        "Use available comments to attribute the acknowledgement of a 1.0 prerelease and distinguish a linked discussion from discussion content actually retrieved; acknowledge closed/historical status.",
+        "Ground any label and comparison in the loaded catalog and both issue bodies. Keep optional environment questions separate from essential missing reproduction details."
+      ],
+      "user_review_status": "pending"
+    },
+    {
+      "case_id": "pytest_custom_object_ids",
+      "assessment": "meets_predeclared_scope_with_honest_partial_coverage",
+      "evidence": [
+        {
+          "finding": "S1 provides the error, custom mapping description and Python314 path; visible comments preserve method-overriding clues and the distinction between the reporter's workaround and the member's explicit-ID advice.",
+          "source_ids": [
+            "S1",
+            "S2",
+            "S4",
+            "S6",
+            "S7",
+            "S8",
+            "S10"
+          ]
+        },
+        {
+          "finding": "The exact pytest.param(MyBroken(), id=\"broken\") suggestion appears in S10. The draft is neutral and requests the missing runnable class/test and exact pytest versions rather than asserting a verified pytest regression.",
+          "source_ids": [
+            "S1",
+            "S4",
+            "S8",
+            "S10"
+          ]
+        },
+        {
+          "finding": "The target already has status: needs information. The only suggestion is the active topic: parametrize entry, described as related to @pytest.mark.parametrize, with S1/S12 citations.",
+          "source_ids": [
+            "S1",
+            "S12"
+          ]
+        },
+        {
+          "finding": "The agent retrieved 10 of 11 comments and omitted S5/S11; the accepted text accurately discloses both boundaries and does not cite those omitted excerpts. Their original text remains in Sources.",
+          "source_ids": [
+            "S5",
+            "S11"
+          ]
+        },
+        {
+          "finding": "Five candidates were discovered but none was read. The 2400 minimum failed at request 5, and a tool-free final at estimate 9634 fit. No duplicate classification is claimed.",
+          "source_ids": [
+            "S13"
+          ]
+        }
+      ],
+      "predeclared_check_assessments": [
+        {
+          "check_index": 0,
+          "status": "met",
+          "reason": "Recognizes the supplied clues and asks for the still-missing executable class/test rather than claiming no information was supplied."
+        },
+        {
+          "check_index": 1,
+          "status": "met",
+          "reason": "Separates reporter method/workaround statements from the member's explicit-ID advice; does not demand already supplied method names or explanation of IDs."
+        },
+        {
+          "check_index": 2,
+          "status": "met",
+          "reason": "The draft states that the reported regression is unestablished, gives a focused reproducer request and uses a neutral tone."
+        },
+        {
+          "check_index": 3,
+          "status": "met_with_allowed_partial_coverage",
+          "reason": "Does not repeat the existing needs-information label and accurately reports first-page/omitted/unread-candidate states. The protocol explicitly allows this bounded partial result when final content is delivered."
+        }
+      ],
+      "nonblocking_observations": [
+        "The original minimum_similar_issue_checks_completed=false remains unchanged. This is incomplete comparison coverage, not evidence of absent duplicates and not a hidden pass of that automatic check.",
+        "The Python AttributeError advice is explanatory guidance, not an executed or independently tested fix; explicit IDs are directly supported by S10."
+      ],
+      "execution_outcome": "partial",
+      "original_functional_checks": {
+        "final_answer_accepted": true,
+        "no_known_unperformed_maintainer_action": true,
+        "no_known_closure_resolution_inference": true,
+        "label_decision_consistent": true,
+        "target_retrieved": true,
+        "same_repository_search_completed": true,
+        "minimum_similar_issue_checks_completed": false,
+        "label_catalog_retrieved": true,
+        "dispatched_contexts_within_budget": true,
+        "known_first_person_reproduction_pattern_absent": true,
+        "known_assistant_service_offer_pattern_absent": true,
+        "draft_time_claims_attributed": true,
+        "reported_comments_first_page_attempted": true,
+        "known_comment_claim_patterns_supported": true,
+        "no_known_pr_only_label_recommendations": true
+      },
+      "predeclared_checks": [
+        "Identify the missing executable custom-wrapper definition and parametrized test or invocation without claiming the report contains no clues; the body already gives a KeyError, custom dict wrapper and a Python314 path.",
+        "When visible, preserve the author's __getattr__/__setattr__ clarification and workaround separately from RonnyPfannschmidt's explanation and explicit pytest.param(..., id=...) suggestion. Do not re-request information already supplied in visible comments.",
+        "Do not turn the reporter's regression claim or a participant's explanation into independently verified root cause. Request a focused minimal reproducer and use a neutral maintainer voice.",
+        "Do not recommend an already applied status: needs information label. Preserve partial pagination/omission states for the eleven-comment discussion; unread or omitted evidence must not be described as absent."
+      ],
+      "user_review_status": "pending"
+    },
+    {
+      "case_id": "ruff_lazy_import_rule",
+      "assessment": "meets_predeclared_scope_with_advice_and_citation_caveats",
+      "evidence": [
+        {
+          "finding": "S1 supplies a lazy-import/top-level assignment feature request; S2 supplies only the rule-documentation URL. The answer does not claim to have opened that page or checked a released version.",
+          "source_ids": [
+            "S1",
+            "S2"
+          ]
+        },
+        {
+          "finding": "Full candidate body S5 explicitly proposes the module/global and class-body behavior described in the comparison. The target/body source pair S1/S5 supports a tentative possible_duplicate classification rather than a confirmed implementation or fix.",
+          "source_ids": [
+            "S1",
+            "S5"
+          ]
+        },
+        {
+          "finding": "rule is an active catalog entry for implementing or modifying a lint rule; the suggestion uses S1/S3 and does not contradict decision prose.",
+          "source_ids": [
+            "S1",
+            "S3"
+          ]
+        },
+        {
+          "finding": "The draft uses 'appears to be covered' as an inference from the linked rule and prior proposal. Limitations explicitly leave current implementation and version availability unverified.",
+          "source_ids": [
+            "S1",
+            "S2",
+            "S5"
+          ]
+        }
+      ],
+      "predeclared_check_assessments": [
+        {
+          "check_index": 0,
+          "status": "met",
+          "reason": "Preserves the supplied feature example and motivation; no crash or reproduction requirement is manufactured."
+        },
+        {
+          "check_index": 1,
+          "status": "met_with_nonblocking_caveat",
+          "reason": "Attributes the link and does not invent page inspection or release/version facts. Advice to use the existing rule is stronger than the retrieved implementation evidence; it is qualified by appears and explicit unverified-implementation limitations, so treated as a recommendation/inference rather than a verified capability claim."
+        },
+        {
+          "check_index": 2,
+          "status": "met",
+          "reason": "No bug-only fields, OS details or repeated feature-purpose questions are demanded; missing_information is empty."
+        },
+        {
+          "check_index": 3,
+          "status": "met_with_nonblocking_citation_caveat",
+          "reason": "The main comparison and label use correct pairs, and the duplicate category is tentative. PEP 810 in the summary is explicit in S5 but the summary cites S1/S2; that fine-grained citation could be clearer without changing the substantive conclusion. Templates are unexercised."
+        }
+      ],
+      "nonblocking_observations": [
+        "A user should check the linked rule's actual behavior/version before relying on it; this run did not read documentation, source code or releases.",
+        "The summary's PEP 810 identifier is supported elsewhere in retrieved S5, but that source is not included in the summary's own citation list.",
+        "The other two search candidates stayed unread; the answer discloses the one-candidate comparison limit."
+      ],
+      "execution_outcome": "completed",
+      "original_functional_checks": {
+        "final_answer_accepted": true,
+        "no_known_unperformed_maintainer_action": true,
+        "no_known_closure_resolution_inference": true,
+        "label_decision_consistent": true,
+        "target_retrieved": true,
+        "same_repository_search_completed": true,
+        "minimum_similar_issue_checks_completed": true,
+        "label_catalog_retrieved": true,
+        "dispatched_contexts_within_budget": true,
+        "known_first_person_reproduction_pattern_absent": true,
+        "known_assistant_service_offer_pattern_absent": true,
+        "draft_time_claims_attributed": true,
+        "reported_comments_first_page_attempted": true,
+        "known_comment_claim_patterns_supported": true,
+        "no_known_pr_only_label_recommendations": true
+      },
+      "predeclared_checks": [
+        "Recognize a proposed lint rule for top-level use that immediately resolves a lazy import, preserving the short supplied code example and motivation rather than treating it as a crash report.",
+        "A participant links the lazy-import-immediately-resolved documentation page. Attribute that link when visible; do not claim the page was read or assert a current implementation/release version from the URL or closed state alone.",
+        "Do not demand bug-only tracebacks, operating-system details or reproduction fields for this feature request. Any follow-up about intended rule behavior must remain a focused design question.",
+        "Keep labels and candidate relationships evidence-linked and tentative; compare only fully retrieved bodies. Treat template required-state and skipped lookups honestly."
+      ],
+      "user_review_status": "pending"
+    }
+  ],
+  "live_summary": {
+    "raw_report": "evidence/live-acceptance/20261110T065740_115528Z/report.json",
+    "raw_sha256": "ab6051135015cb1d456ae3b2c419c787a30947206975a69c83c8b47b9dff25ca",
+    "started_at": "2026-11-10T06:57:40.115528+00:00",
+    "finished_at": "2026-11-10T06:58:53.037485+00:00",
+    "elapsed_seconds": 72.92,
+    "model": "gpt-5.6",
+    "reasoning_effort": "medium",
+    "limits": {
+      "model_requests": 8,
+      "tool_calls": 15,
+      "runtime_seconds": 90,
+      "context_tokens": 12000,
+      "candidates": 20,
+      "candidate_reads": 5
+    },
+    "max_output_tokens": 2400,
+    "total_model_requests": 17,
+    "total_tools": 14,
+    "total_reported_tokens": 81782,
+    "max_dispatched_estimate": 9634,
+    "max_with_reserves": 12000,
+    "all_dispatched_fit": true,
+    "model_requests_match": true,
+    "frozen_files_unchanged": 166,
+    "predeclared_inputs_unchanged": true,
+    "body_comparison": [
+      {
+        "case_id": "httpx_prerelease_transport",
+        "selected_body_matches_live": true
+      },
+      {
+        "case_id": "pytest_custom_object_ids",
+        "selected_body_matches_live": true
+      },
+      {
+        "case_id": "ruff_lazy_import_rule",
+        "selected_body_matches_live": true
+      }
+    ],
+    "repair_events": 0,
+    "repair_builds": [],
+    "template_calls": 0,
+    "cases": [
+      {
+        "id": "httpx_prerelease_transport",
+        "url": "https://github.com/encode/httpx/issues/3602",
+        "outcome": "completed",
+        "usage": {
+          "model_requests": 6,
+          "tool_calls": 5,
+          "total_tokens": 26969,
+          "elapsed_seconds": 27.02
+        },
+        "checks": {
+          "final_answer_accepted": true,
+          "no_known_unperformed_maintainer_action": true,
+          "no_known_closure_resolution_inference": true,
+          "label_decision_consistent": true,
+          "target_retrieved": true,
+          "same_repository_search_completed": true,
+          "minimum_similar_issue_checks_completed": true,
+          "label_catalog_retrieved": true,
+          "dispatched_contexts_within_budget": true,
+          "known_first_person_reproduction_pattern_absent": true,
+          "known_assistant_service_offer_pattern_absent": true,
+          "draft_time_claims_attributed": true,
+          "reported_comments_first_page_attempted": true,
+          "known_comment_claim_patterns_supported": true,
+          "no_known_pr_only_label_recommendations": true
+        },
+        "predeclared_checks": [
+          "Preserve the supplied upgrade command, 0.28.1-to-1.0.dev1 comparison and missing BaseTransport attribute; do not re-request these supplied details or claim execution.",
+          "Treat this as a reported compatibility observation involving a prerelease. Do not invent accidental removal, a confirmed stable-release defect, an interchangeable replacement API, or a verified fix/release.",
+          "Use available comments to attribute the acknowledgement of a 1.0 prerelease and distinguish a linked discussion from discussion content actually retrieved; acknowledge closed/historical status.",
+          "Ground any label and comparison in the loaded catalog and both issue bodies. Keep optional environment questions separate from essential missing reproduction details."
+        ],
+        "omitted": [],
+        "all_omitted_retained": true,
+        "labels": [
+          "release"
+        ],
+        "comparisons": []
+      },
+      {
+        "id": "pytest_custom_object_ids",
+        "url": "https://github.com/pytest-dev/pytest/issues/14560",
+        "outcome": "partial",
+        "usage": {
+          "model_requests": 5,
+          "tool_calls": 4,
+          "total_tokens": 26527,
+          "elapsed_seconds": 20.09
+        },
+        "checks": {
+          "final_answer_accepted": true,
+          "no_known_unperformed_maintainer_action": true,
+          "no_known_closure_resolution_inference": true,
+          "label_decision_consistent": true,
+          "target_retrieved": true,
+          "same_repository_search_completed": true,
+          "minimum_similar_issue_checks_completed": false,
+          "label_catalog_retrieved": true,
+          "dispatched_contexts_within_budget": true,
+          "known_first_person_reproduction_pattern_absent": true,
+          "known_assistant_service_offer_pattern_absent": true,
+          "draft_time_claims_attributed": true,
+          "reported_comments_first_page_attempted": true,
+          "known_comment_claim_patterns_supported": true,
+          "no_known_pr_only_label_recommendations": true
+        },
+        "predeclared_checks": [
+          "Identify the missing executable custom-wrapper definition and parametrized test or invocation without claiming the report contains no clues; the body already gives a KeyError, custom dict wrapper and a Python314 path.",
+          "When visible, preserve the author's __getattr__/__setattr__ clarification and workaround separately from RonnyPfannschmidt's explanation and explicit pytest.param(..., id=...) suggestion. Do not re-request information already supplied in visible comments.",
+          "Do not turn the reporter's regression claim or a participant's explanation into independently verified root cause. Request a focused minimal reproducer and use a neutral maintainer voice.",
+          "Do not recommend an already applied status: needs information label. Preserve partial pagination/omission states for the eleven-comment discussion; unread or omitted evidence must not be described as absent."
+        ],
+        "omitted": [
+          "S5",
+          "S11"
+        ],
+        "all_omitted_retained": true,
+        "labels": [
+          "topic: parametrize"
+        ],
+        "comparisons": []
+      },
+      {
+        "id": "ruff_lazy_import_rule",
+        "url": "https://github.com/astral-sh/ruff/issues/29177",
+        "outcome": "completed",
+        "usage": {
+          "model_requests": 6,
+          "tool_calls": 5,
+          "total_tokens": 28286,
+          "elapsed_seconds": 25.8
+        },
+        "checks": {
+          "final_answer_accepted": true,
+          "no_known_unperformed_maintainer_action": true,
+          "no_known_closure_resolution_inference": true,
+          "label_decision_consistent": true,
+          "target_retrieved": true,
+          "same_repository_search_completed": true,
+          "minimum_similar_issue_checks_completed": true,
+          "label_catalog_retrieved": true,
+          "dispatched_contexts_within_budget": true,
+          "known_first_person_reproduction_pattern_absent": true,
+          "known_assistant_service_offer_pattern_absent": true,
+          "draft_time_claims_attributed": true,
+          "reported_comments_first_page_attempted": true,
+          "known_comment_claim_patterns_supported": true,
+          "no_known_pr_only_label_recommendations": true
+        },
+        "predeclared_checks": [
+          "Recognize a proposed lint rule for top-level use that immediately resolves a lazy import, preserving the short supplied code example and motivation rather than treating it as a crash report.",
+          "A participant links the lazy-import-immediately-resolved documentation page. Attribute that link when visible; do not claim the page was read or assert a current implementation/release version from the URL or closed state alone.",
+          "Do not demand bug-only tracebacks, operating-system details or reproduction fields for this feature request. Any follow-up about intended rule behavior must remain a focused design question.",
+          "Keep labels and candidate relationships evidence-linked and tentative; compare only fully retrieved bodies. Treat template required-state and skipped lookups honestly."
+        ],
+        "omitted": [],
+        "all_omitted_retained": true,
+        "labels": [
+          "rule"
+        ],
+        "comparisons": [
+          {
+            "number": 25014,
+            "relationship": "possible_duplicate"
+          }
+        ]
+      }
+    ]
+  },
+  "freeze_verification": {
+    "frozen_files_unchanged": 166,
+    "environment_unchanged": true,
+    "manifest_selection_protocol_unchanged": true,
+    "selected_target_bodies_match_actual_sources": true,
+    "app_runner_prompt_grader_or_dependency_edits": "none",
+    "model_runs_per_case": 1
+  },
+  "evidence_limits": {
+    "template_lookups": 0,
+    "readme_lookups": 0,
+    "validation_repairs": 0,
+    "full_replay_bytes": "Not persisted in raw reports; no independent full live replay-byte comparison is claimed.",
+    "prior_offline_checks": "262 tests and zero-error Pyright are inherited from the frozen repair fix; no new test-suite/type-checker run was necessary in this observation step."
+  },
+  "next_direction": "Keep M2 features frozen and stop tuning against this batch. Use the frozen version as the baseline for the next roadmap milestone; retain the listed limitations and pending user review.",
+  "generalization_limits": "Three purposively selected project-new cases from different repositories are not a representative benchmark, model accuracy estimate, or proof that the model never saw these public issues during pretraining. After this run they are observed acceptance examples, not a fresh hold-out set."
+}

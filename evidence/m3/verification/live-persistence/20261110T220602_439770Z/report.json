@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "verification_date_local": "2026-11-10",
+  "timezone": "America/Los_Angeles",
+  "started_at_utc": "2026-11-10T22:06:02.439770+00:00",
+  "verified_at_utc": "2026-11-10T22:13:47.304292+00:00",
+  "scope": "One real browser analysis and a real backend restart; functional PostgreSQL persistence only.",
+  "outcome": "passed",
+  "issue_url": "https://github.com/pallets/flask/issues/6146",
+  "job_id": "5f418c45a83e4f0db3bc112f126507f3",
+  "task_url": "http://127.0.0.1:3000/?analysis=5f418c45a83e4f0db3bc112f126507f3",
+  "providers": {
+    "model": "real",
+    "github": "real",
+    "postgresql": "real"
+  },
+  "model": "gpt-5.6",
+  "reasoning_effort": "medium",
+  "limits": {
+    "max_iterations": 8,
+    "max_tool_calls": 15,
+    "runtime_seconds": 90,
+    "context_tokens": 12000,
+    "max_candidates": 20,
+    "max_candidate_reads": 5,
+    "max_output_tokens": 2400
+  },
+  "analysis": {
+    "status": "completed",
+    "accepted_final_content": true,
+    "sources": 8,
+    "events": 35,
+    "usage": {
+      "model_requests": 6,
+      "tool_calls": 5,
+      "total_tokens": 25961,
+      "elapsed_seconds": 24.11
+    }
+  },
+  "backend": {
+    "pid_before": 54025,
+    "pid_after": 56641,
+    "graceful_shutdown_observed": true,
+    "stopped_confirmed": true,
+    "port": 8000,
+    "frontend_remained_running": true,
+    "frontend_pid": 54054,
+    "frontend_port": 3000,
+    "services_left_running": true
+  },
+  "database": {
+    "server_version": 140015,
+    "readable_while_backend_stopped": true,
+    "server_not_restarted": true,
+    "snapshot_matches_api_before": true,
+    "snapshot_matches_api_after": true,
+    "row_updated_at_unchanged": true,
+    "analysis_count_before_new_job": 0,
+    "analysis_count_after_browser_reopen": 1
+  },
+  "comparison": {
+    "full_api_json_values_identical": true,
+    "snapshot_sha256": "4f431c3b3044780ab538e1f3dcd7ddb871376aed14f94bbc1eb25e25ecd9a025",
+    "original_task_url_reopened_in_fresh_browser_tab": true,
+    "visible_completed_analysis_restored": true,
+    "visible_summary_draft_and_source_count_restored": true,
+    "analysis_post_requests_in_new_backend_log": 0,
+    "stored_model_tool_usage_and_events_unchanged": true,
+    "no_second_analysis_created": true
+  },
+  "preservation": {
+    "verified_backend_code_dependencies_and_environment_unchanged": true,
+    "no_application_changes": true,
+    "offline_checks_rerun": false,
+    "previous_implementation_verification": "../../postgresql.json"
+  },
+  "limitations": [
+    "This is one functional persistence run, not a model quality benchmark.",
+    "Only a completed analysis was reopened; in-flight Agent recovery is not implemented.",
+    "Frontend draft edits are not stored in the database."
+  ],
+  "artifact_sha256": {
+    "protocol.json": "220d748548743e32b6bbf49af5fcdf499094561eea75eb88de46fec2d4b92749",
+    "before-restart.json": "7f9436e5233d1d274363a8655c2aeb697635cb0eadcc276bd4c4191621813319",
+    "after-restart.json": "7f9436e5233d1d274363a8655c2aeb697635cb0eadcc276bd4c4191621813319",
+    "before-restart.jpg": "10db438da4a2f8d101ac30dde315d79f8adb945b48be725f6f6dea55df8587a5",
+    "after-restart.jpg": "830e13a293a91a9f8d31009597520092902564462312167ee7bfd5266569e272",
+    "backend-after-restart.log": "a848cbebd7929c76a98e7d0c58ca17126544481735375dfa7f6c88e174762d5f"
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "verified_on_utc": "2026-11-11",
+  "scope": "Retry recognized temporary provider failures at most once per failed call within the original job budgets.",
+  "checks": {
+    "unittest_total_passed": 297,
+    "postgresql_integration_passed": 12,
+    "offline_passed": 285,
+    "pyright_errors": 0,
+    "pyright_warnings": 0
+  },
+  "providers": "Simulated model and GitHub responses. The process test uses the real OpenAI SDK with a local mock transport.",
+  "cases": {
+    "model_503_then_success": "The same evidence was reused and a final analysis was accepted within six model attempts.",
+    "model_retry_on_last_slot": "The retry counted as the third request and used tool_choice=none.",
+    "model_attempts_exhausted": "The terminal job preserved S1 and reported a partial result.",
+    "per_call_retry_exhausted": "A second temporary model failure stopped the operation with its existing source.",
+    "long_retry_after": "Waiting longer than the remaining job time preserved the available evidence and made no early retry.",
+    "permanent_model_errors": "Invalid input, credentials, and insufficient or exhausted quota caused one model request each.",
+    "github_tool_budget_exhausted": "The failed label lookup did not get another GET, and the final job retained its source and accepted partial content.",
+    "github_search_recovered": "A temporary error was retried using the original call ID. The successful result counted as one distinct search.",
+    "github_candidate_budget_after_interruption": "Both candidate attempts were reserved before sending. Resuming the interrupted retry did not re-read the candidate.",
+    "interrupted_model_retry": "The replacement run treated the retry as spent and kept the original evidence without another model request."
+  },
+  "worker_replacement_during_retry_wait": {
+    "database": "Dedicated local PostgreSQL test database",
+    "test": "tests/test_checkpoint.py::WorkerCheckpointTests.test_replacement_worker_waits_until_the_saved_retry_time",
+    "initial_github_response": "HTTP 503 with Retry-After of four seconds for the label catalog",
+    "first_worker_stopped_with": "SIGTERM during the saved retry wait",
+    "new_worker_used_saved_not_before": true,
+    "label_request_sent_after_saved_time": true,
+    "model_attempts": 5,
+    "tool_attempts_including_label_retry": 5,
+    "same_job_id_completed": true,
+    "checkpoint_cleared_at_terminal_commit": true
+  }
+}

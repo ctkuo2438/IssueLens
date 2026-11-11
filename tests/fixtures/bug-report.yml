@@ -1,0 +1,39 @@
+name: Bug report
+description: Report a malfunction with enough details to investigate.
+body:
+  - type: markdown
+    attributes:
+      value: Please provide the information you already have.
+  - type: input
+    id: version
+    attributes:
+      label: Application version
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      description: Describe the steps, expected behavior and actual behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Additional logs
+      description: Extra diagnostic logs, if available.
+    validations:
+      required: false
+  - type: input
+    id: contact
+    attributes:
+      label: Contact details
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Reporting checklist
+      options:
+        - label: I checked existing issues.
+          required: true
+        - label: I can provide additional logs.
+          required: false

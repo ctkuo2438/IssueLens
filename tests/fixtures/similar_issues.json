@@ -1,0 +1,61 @@
+{
+  "target": {
+    "number": 42,
+    "title": "Export closes the application on Windows",
+    "body": "ReportDemo 1.4 on Windows 11 closes during CSV export. The dialog reports PermissionError: access denied. The destination is C:\\Program Files\\ReportDemo\\report.csv.",
+    "state": "open",
+    "user": {"login": "reporter"},
+    "labels": [],
+    "comments": 0,
+    "repository_url": "https://api.github.com/repos/example/project"
+  },
+  "candidates": [
+    {
+      "number": 41,
+      "title": "PermissionError during CSV export on Windows",
+      "body": "ReportDemo 1.3 on Windows 11 closes during CSV export to Program Files. The error is PermissionError: access denied. No root cause or fix has been verified.",
+      "state": "open",
+      "repository_url": "https://api.github.com/repos/example/project"
+    },
+    {
+      "number": 43,
+      "title": "Exported CSV contains rounded numbers on Linux",
+      "body": "ReportDemo 1.4 on Ubuntu successfully exports CSV files, but decimal values are rounded. There is no crash or permission error.",
+      "state": "closed",
+      "repository_url": "https://api.github.com/repos/example/project"
+    },
+    {
+      "number": 44,
+      "title": "Export crash",
+      "body": "",
+      "state": "open",
+      "repository_url": "https://api.github.com/repos/example/project"
+    }
+  ],
+  "comparisons": [
+    {
+      "issue_number": 41,
+      "relationship": "possible_duplicate",
+      "reason": "Both reports describe Windows CSV export closing the application with a permission error in Program Files. A shared root cause remains unverified.",
+      "similarities": ["Windows 11 CSV export closes the application.", "PermissionError occurs when saving under Program Files."],
+      "differences": ["The reported versions differ: 1.4 and 1.3."],
+      "source_ids": ["S1", "S3"]
+    },
+    {
+      "issue_number": 43,
+      "relationship": "related_but_different",
+      "reason": "Both involve CSV export, but the candidate describes successful export with rounded values rather than a Windows permission failure.",
+      "similarities": ["Both reports involve CSV export in version 1.4."],
+      "differences": ["The candidate runs on Ubuntu and reports rounded values without a crash."],
+      "source_ids": ["S1", "S4"]
+    },
+    {
+      "issue_number": 44,
+      "relationship": "insufficient_evidence",
+      "reason": "The candidate has no body, so its environment, error and export destination cannot be compared.",
+      "similarities": ["The title mentions an export crash."],
+      "differences": ["The candidate provides no environment or error details."],
+      "source_ids": ["S1", "S5"]
+    }
+  ]
+}

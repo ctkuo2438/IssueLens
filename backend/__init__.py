@@ -1,0 +1,1 @@
+"""IssueLens local application."""

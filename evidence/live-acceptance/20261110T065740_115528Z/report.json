@@ -1,0 +1,2762 @@
+{
+  "started_at": "2026-11-10T06:57:40.115528+00:00",
+  "finished_at": "2026-11-10T06:58:53.037485+00:00",
+  "model_api": "real",
+  "github_data": "live_public_github",
+  "model": "gpt-5.6",
+  "reasoning_effort": "medium",
+  "max_output_tokens": 2400,
+  "github_authenticated": false,
+  "case_manifest_sha256": "5d3946523219d059b87ce421f63445dffc7ed092a9fbf3e11270da74460163e2",
+  "selection_sha256": "ae70754609ffc7c0496e918d344b18a44046908681e62159bab372df19f99126",
+  "code_sha256": {
+    "backend/app/agent.py": "76976ecde5e7fb28cb5b2ca37847e4115ef0aea43d28754177a5a6b55fe99515",
+    "backend/app/github.py": "77a1104744ba072d988052c4c0cbb27d60ecce9b4185eedf7015fdfe030f0ee4",
+    "backend/app/models.py": "e3ce6515c7d2e5e9263ad0beb80c65920b2e189466d1a80a7b70c1060f1624d7",
+    "backend/app/config.py": "960d55909a18519f099d9bc2ef513b19ebfe1ab7cc6c6752e24c4953759ed5a7",
+    "backend/app/quality.py": "647e983af7cf7d4837a27d4196143f73f1ad6572ca89a962cc6563ea0afd1e49",
+    "backend/app/templates.py": "93ed623e8c5b020171e94a1923e764364356d86dee9c201568c558d6bf24fd74",
+    "backend/app/context.py": "2c3435d3c2e74ba8f63e257518f4953d639115408cb602e633eb206806ce8216",
+    "scripts/acceptance.py": "aea61f3ba0de5921a64960b0a9636f33a7cb312e7a9d16b53d0a22031c467cfa"
+  },
+  "limits_per_case": {
+    "model_requests": 8,
+    "tool_calls": 15,
+    "runtime_seconds": 90.0,
+    "context_tokens": 12000,
+    "candidates": 20,
+    "candidate_reads": 5
+  },
+  "scope": "Three project-new closed historical issues from encode/httpx, pytest-dev/pytest and astral-sh/ruff, selected independently after freezing M2 code. A small purposive acceptance set, not a representative quality benchmark or proof of absence from model pretraining.",
+  "cases": [
+    {
+      "case_id": "httpx_prerelease_transport",
+      "kind": "complete_bug_report",
+      "target_url": "https://github.com/encode/httpx/issues/3602",
+      "outcome": "completed",
+      "error_type": null,
+      "functional_checks": {
+        "final_answer_accepted": true,
+        "no_known_unperformed_maintainer_action": true,
+        "no_known_closure_resolution_inference": true,
+        "label_decision_consistent": true,
+        "target_retrieved": true,
+        "same_repository_search_completed": true,
+        "minimum_similar_issue_checks_completed": true,
+        "label_catalog_retrieved": true,
+        "dispatched_contexts_within_budget": true,
+        "known_first_person_reproduction_pattern_absent": true,
+        "known_assistant_service_offer_pattern_absent": true,
+        "draft_time_claims_attributed": true,
+        "reported_comments_first_page_attempted": true,
+        "known_comment_claim_patterns_supported": true,
+        "no_known_pr_only_label_recommendations": true
+      },
+      "human_review": {
+        "status": "pending",
+        "predeclared_checks": [
+          "Preserve the supplied upgrade command, 0.28.1-to-1.0.dev1 comparison and missing BaseTransport attribute; do not re-request these supplied details or claim execution.",
+          "Treat this as a reported compatibility observation involving a prerelease. Do not invent accidental removal, a confirmed stable-release defect, an interchangeable replacement API, or a verified fix/release.",
+          "Use available comments to attribute the acknowledgement of a 1.0 prerelease and distinguish a linked discussion from discussion content actually retrieved; acknowledge closed/historical status.",
+          "Ground any label and comparison in the loaded catalog and both issue bodies. Keep optional environment questions separate from essential missing reproduction details."
+        ],
+        "notes": ""
+      },
+      "result": {
+        "analysis_date": "2026-11-10",
+        "issue": {
+          "title": "httpx.BaseTransport dropped from 0.28.1 to 1.0.dev1",
+          "url": "https://github.com/encode/httpx/issues/3602",
+          "number": 3602,
+          "state": "closed",
+          "author": "SoundDesignerToBe",
+          "labels": [],
+          "comment_count": 2,
+          "created_at": "2025-07-07T07:27:14Z",
+          "closed_at": "2025-07-14T15:49:14Z"
+        },
+        "content": {
+          "summary": {
+            "text": "The closed issue reports that upgrading from HTTPX 0.28.1 to the 1.0.dev1 pre-release removed the top-level `httpx.BaseTransport` attribute. A project member confirmed that the pre-release was intentionally available on PyPI, but the retrieved discussion does not establish whether this API removal itself was intentional or identify a migration path.",
+            "source_ids": [
+              "S1",
+              "S3"
+            ]
+          },
+          "known_facts": [
+            {
+              "text": "The reporter installed the latest pre-release with `uv pip install -U --pre httpx` and then received an `AttributeError` when accessing `httpx.BaseTransport`; Python suggested `Transport`.",
+              "source_ids": [
+                "S1"
+              ]
+            },
+            {
+              "text": "The reporter stated that the behavior appeared after upgrading from the latest stable version to the published development version.",
+              "source_ids": [
+                "S1"
+              ]
+            },
+            {
+              "text": "Another contributor noted that the PyPI description for 1.0.dev1 did not provide information about the release.",
+              "source_ids": [
+                "S2"
+              ]
+            },
+            {
+              "text": "On July 14, 2025, project member lovelydinosaur confirmed that a 1.0 pre-release was available on PyPI and said they would discuss it further soon, linking to a GitHub discussion.",
+              "source_ids": [
+                "S3"
+              ]
+            },
+            {
+              "text": "The issue was closed on July 14, 2025, but closure alone does not establish that `BaseTransport` was restored, documented, or given a migration path.",
+              "source_ids": [
+                "S1"
+              ]
+            }
+          ],
+          "missing_information": [
+            "Whether removal of the top-level `BaseTransport` export was an intentional 1.0 API change or an unintended packaging/export regression.",
+            "What supported replacement or migration path was intended for code that depended on `httpx.BaseTransport`.",
+            "Whether later documentation or releases addressed the change; current source code, release notes, and package contents were not inspected."
+          ],
+          "draft_reply": "Thanks for documenting the upgrade path and exact exception. This showed that moving from 0.28.1 to 1.0.dev1 removed the top-level `httpx.BaseTransport` export. On July 14, 2025, lovelydinosaur confirmed that the 1.0 pre-release was intentionally available on PyPI and said more information would follow, but the discussion captured here did not clarify whether this particular API removal was intentional or whether `Transport` was a compatible replacement. Anyone revisiting this should consult the current 1.0 API and migration documentation rather than assuming the suggested `Transport` name is a drop-in replacement; the intended replacement and migration path should be documented explicitly.",
+          "limitations": [
+            "No repository source code, package artifacts, release notes, PyPI content, or linked GitHub discussion was inspected, so the current API and eventual resolution are unknown.",
+            "Two repository searches for `BaseTransport` with `1.0.dev1` or `missing` produced no eligible comparison candidates. Those searches do not rule out duplicates phrased differently.",
+            "The complete two-comment thread was retrieved, but it contains no explicit maintainer determination about whether the missing export was intentional."
+          ],
+          "comparisons": [],
+          "label_recommendations": [
+            {
+              "name": "release",
+              "reason": "The report concerns behavior introduced by installing the published 1.0.dev1 package, matching the catalog\u2019s release-related label.",
+              "source_ids": [
+                "S1",
+                "S4"
+              ]
+            }
+          ]
+        },
+        "sources": [
+          {
+            "id": "S1",
+            "kind": "issue",
+            "title": "httpx.BaseTransport dropped from 0.28.1 to 1.0.dev1",
+            "url": "https://github.com/encode/httpx/issues/3602",
+            "excerpt": "Reproduce:\n\n```shell\nuv pip install -U --pre httpx\npython\n```\n\n```python\nimport httpx\n```\n```python\nhttpx.BaseTransport\nTraceback (most recent call last):\n  File \"<input>\", line 1, in <module>\nAttributeError: module 'httpx' has no attribute 'BaseTransport'. Did you mean: 'Transport'?\n```\n\nThis happens after upgrading from the latest stable version to the published dev version"
+          },
+          {
+            "id": "S2",
+            "kind": "comment",
+            "title": "Comment by ilan-gold",
+            "url": "https://github.com/encode/httpx/issues/3602#issuecomment-3069921518",
+            "excerpt": "Author association: NONE\nCreated: 2025-07-14T14:57:46Z\n\nIs this release intentional even? The description page on pypi has no information for it, for example: https://pypi.org/project/httpx/1.0.dev1/#description"
+          },
+          {
+            "id": "S3",
+            "kind": "comment",
+            "title": "Comment by lovelydinosaur",
+            "url": "https://github.com/encode/httpx/issues/3602#issuecomment-3070085794",
+            "excerpt": "Author association: MEMBER\nCreated: 2025-07-14T15:49:03Z\n\nThere's a 1.0 pre-release available on PyPI yep. I'll talk about this more soon.\n\nhttps://github.com/encode/httpx/discussions/3344#discussioncomment-13652872 "
+          },
+          {
+            "id": "S4",
+            "kind": "repo_labels",
+            "title": "Repository label catalog",
+            "url": "https://github.com/encode/httpx/labels",
+            "excerpt": "{\"labels\": [{\"name\": \"1.0 proposal\", \"description\": \"Pull requests proposing 1.0 API changes\"}, {\"name\": \"api change\", \"description\": \"PRs that contain breaking public API changes\"}, {\"name\": \"bug\", \"description\": \"Something isn't working\"}, {\"name\": \"concurrency\", \"description\": \"Issues related to concurrency and usage of async libraries\"}, {\"name\": \"concurrency/asyncio\", \"description\": \"Issues related to concurrency (asyncio-only)\"}, {\"name\": \"concurrency/trio\", \"description\": \"Issues related to concurrency (trio-only)\"}, {\"name\": \"dependencies\", \"description\": \"Pull requests that update a dependency file\"}, {\"name\": \"discussion\", \"description\": \"\"}, {\"name\": \"do not merge\", \"description\": \"PRs that should not be merged\"}, {\"name\": \"docs\", \"description\": \"Changes to the documentation\"}, {\"name\": \"duplicate\", \"description\": \"This issue or pull request already exists\"}, {\"name\": \"enhancement\", \"description\": \"New feature or request\"}, {\"name\": \"external\", \"description\": \"Root cause pending resolution in an external dependency\"}, {\"name\": \"fund\", \"description\": \"\"}, {\"name\": \"github_actions\", \"description\": \"Pull requests that update GitHub Actions code\"}, {\"name\": \"good first issue\", \"description\": \"Good for newcomers\"}, {\"name\": \"help wanted\", \"description\": \"Extra attention is needed\"}, {\"name\": \"http/1.1\", \"description\": \"Issues and PRs related to HTTP/1.1\"}, {\"name\": \"http/2\", \"description\": \"Issues and PRs related to HTTP/2\"}, {\"name\": \"httpcore\", \"description\": \"Issues related to HTTPCore (core HTTP networking layer) - https://github.com/encode/httpcore\"}, {\"name\": \"interop\", \"description\": \"Issues interoperating with existing websites and services\"}, {\"name\": \"invalid\", \"description\": \"This doesn't seem right\"}, {\"name\": \"multipart\", \"description\": \"Issues and PRs relative to multipart uploads\"}, {\"name\": \"need-info\", \"description\": \"More information is needed from OP\"}, {\"name\": \"needs confirmation\", \"description\": \"The issue described has not yet been confirmed, or replicated locally.\"}, {\"name\": \"os/windows\", \"description\": \"Issues specific to Windows\"}, {\"name\": \"perf\", \"description\": \"Issues relating to performance\"}, {\"name\": \"pooling\", \"description\": \"Issues and PRs relative to connection pooling\"}, {\"name\": \"proxies\", \"description\": \"Issues related to HTTP and SOCKS proxies\"}, {\"name\": \"python\", \"description\": \"Pull requests that update Python code\"}, {\"name\": \"question\", \"description\": \"Further information is requested\"}, {\"name\": \"refactor\", \"description\": \"Issues and PRs related to code refactoring\"}, {\"name\": \"release\", \"description\": \"A new package release\"}, {\"name\": \"requests-compat\", \"description\": \"Issues related to Requests backwards compatibility\"}, {\"name\": \"security\", \"description\": \"Issues related to public-safe security discussions\"}, {\"name\": \"tls+pki\", \"description\": \"Issues and PRs related to TLS and PKI\"}, {\"name\": \"tooling\", \"description\": \"Changes to our CI/CD, tests setup, etc.\"}, {\"name\": \"user-experience\", \"description\": \"Ensuring that users have a good experience using the library\"}, {\"name\": \"wontfix\", \"description\": \"\"}], \"complete\": true}"
+          },
+          {
+            "id": "S5",
+            "kind": "search",
+            "title": "Issue search: BaseTransport 1.0.dev1",
+            "url": "https://github.com/search?q=repo%3Aencode%2Fhttpx+is%3Aissue+in%3Atitle%2Cbody+%22BaseTransport%22+%221.0.dev1%22&type=issues",
+            "excerpt": "{\"query\": \"repo:encode/httpx is:issue in:title,body \\\"BaseTransport\\\" \\\"1.0.dev1\\\"\", \"total_count\": 1, \"incomplete_results\": false, \"candidate_numbers\": []}"
+          },
+          {
+            "id": "S6",
+            "kind": "search",
+            "title": "Issue search: BaseTransport missing",
+            "url": "https://github.com/search?q=repo%3Aencode%2Fhttpx+is%3Aissue+in%3Atitle%2Cbody+%22BaseTransport%22+%22missing%22&type=issues",
+            "excerpt": "{\"query\": \"repo:encode/httpx is:issue in:title,body \\\"BaseTransport\\\" \\\"missing\\\"\", \"total_count\": 0, \"incomplete_results\": false, \"candidate_numbers\": []}"
+          }
+        ],
+        "comment_check": {
+          "status": "read",
+          "reported_count": 2,
+          "attempted_pages": [
+            1
+          ],
+          "read_pages": [
+            1
+          ],
+          "failed_pages": [],
+          "retrieved_count": 2,
+          "source_ids": [
+            "S2",
+            "S3"
+          ],
+          "has_next_page": false,
+          "count_mismatch": false,
+          "complete": true
+        },
+        "candidates": [],
+        "searches": [
+          {
+            "query": "repo:encode/httpx is:issue in:title,body \"BaseTransport\" \"1.0.dev1\"",
+            "total_count": 1,
+            "incomplete_results": false,
+            "candidate_numbers": [],
+            "source_id": "S5"
+          },
+          {
+            "query": "repo:encode/httpx is:issue in:title,body \"BaseTransport\" \"missing\"",
+            "total_count": 0,
+            "incomplete_results": false,
+            "candidate_numbers": [],
+            "source_id": "S6"
+          }
+        ],
+        "similar_issue_check": {
+          "search_status": "empty",
+          "attempted_queries": [
+            "basetransport 1.0.dev1",
+            "basetransport missing"
+          ],
+          "failed_queries": [],
+          "candidate_status": "not_needed",
+          "attempted_candidate_numbers": [],
+          "failed_candidate_numbers": [],
+          "read_candidate_numbers": [],
+          "compared_candidate_numbers": [],
+          "comparison_status": "not_needed"
+        },
+        "repo_labels": [
+          {
+            "name": "1.0 proposal",
+            "description": "Pull requests proposing 1.0 API changes",
+            "color": "bfd4f2"
+          },
+          {
+            "name": "api change",
+            "description": "PRs that contain breaking public API changes",
+            "color": "d33f04"
+          },
+          {
+            "name": "bug",
+            "description": "Something isn't working",
+            "color": "d73a4a"
+          },
+          {
+            "name": "concurrency",
+            "description": "Issues related to concurrency and usage of async libraries",
+            "color": "4635a0"
+          },
+          {
+            "name": "concurrency/asyncio",
+            "description": "Issues related to concurrency (asyncio-only)",
+            "color": "4635a0"
+          },
+          {
+            "name": "concurrency/trio",
+            "description": "Issues related to concurrency (trio-only)",
+            "color": "4635a0"
+          },
+          {
+            "name": "dependencies",
+            "description": "Pull requests that update a dependency file",
+            "color": "0366d6"
+          },
+          {
+            "name": "discussion",
+            "description": "",
+            "color": "d0c7fc"
+          },
+          {
+            "name": "do not merge",
+            "description": "PRs that should not be merged",
+            "color": "000000"
+          },
+          {
+            "name": "docs",
+            "description": "Changes to the documentation",
+            "color": "4553a8"
+          },
+          {
+            "name": "duplicate",
+            "description": "This issue or pull request already exists",
+            "color": "cfd3d7"
+          },
+          {
+            "name": "enhancement",
+            "description": "New feature or request",
+            "color": "a2eeef"
+          },
+          {
+            "name": "external",
+            "description": "Root cause pending resolution in an external dependency",
+            "color": "f7de3d"
+          },
+          {
+            "name": "fund",
+            "description": "",
+            "color": "BD3096"
+          },
+          {
+            "name": "github_actions",
+            "description": "Pull requests that update GitHub Actions code",
+            "color": "000000"
+          },
+          {
+            "name": "good first issue",
+            "description": "Good for newcomers",
+            "color": "7057ff"
+          },
+          {
+            "name": "help wanted",
+            "description": "Extra attention is needed",
+            "color": "008672"
+          },
+          {
+            "name": "http/1.1",
+            "description": "Issues and PRs related to HTTP/1.1",
+            "color": "0c2cfc"
+          },
+          {
+            "name": "http/2",
+            "description": "Issues and PRs related to HTTP/2",
+            "color": "0c2cfc"
+          },
+          {
+            "name": "httpcore",
+            "description": "Issues related to HTTPCore (core HTTP networking layer) - https://github.com/encode/httpcore",
+            "color": "dd009d"
+          },
+          {
+            "name": "interop",
+            "description": "Issues interoperating with existing websites and services",
+            "color": "930b39"
+          },
+          {
+            "name": "invalid",
+            "description": "This doesn't seem right",
+            "color": "e4e669"
+          },
+          {
+            "name": "multipart",
+            "description": "Issues and PRs relative to multipart uploads",
+            "color": "2acc76"
+          },
+          {
+            "name": "need-info",
+            "description": "More information is needed from OP",
+            "color": "c2e0c6"
+          },
+          {
+            "name": "needs confirmation",
+            "description": "The issue described has not yet been confirmed, or replicated locally.",
+            "color": "fbca04"
+          },
+          {
+            "name": "os/windows",
+            "description": "Issues specific to Windows",
+            "color": "1D76DB"
+          },
+          {
+            "name": "perf",
+            "description": "Issues relating to performance",
+            "color": "c6017b"
+          },
+          {
+            "name": "pooling",
+            "description": "Issues and PRs relative to connection pooling",
+            "color": "c6edff"
+          },
+          {
+            "name": "proxies",
+            "description": "Issues related to HTTP and SOCKS proxies",
+            "color": "0e8a16"
+          },
+          {
+            "name": "python",
+            "description": "Pull requests that update Python code",
+            "color": "2b67c6"
+          },
+          {
+            "name": "question",
+            "description": "Further information is requested",
+            "color": "944fcc"
+          },
+          {
+            "name": "refactor",
+            "description": "Issues and PRs related to code refactoring",
+            "color": "fcc1bd"
+          },
+          {
+            "name": "release",
+            "description": "A new package release",
+            "color": "fcc4c5"
+          },
+          {
+            "name": "requests-compat",
+            "description": "Issues related to Requests backwards compatibility",
+            "color": "006b75"
+          },
+          {
+            "name": "security",
+            "description": "Issues related to public-safe security discussions",
+            "color": "FBCA04"
+          },
+          {
+            "name": "tls+pki",
+            "description": "Issues and PRs related to TLS and PKI",
+            "color": "033166"
+          },
+          {
+            "name": "tooling",
+            "description": "Changes to our CI/CD, tests setup, etc.",
+            "color": "f7e799"
+          },
+          {
+            "name": "user-experience",
+            "description": "Ensuring that users have a good experience using the library",
+            "color": "ff85a1"
+          },
+          {
+            "name": "wontfix",
+            "description": "",
+            "color": "ffffff"
+          }
+        ],
+        "labels_source_id": "S4",
+        "labels_complete": true,
+        "issue_templates": [],
+        "templates_source_id": null,
+        "templates_complete": null,
+        "context_builds": [
+          {
+            "request_number": 1,
+            "budget_tokens": 12000,
+            "estimated_tokens_before": 4738,
+            "estimated_tokens": 4738,
+            "margin_tokens": 1024,
+            "repair_reserve_tokens": 256,
+            "future_reserve_tokens": 512,
+            "future_reserve_target_tokens": 512,
+            "future_reserve_minimum_tokens": 512,
+            "phase": "investigation",
+            "fits": true,
+            "sent": true,
+            "sources": [],
+            "reused_call_ids": []
+          },
+          {
+            "request_number": 2,
+            "budget_tokens": 12000,
+            "estimated_tokens_before": 5243,
+            "estimated_tokens": 5205,
+            "margin_tokens": 1024,
+            "repair_reserve_tokens": 256,
+            "future_reserve_tokens": 4960,
+            "future_reserve_target_tokens": 4960,
+            "future_reserve_minimum_tokens": 512,
+            "phase": "investigation",
+            "fits": true,
+            "sent": true,
+            "sources": [
+              {
+                "source_id": "S1",
+                "kind": "issue",
+                "action": "kept",
+                "reason": "Protected evidence is retained without further excerpt reduction.",
+                "excerpt_tokens": 97,
+                "priority": null
+              }
+            ],
+            "reused_call_ids": []
+          },
+          {
+            "request_number": 3,
+            "budget_tokens": 12000,
+            "estimated_tokens_before": 5692,
+            "estimated_tokens": 5657,
+            "margin_tokens": 1024,
+            "repair_reserve_tokens": 256,
+            "future_reserve_tokens": 4960,
+            "future_reserve_target_tokens": 4960,
+            "future_reserve_minimum_tokens": 512,
+            "phase": "investigation",
+            "fits": true,
+            "sent": true,
+            "sources": [
+              {
+                "source_id": "S2",
+                "kind": "comment",
+                "action": "kept",
+                "reason": "Comment heuristic: 2 matching title terms; maintainer association: False.",
+                "excerpt_tokens": 61,
+                "priority": 14
+              },
+              {
+                "source_id": "S3",
+                "kind": "comment",
+                "action": "kept",
+                "reason": "Comment heuristic: 1 matching title terms; maintainer association: True.",
+                "excerpt_tokens": 64,
+                "priority": 15
+              }
+            ],
+            "reused_call_ids": []
+          },
+          {
+            "request_number": 4,
+            "budget_tokens": 12000,
+            "estimated_tokens_before": 7067,
+            "estimated_tokens": 7050,
+            "margin_tokens": 1024,
+            "repair_reserve_tokens": 256,
+            "future_reserve_tokens": 3936,
+            "future_reserve_target_tokens": 3936,
+            "future_reserve_minimum_tokens": 512,
+            "phase": "investigation",
+            "fits": true,
+            "sent": true,
+            "sources": [
+              {
+                "source_id": "S4",
+                "kind": "repo_labels",
+                "action": "kept",
+                "reason": "Protected evidence is retained without further excerpt reduction.",
+                "excerpt_tokens": 749,
+                "priority": null
+              }
+            ],
+            "reused_call_ids": []
+          },
+          {
+            "request_number": 5,
+            "budget_tokens": 12000,
+            "estimated_tokens_before": 7453,
+            "estimated_tokens": 7377,
+            "margin_tokens": 1024,
+            "repair_reserve_tokens": 256,
+            "future_reserve_tokens": 3936,
+            "future_reserve_target_tokens": 3936,
+            "future_reserve_minimum_tokens": 512,
+            "phase": "investigation",
+            "fits": true,
+            "sent": true,
+            "sources": [
+              {
+                "source_id": "S5",
+                "kind": "search",
+                "action": "redundant",
+                "reason": "Exact search metadata is retained in the search object.",
+                "excerpt_tokens": 47,
+                "priority": null
+              }
+            ],
+            "reused_call_ids": []
+          },
+          {
+            "request_number": 6,
+            "budget_tokens": 12000,
+            "estimated_tokens_before": 9045,
+            "estimated_tokens": 8973,
+            "margin_tokens": 1024,
+            "repair_reserve_tokens": 256,
+            "future_reserve_tokens": 0,
+            "future_reserve_target_tokens": 0,
+            "future_reserve_minimum_tokens": 0,
+            "phase": "investigation",
+            "fits": true,
+            "sent": true,
+            "sources": [
+              {
+                "source_id": "S6",
+                "kind": "search",
+                "action": "redundant",
+                "reason": "Exact search metadata is retained in the search object.",
+                "excerpt_tokens": 43,
+                "priority": null
+              }
+            ],
+            "reused_call_ids": []
+          }
+        ],
+        "rejected_answers": [],
+        "limitations": [],
+        "usage": {
+          "model_requests": 6,
+          "tool_calls": 5,
+          "total_tokens": 26969,
+          "elapsed_seconds": 27.02
+        }
+      },
+      "events": [
+        {
+          "id": 1,
+          "kind": "status",
+          "message": "Model: gpt-5.6; reasoning effort: medium; output limit: 2400 tokens including reasoning and visible text.",
+          "created_at": "2026-11-10T06:57:40.118153Z"
+        },
+        {
+          "id": 2,
+          "kind": "status",
+          "message": "Context request 1: estimated 4738/12000 input tokens including 1024 margin; 256 tokens reserved for repair feedback; 512/512 tokens reserved for future evidence and loop growth (minimum 512); 0 excerpts omitted; 0 repeated results reused.",
+          "created_at": "2026-11-10T06:57:40.342301Z"
+        },
+        {
+          "id": 3,
+          "kind": "model",
+          "message": "Investigation step 1: choosing the next action.",
+          "created_at": "2026-11-10T06:57:40.342309Z"
+        },
+        {
+          "id": 4,
+          "kind": "tool",
+          "message": "Calling get_issue with {}.",
+          "created_at": "2026-11-10T06:57:42.726344Z"
+        },
+        {
+          "id": 5,
+          "kind": "tool",
+          "message": "Finished get_issue; 1 sources collected.",
+          "created_at": "2026-11-10T06:57:42.979636Z"
+        },
+        {
+          "id": 6,
+          "kind": "status",
+          "message": "Comment check: not_read; reported: 2; retrieved: 0; pages read: []; failed pages: []; complete: False.",
+          "created_at": "2026-11-10T06:57:42.979649Z"
+        },
+        {
+          "id": 7,
+          "kind": "status",
+          "message": "Context request 2: estimated 5205/12000 input tokens including 1024 margin; 256 tokens reserved for repair feedback; 4960/4960 tokens reserved for future evidence and loop growth (minimum 512); 0 excerpts omitted; 0 repeated results reused.",
+          "created_at": "2026-11-10T06:57:42.981300Z"
+        },
+        {
+          "id": 8,
+          "kind": "model",
+          "message": "Investigation step 2: choosing the next action.",
+          "created_at": "2026-11-10T06:57:42.981303Z"
+        },
+        {
+          "id": 9,
+          "kind": "status",
+          "message": "Required lookup before finalization: get_issue_comments.",
+          "created_at": "2026-11-10T06:57:46.056225Z"
+        },
+        {
+          "id": 10,
+          "kind": "tool",
+          "message": "Calling get_issue_comments with {\"page\":1}.",
+          "created_at": "2026-11-10T06:57:46.056278Z"
+        },
+        {
+          "id": 11,
+          "kind": "tool",
+          "message": "Finished get_issue_comments; 3 sources collected.",
+          "created_at": "2026-11-10T06:57:46.222961Z"
+        },
+        {
+          "id": 12,
+          "kind": "status",
+          "message": "Comment check: read; reported: 2; retrieved: 2; pages read: [1]; failed pages: []; complete: True.",
+          "created_at": "2026-11-10T06:57:46.223018Z"
+        },
+        {
+          "id": 13,
+          "kind": "status",
+          "message": "Context request 3: estimated 5657/12000 input tokens including 1024 margin; 256 tokens reserved for repair feedback; 4960/4960 tokens reserved for future evidence and loop growth (minimum 512); 0 excerpts omitted; 0 repeated results reused.",
+          "created_at": "2026-11-10T06:57:46.227981Z"
+        },
+        {
+          "id": 14,
+          "kind": "model",
+          "message": "Investigation step 3: choosing the next action.",
+          "created_at": "2026-11-10T06:57:46.227993Z"
+        },
+        {
+          "id": 15,
+          "kind": "status",
+          "message": "Required lookup before finalization: get_repo_labels.",
+          "created_at": "2026-11-10T06:57:47.079554Z"
+        },
+        {
+          "id": 16,
+          "kind": "tool",
+          "message": "Calling get_repo_labels with {}.",
+          "created_at": "2026-11-10T06:57:47.079611Z"
+        },
+        {
+          "id": 17,
+          "kind": "tool",
+          "message": "Finished get_repo_labels; 4 sources collected.",
+          "created_at": "2026-11-10T06:57:47.285419Z"
+        },
+        {
+          "id": 18,
+          "kind": "status",
+          "message": "Context request 4: estimated 7050/12000 input tokens including 1024 margin; 256 tokens reserved for repair feedback; 3936/3936 tokens reserved for future evidence and loop growth (minimum 512); 0 excerpts omitted; 0 repeated results reused.",
+          "created_at": "2026-11-10T06:57:47.287995Z"
+        },
+        {
+          "id": 19,
+          "kind": "model",
+          "message": "Investigation step 4: choosing the next action.",
+          "created_at": "2026-11-10T06:57:47.287998Z"
+        },
+        {
+          "id": 20,
+          "kind": "status",
+          "message": "Required lookup before finalization: search_issues.",
+          "created_at": "2026-11-10T06:57:49.029621Z"
+        },
+        {
+          "id": 21,
+          "kind": "tool",
+          "message": "Calling search_issues with {\"query\":\"BaseTransport 1.0.dev1\"}.",
+          "created_at": "2026-11-10T06:57:49.029681Z"
+        },
+        {
+          "id": 22,
+          "kind": "tool",
+          "message": "Finished search_issues; 5 sources collected.",
+          "created_at": "2026-11-10T06:57:49.265154Z"
+        },
+        {
+          "id": 23,
+          "kind": "status",
+          "message": "Similar-issue check: search=partial; candidate=not_checked; read=[]; failed=[].",
+          "created_at": "2026-11-10T06:57:49.265215Z"
+        },
+        {
+          "id": 24,
+          "kind": "status",
+          "message": "Context request 5: estimated 7377/12000 input tokens including 1024 margin; 256 tokens reserved for repair feedback; 3936/3936 tokens reserved for future evidence and loop growth (minimum 512); 0 excerpts omitted; 0 repeated results reused.",
+          "created_at": "2026-11-10T06:57:49.272958Z"
+        },
+        {
+          "id": 25,
+          "kind": "model",
+          "message": "Investigation step 5: choosing the next action.",
+          "created_at": "2026-11-10T06:57:49.272976Z"
+        },
+        {
+          "id": 26,
+          "kind": "status",
+          "message": "Required lookup before finalization: search_issues.",
+          "created_at": "2026-11-10T06:57:51.688300Z"
+        },
+        {
+          "id": 27,
+          "kind": "tool",
+          "message": "Calling search_issues with {\"query\":\"BaseTransport missing\"}.",
+          "created_at": "2026-11-10T06:57:51.689385Z"
+        },
+        {
+          "id": 28,
+          "kind": "tool",
+          "message": "Finished search_issues; 6 sources collected.",
+          "created_at": "2026-11-10T06:57:51.839956Z"
+        },
+        {
+          "id": 29,
+          "kind": "status",
+          "message": "Similar-issue check: search=empty; candidate=not_needed; read=[]; failed=[].",
+          "created_at": "2026-11-10T06:57:51.840038Z"
+        },
+        {
+          "id": 30,
+          "kind": "status",
+          "message": "Context request 6: estimated 8973/12000 input tokens including 1024 margin; 256 tokens reserved for repair feedback; 0/0 tokens reserved for future evidence and loop growth (minimum 0); 0 excerpts omitted; 0 repeated results reused.",
+          "created_at": "2026-11-10T06:57:51.849653Z"
+        },
+        {
+          "id": 31,
+          "kind": "model",
+          "message": "Investigation step 6: choosing the next action.",
+          "created_at": "2026-11-10T06:57:51.849674Z"
+        },
+        {
+          "id": 32,
+          "kind": "status",
+          "message": "Finalizing with existing evidence; reserving up to 2 requests for validation repair.",
+          "created_at": "2026-11-10T06:57:51.849681Z"
+        }
+      ]
+    },
+    {
+      "case_id": "pytest_custom_object_ids",
+      "kind": "insufficient_information_report",
+      "target_url": "https://github.com/pytest-dev/pytest/issues/14560",
+      "outcome": "partial",
+      "error_type": null,
+      "functional_checks": {
+        "final_answer_accepted": true,
+        "no_known_unperformed_maintainer_action": true,
+        "no_known_closure_resolution_inference": true,
+        "label_decision_consistent": true,
+        "target_retrieved": true,
+        "same_repository_search_completed": true,
+        "minimum_similar_issue_checks_completed": false,
+        "label_catalog_retrieved": true,
+        "dispatched_contexts_within_budget": true,
+        "known_first_person_reproduction_pattern_absent": true,
+        "known_assistant_service_offer_pattern_absent": true,
+        "draft_time_claims_attributed": true,
+        "reported_comments_first_page_attempted": true,
+        "known_comment_claim_patterns_supported": true,
+        "no_known_pr_only_label_recommendations": true
+      },
+      "human_review": {
+        "status": "pending",
+        "predeclared_checks": [
+          "Identify the missing executable custom-wrapper definition and parametrized test or invocation without claiming the report contains no clues; the body already gives a KeyError, custom dict wrapper and a Python314 path.",
+          "When visible, preserve the author's __getattr__/__setattr__ clarification and workaround separately from RonnyPfannschmidt's explanation and explicit pytest.param(..., id=...) suggestion. Do not re-request information already supplied in visible comments.",
+          "Do not turn the reporter's regression claim or a participant's explanation into independently verified root cause. Request a focused minimal reproducer and use a neutral maintainer voice.",
+          "Do not recommend an already applied status: needs information label. Preserve partial pagination/omission states for the eleven-comment discussion; unread or omitted evidence must not be described as absent."
+        ],
+        "notes": ""
+      },
+      "result": {
+        "analysis_date": "2026-11-10",
+        "issue": {
+          "title": "Pytest can't handle custom classes in parameterized tests (major bug).",
+          "url": "https://github.com/pytest-dev/pytest/issues/14560",
+          "number": 14560,
+          "state": "closed",
+          "author": "ketchupee1",
+          "labels": [
+            "status: needs information"
+          ],
+          "comment_count": 11,
+          "created_at": "2026-06-05T21:03:36Z",
+          "closed_at": "2026-06-09T20:24:22Z"
+        },
+        "content": {
+          "summary": {
+            "text": "The report concerns parametrized test collection failing while pytest generates an automatic parameter ID for a custom mapping-like instance whose attribute lookup raises KeyError for __name__. The maintainer discussion treated that instance behavior as incompatible with normal attribute lookup and recommended an explicit parameter ID rather than a pytest change.",
+            "source_ids": [
+              "S1",
+              "S2",
+              "S4",
+              "S8",
+              "S10"
+            ]
+          },
+          "known_facts": [
+            {
+              "text": "The reported traceback originates in _idval_from_value while pytest evaluates getattr(val, \"__name__\", None), which raises KeyError.",
+              "source_ids": [
+                "S1"
+              ]
+            },
+            {
+              "text": "The reporter clarified that the custom class overrides __getattr__ and __setattr__, and said the same tests had worked roughly one week earlier without changes to the test script.",
+              "source_ids": [
+                "S1",
+                "S2"
+              ]
+            },
+            {
+              "text": "The reporter said converting the custom object to a normal dict avoids the failure, and later described a workaround that changes the custom attribute-access behavior for undefined attributes.",
+              "source_ids": [
+                "S1",
+                "S7"
+              ]
+            },
+            {
+              "text": "A maintainer requested a minimal reproducer and explained that an instance whose __getattr__ raises KeyError is the problematic case; explicit parametrization IDs were recommended.",
+              "source_ids": [
+                "S4",
+                "S6",
+                "S8"
+              ]
+            },
+            {
+              "text": "The concrete workaround provided in the discussion was pytest.param(MyBroken(), id=\"broken\").",
+              "source_ids": [
+                "S9",
+                "S10"
+              ]
+            },
+            {
+              "text": "The issue is closed and currently carries the status: needs information label, but the closed state alone does not establish that pytest code was changed or a fix was released.",
+              "source_ids": [
+                "S1"
+              ]
+            }
+          ],
+          "missing_information": [
+            "A minimal standalone reproducer containing the custom class and its __getattr__/__setattr__ implementations.",
+            "The exact pytest versions from the last working and first failing environments, plus whether Python or other dependencies changed during that interval.",
+            "The complete traceback and parametrization declaration, including whether an explicit id avoids the failure in the reporter's actual test."
+          ],
+          "draft_reply": "Thanks for the additional explanation. The failure occurred while pytest was deriving an automatic ID for the parameter value: it queried `__name__`, and the instance\u2019s custom attribute lookup raised `KeyError`. As discussed above, missing attributes should not escape from `__getattr__` as `KeyError`; the instance can instead raise `AttributeError` for an unknown attribute.\n\nFor an object that intentionally keeps that behavior, the supported workaround is to provide the test ID explicitly rather than modify pytest internals:\n\n```python\npytest.param(MyBroken(), id=\"broken\")\n```\n\nThe report did not include a minimal reproducer or the exact pytest versions before and after the reported change, so it was not possible from this discussion to establish a pytest regression. If this is revisited, please include the smallest custom class and parametrized test that demonstrate it, along with the last working and first failing pytest versions.",
+          "limitations": [
+            "Only the first page of discussion was retrieved: 10 of 11 reported comments. Two retrieved comment excerpts were omitted from the available evidence, so their contents were not inferred.",
+            "The repository's source code, release history, and runtime behavior were not inspected or tested; no root cause, code change, or released fix was independently verified.",
+            "The issue search returned candidate issues, including one about parametrization IDs for classes without __name__, but no candidate's full content was available for comparison. Therefore, the recorded search does not establish or rule out a duplicate."
+          ],
+          "comparisons": [],
+          "label_recommendations": [
+            {
+              "name": "topic: parametrize",
+              "reason": "The failure occurs while pytest processes a custom value supplied to parametrization and derives its parameter ID, matching the catalog description for issues related to @pytest.mark.parametrize.",
+              "source_ids": [
+                "S1",
+                "S12"
+              ]
+            }
+          ]
+        },
+        "sources": [
+          {
+            "id": "S1",
+            "kind": "issue",
+            "title": "Pytest can't handle custom classes in parameterized tests (major bug).",
+            "url": "https://github.com/pytest-dev/pytest/issues/14560",
+            "excerpt": "Hello.\n\nI'm having an issue with Pytest where I'm unable to run parameterized tests with custom class objects. \n\nScript path: ...\\AppData\\Local\\Programs\\Python\\Python314\\Lib\\site-packages\\_pytest\\python.py\nLineno: 1052\n\nError:  \n```\n1052: in _idval_from_value\n    elif isinstance(getattr(val, \"\\_\\_name\\_\\_\", None), str):\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   KeyError:  '\\_\\_name\\_\\_'\n-------------------------------------\n```\n\nI should note that on my side, the test that now is unable to run had passed before about one week ago,  and nothing has changed within the test script itself. \n\nIt seems to be that my custom class, which is basically a wrapper around the Python Dict builtin class, causes the error to now raise, whereas if I convert this to a normal python Dict, the tests passes again."
+          },
+          {
+            "id": "S2",
+            "kind": "comment",
+            "title": "Comment by ketchupee1",
+            "url": "https://github.com/pytest-dev/pytest/issues/14560#issuecomment-4639384339",
+            "excerpt": "Author association: NONE\nCreated: 2026-06-06T15:16:00Z\n\nHey, I just thought of something that may help: The class that wasn't working with Pytest is one that overrides the internal __getattr__ and __setattr__ methods, so Pytest was properly trying to use these methods and running into an issue. Though, again, this wasn't happening before with the exact same tests, so it is a recent error. "
+          },
+          {
+            "id": "S3",
+            "kind": "comment",
+            "title": "Comment by RonnyPfannschmidt",
+            "url": "https://github.com/pytest-dev/pytest/issues/14560#issuecomment-4640261312",
+            "excerpt": "Author association: MEMBER\nCreated: 2026-06-06T20:22:47Z\n\nNope its okay to fall appartement on fundamentally broken messes \n\nIf getattr raises keyerror that's fundamentally wrong "
+          },
+          {
+            "id": "S4",
+            "kind": "comment",
+            "title": "Comment by RonnyPfannschmidt",
+            "url": "https://github.com/pytest-dev/pytest/issues/14560#issuecomment-4642049757",
+            "excerpt": "Author association: MEMBER\nCreated: 2026-06-07T09:18:20Z\n\nwe need a basic reproducer and the current suggestion is  - if you parameterize with broken objects - use explicit ids"
+          },
+          {
+            "id": "S5",
+            "kind": "comment",
+            "title": "Comment by ketchupee1",
+            "url": "https://github.com/pytest-dev/pytest/issues/14560#issuecomment-4642749107",
+            "excerpt": "Author association: NONE\nCreated: 2026-06-07T13:01:42Z\n\nAh, eh, I'm a bit confused but basically I had a class called \"DotDict\" that assigned setattr and getattr to getitem and setitem, respectively. This was the sole cause behind the issue, though again, it worked previously in the same tests."
+          },
+          {
+            "id": "S6",
+            "kind": "comment",
+            "title": "Comment by RonnyPfannschmidt",
+            "url": "https://github.com/pytest-dev/pytest/issues/14560#issuecomment-4642860248",
+            "excerpt": "Author association: MEMBER\nCreated: 2026-06-07T13:48:48Z\n\nIf the class was used then no error should have happened \n\nIf a instance is used the error is expected "
+          },
+          {
+            "id": "S7",
+            "kind": "comment",
+            "title": "Comment by ketchupee1",
+            "url": "https://github.com/pytest-dev/pytest/issues/14560#issuecomment-4661745692",
+            "excerpt": "Author association: NONE\nCreated: 2026-06-09T16:18:16Z\n\nThis doesn't really makes sense, if the class itself works for something, the class instance should work for that same something since it's easy to derive the class from the instance. Also why would one not use an instance, most of the time, the whole point of making a class is to use instances of it. Plus the same tests worked without any modifications, so the problem must be on Pytest's end.\n\nI actually made a work around where I simply changed the default getattr and setattr behaviour if the attribute in question wasn't already defined. I still used the same instance as before, and nothing else had changed."
+          },
+          {
+            "id": "S8",
+            "kind": "comment",
+            "title": "Comment by RonnyPfannschmidt",
+            "url": "https://github.com/pytest-dev/pytest/issues/14560#issuecomment-4662819113",
+            "excerpt": "Author association: MEMBER\nCreated: 2026-06-09T18:31:59Z\n\nAgain this is expected python behavior and its a reasonable constraint for pytest not to handle broken user instances everywhere \n\n\nThe class itself is not broken but a instance of it is in the case of having getattr raise keyerror\n\nThe way to use that in pytest is explicit ids "
+          },
+          {
+            "id": "S9",
+            "kind": "comment",
+            "title": "Comment by ketchupee1",
+            "url": "https://github.com/pytest-dev/pytest/issues/14560#issuecomment-4663591330",
+            "excerpt": "Author association: NONE\nCreated: 2026-06-09T20:09:08Z\n\nThanks, but I don't actually know what an Id is, or at least not in this exact context, that is. I only mention it because that's what the error message said, but the handling of id's is not on my side of the field. In fact I shouldn't be managing id's, I don't plan to go digging through and modifying Pytest internals. "
+          },
+          {
+            "id": "S10",
+            "kind": "comment",
+            "title": "Comment by RonnyPfannschmidt",
+            "url": "https://github.com/pytest-dev/pytest/issues/14560#issuecomment-4663698478",
+            "excerpt": "Author association: MEMBER\nCreated: 2026-06-09T20:24:13Z\n\n`pytest.param(MyBroken(), id=\"broken\")`"
+          },
+          {
+            "id": "S11",
+            "kind": "comment",
+            "title": "Comment by ketchupee1",
+            "url": "https://github.com/pytest-dev/pytest/issues/14560#issuecomment-4665134086",
+            "excerpt": "Author association: NONE\nCreated: 2026-06-09T23:52:24Z\n\nYeah, no, I'm not responsible for that. At what point do you think I magically downloaded pytests inner workings into my brain to the point I know how to implement this id mararky?\n\nAnd also, if it worked before and doesn't work after with no changes on my end, clearly it's not an issue on my end, because of the simple law of cause and effect."
+          },
+          {
+            "id": "S12",
+            "kind": "repo_labels",
+            "title": "Repository label catalog",
+            "url": "https://github.com/pytest-dev/pytest/labels",
+            "excerpt": "{\"labels\": [{\"name\": \"backport 9.2.x\", \"description\": \"backport this PR to 9.2.x branch\"}, {\"name\": \"bot:chronographer:provided\", \"description\": \"(automation) changelog entry is part of PR\"}, {\"name\": \"closed as duplicate\", \"description\": \"issue is a duplicate of another issue\"}, {\"name\": \"dependencies\", \"description\": \"pull requests that update a dependency file\"}, {\"name\": \"github_actions\", \"description\": \"pull requests that update GitHub Actions code\"}, {\"name\": \"good first issue\", \"description\": \"easy issue that is friendly to new contributor\"}, {\"name\": \"hacktoberfest-accepted\", \"description\": \"\"}, {\"name\": \"invalid\", \"description\": \"\"}, {\"name\": \"needs backport\", \"description\": \"applied to PRs, indicates that it should be ported to the current bug-fix branch\"}, {\"name\": \"platform: cygwin\", \"description\": \"cygwin platform-specific problem\"}, {\"name\": \"platform: linux\", \"description\": \"linux platform-specific problem\"}, {\"name\": \"platform: mac\", \"description\": \"mac platform-specific problem\"}, {\"name\": \"platform: mingw\", \"description\": \"\"}, {\"name\": \"platform: wasm/wasi\", \"description\": \"related to WebAssembly support\"}, {\"name\": \"platform: windows\", \"description\": \"windows platform-specific problem\"}, {\"name\": \"plugin: argcomplete\", \"description\": \"related to the argcomplete builtin plugin\"}, {\"name\": \"plugin: cache\", \"description\": \"related to the cache builtin plugin\"}, {\"name\": \"plugin: capture\", \"description\": \"related to the capture builtin plugin\"}, {\"name\": \"plugin: debugging\", \"description\": \"related to the debugging builtin plugin\"}, {\"name\": \"plugin: doctests\", \"description\": \"related to the doctests builtin plugin\"}, {\"name\": \"plugin: junitxml\", \"description\": \"related to the junitxml builtin plugin\"}, {\"name\": \"plugin: logging\", \"description\": \"related to the logging builtin plugin\"}, {\"name\": \"plugin: monkeypatch\", \"description\": \"related to the monkeypatch builtin plugin\"}, {\"name\": \"plugin: nose\", \"description\": \"related to the nose integration builtin plugin\"}, {\"name\": \"plugin: pastebin\", \"description\": \"related to the pastebin builtin plugin\"}, {\"name\": \"plugin: pytester\", \"description\": \"related to the pytester builtin plugin\"}, {\"name\": \"plugin: stepwise\", \"description\": \"\"}, {\"name\": \"plugin: subtests\", \"description\": \"related to the subtests builtin plugin\"}, {\"name\": \"plugin: tmpdir\", \"description\": \"related to the tmpdir builtin plugin\"}, {\"name\": \"plugin: unittest\", \"description\": \"related to the unittest integration builtin plugin\"}, {\"name\": \"plugin: warnings\", \"description\": \"related to the warnings builtin plugin\"}, {\"name\": \"plugin: xdist\", \"description\": \"related to the xdist external plugin\"}, {\"name\": \"PR closed due to inactivity\", \"description\": \"on occasion we do rounds to close up inactive PRs, this label makes it easier to track them\"}, {\"name\": \"python\", \"description\": \"pull requests that update Python code\"}, {\"name\": \"skip news\", \"description\": \"used on prs to opt out of the changelog requirement\"}, {\"name\": \"stale\", \"description\": \"\"}, {\"name\": \"status: critical\", \"description\": \"grave problem or usability issue that affects lots of users\"}, {\"name\": \"status: help wanted\", \"description\": \"developers would like help from experts on this topic\"}, {\"name\": \"status: needs information\", \"description\": \"reporter needs to provide more information; can be closed after 2 or more weeks of inactivity\"}, {\"name\": \"topic: approx\", \"description\": \"related to pytest.approx function\"}, {\"name\": \"topic: collection\", \"description\": \"related to the collection phase\"}, {\"name\": \"topic: config\", \"description\": \"related to config handling, argument parsing and config file\"}, {\"name\": \"topic: fixtures\", \"description\": \"anything involving fixtures directly or indirectly\"}, {\"name\": \"topic: marks\", \"description\": \"related to marks, either the general marks or builtin\"}, {\"name\": \"topic: nonpython\", \"description\": \"related to support for non-Python collectors & items\"}, {\"name\": \"topic: parametrize\", \"description\": \"related to @pytest.mark.parametrize\"}, {\"name\": \"topic: reporting\", \"description\": \"related to terminal output and user-facing messages and errors\"}, {\"name\": \"topic: rewrite\", \"description\": \"related to the assertion rewrite mechanism\"}, {\"name\": \"topic: selection\", \"description\": \"related to test selection from the command line\"}, {\"name\": \"topic: tracebacks\", \"description\": \"related to displaying and handling of tracebacks\"}, {\"name\": \"topic: typing\", \"description\": \"type-annotation issue\"}, {\"name\": \"topic: website\", \"description\": \"about the pytest website\"}, {\"name\": \"type: backward compatibility\", \"description\": \"might present some backward compatibility issues which should be carefully noted in the changelog\"}, {\"name\": \"type: bug\", \"description\": \"problem that needs to be addressed\"}, {\"name\": \"type: deprecation\", \"description\": \"feature that will be removed in the future\"}, {\"name\": \"type: docs\", \"description\": \"documentation improvement, missing or needing clarification\"}, {\"name\": \"type: enhancement\", \"description\": \"new feature or API change, should be merged into features branch\"}, {\"name\": \"type: feature-branch\", \"description\": \"new feature or API change, should be merged into features branch\"}, {\"name\": \"type: infrastructure\", \"description\": \"improvement to development/releases/CI structure\"}, {\"name\": \"type: performance\", \"description\": \"performance or memory problem/improvement\"}, {\"name\": \"type: proposal\", \"description\": \"proposal for a new feature, often to gather opinions or design the API around the new feature\"}, {\"name\": \"type: question\", \"description\": \"general question, might be closed after 2 weeks of inactivity\"}, {\"name\": \"type: refactoring\", \"description\": \"internal improvements to the code\"}, {\"name\": \"type: regression\", \"description\": \"indicates a problem that was introduced in a release which was working previously\"}, {\"name\": \"type: removal\", \"description\": \"marks the actual removal of a feature, usually done in major releases\"}, {\"name\": \"type: selftests\", \"description\": \"a problem in the tests of pytest\"}], \"complete\": true}"
+          },
+          {
+            "id": "S13",
+            "kind": "search",
+            "title": "Issue search: getattr KeyError parametrize",
+            "url": "https://github.com/search?q=repo%3Apytest-dev%2Fpytest+is%3Aissue+in%3Atitle%2Cbody+%22getattr%22+%22KeyError%22+%22parametrize%22&type=issues",
+            "excerpt": "{\"query\": \"repo:pytest-dev/pytest is:issue in:title,body \\\"getattr\\\" \\\"KeyError\\\" \\\"parametrize\\\"\", \"total_count\": 5, \"incomplete_results\": false, \"candidate_numbers\": [14841, 10825, 10184, 6321, 2979]}"
+          }
+        ],
+        "comment_check": {
+          "status": "partial",
+          "reported_count": 11,
+          "attempted_pages": [
+            1
+          ],
+          "read_pages": [
+            1
+          ],
+          "failed_pages": [],
+          "retrieved_count": 10,
+          "source_ids": [
+            "S2",
+            "S3",
+            "S4",
+            "S5",
+            "S6",
+            "S7",
+            "S8",
+            "S9",
+            "S10",
+            "S11"
+          ],
+          "has_next_page": true,
+          "count_mismatch": false,
+          "complete": false
+        },
+        "candidates": [
+          {
+            "number": 14841,
+            "title": "`pytester`'s `sys.modules` snapshotting causes improper shutdown of `multiprocessing.resource_tracker`",
+            "url": "https://github.com/pytest-dev/pytest/issues/14841",
+            "state": "open",
+            "source_id": null
+          },
+          {
+            "number": 10825,
+            "title": "After adding a doctest to a file, setup() is called if defined in the same file",
+            "url": "https://github.com/pytest-dev/pytest/issues/10825",
+            "state": "closed",
+            "source_id": null
+          },
+          {
+            "number": 10184,
+            "title": "Collection error when HTTPError passed to parametrize",
+            "url": "https://github.com/pytest-dev/pytest/issues/10184",
+            "state": "closed",
+            "source_id": null
+          },
+          {
+            "number": 6321,
+            "title": "Parametrize fails resolve argument ids for classes with no __name__",
+            "url": "https://github.com/pytest-dev/pytest/issues/6321",
+            "state": "closed",
+            "source_id": null
+          },
+          {
+            "number": 2979,
+            "title": "pytest 3.3: fixture-related breakage",
+            "url": "https://github.com/pytest-dev/pytest/issues/2979",
+            "state": "closed",
+            "source_id": null
+          }
+        ],
+        "searches": [
+          {
+            "query": "repo:pytest-dev/pytest is:issue in:title,body \"getattr\" \"KeyError\" \"parametrize\"",
+            "total_count": 5,
+            "incomplete_results": false,
+            "candidate_numbers": [
+              14841,
+              10825,
+              10184,
+              6321,
+              2979
+            ],
+            "source_id": "S13"
+          }
+        ],
+        "similar_issue_check": {
+          "search_status": "candidates_found",
+          "attempted_queries": [
+            "getattr keyerror parametrize"
+          ],
+          "failed_queries": [],
+          "candidate_status": "not_checked",
+          "attempted_candidate_numbers": [],
+          "failed_candidate_numbers": [],
+          "read_candidate_numbers": [],
+          "compared_candidate_numbers": [],
+          "comparison_status": "not_checked"
+        },
+        "repo_labels": [
+          {
+            "name": "backport 9.2.x",
+            "description": "backport this PR to 9.2.x branch",
+            "color": "771d8e"
+          },
+          {
+            "name": "bot:chronographer:provided",
+            "description": "(automation) changelog entry is part of PR",
+            "color": "ededed"
+          },
+          {
+            "name": "closed as duplicate",
+            "description": "issue is a duplicate of another issue",
+            "color": "96030a"
+          },
+          {
+            "name": "dependencies",
+            "description": "pull requests that update a dependency file",
+            "color": "0366d6"
+          },
+          {
+            "name": "github_actions",
+            "description": "pull requests that update GitHub Actions code",
+            "color": "000000"
+          },
+          {
+            "name": "good first issue",
+            "description": "easy issue that is friendly to new contributor",
+            "color": "bfe5bf"
+          },
+          {
+            "name": "hacktoberfest-accepted",
+            "description": "",
+            "color": "a8401a"
+          },
+          {
+            "name": "invalid",
+            "description": "",
+            "color": "e87e4a"
+          },
+          {
+            "name": "needs backport",
+            "description": "applied to PRs, indicates that it should be ported to the current bug-fix branch",
+            "color": "23dced"
+          },
+          {
+            "name": "platform: cygwin",
+            "description": "cygwin platform-specific problem",
+            "color": "006b75"
+          },
+          {
+            "name": "platform: linux",
+            "description": "linux platform-specific problem",
+            "color": "1d76db"
+          },
+          {
+            "name": "platform: mac",
+            "description": "mac platform-specific problem",
+            "color": "bfdadc"
+          },
+          {
+            "name": "platform: mingw",
+            "description": "",
+            "color": "27F67B"
+          },
+          {
+            "name": "platform: wasm/wasi",
+            "description": "related to WebAssembly support",
+            "color": "78DBE8"
+          },
+          {
+            "name": "platform: windows",
+            "description": "windows platform-specific problem",
+            "color": "fbca04"
+          },
+          {
+            "name": "plugin: argcomplete",
+            "description": "related to the argcomplete builtin plugin",
+            "color": "d4c5f9"
+          },
+          {
+            "name": "plugin: cache",
+            "description": "related to the cache builtin plugin",
+            "color": "c7def8"
+          },
+          {
+            "name": "plugin: capture",
+            "description": "related to the capture builtin plugin",
+            "color": "1d76db"
+          },
+          {
+            "name": "plugin: debugging",
+            "description": "related to the debugging builtin plugin",
+            "color": "dd52a8"
+          },
+          {
+            "name": "plugin: doctests",
+            "description": "related to the doctests builtin plugin",
+            "color": "fad8c7"
+          },
+          {
+            "name": "plugin: junitxml",
+            "description": "related to the junitxml builtin plugin",
+            "color": "c5def5"
+          },
+          {
+            "name": "plugin: logging",
+            "description": "related to the logging builtin plugin",
+            "color": "ff5432"
+          },
+          {
+            "name": "plugin: monkeypatch",
+            "description": "related to the monkeypatch builtin plugin",
+            "color": "0e8a16"
+          },
+          {
+            "name": "plugin: nose",
+            "description": "related to the nose integration builtin plugin",
+            "color": "bfdadc"
+          },
+          {
+            "name": "plugin: pastebin",
+            "description": "related to the pastebin builtin plugin",
+            "color": "bfd4f2"
+          },
+          {
+            "name": "plugin: pytester",
+            "description": "related to the pytester builtin plugin",
+            "color": "c5def5"
+          },
+          {
+            "name": "plugin: stepwise",
+            "description": "",
+            "color": "042c7a"
+          },
+          {
+            "name": "plugin: subtests",
+            "description": "related to the subtests builtin plugin",
+            "color": "c761ca"
+          },
+          {
+            "name": "plugin: tmpdir",
+            "description": "related to the tmpdir builtin plugin",
+            "color": "bfd4f2"
+          },
+          {
+            "name": "plugin: unittest",
+            "description": "related to the unittest integration builtin plugin",
+            "color": "006b75"
+          },
+          {
+            "name": "plugin: warnings",
+            "description": "related to the warnings builtin plugin",
+            "color": "fef2c0"
+          },
+          {
+            "name": "plugin: xdist",
+            "description": "related to the xdist external plugin",
+            "color": "5319e7"
+          },
+          {
+            "name": "PR closed due to inactivity",
+            "description": "on occasion we do rounds to close up inactive PRs, this label makes it easier to track them",
+            "color": "cccccc"
+          },
+          {
+            "name": "python",
+            "description": "pull requests that update Python code",
+            "color": "2b67c6"
+          },
+          {
+            "name": "skip news",
+            "description": "used on prs to opt out of the changelog requirement",
+            "color": "fef2c0"
+          },
+          {
+            "name": "stale",
+            "description": "",
+            "color": "ededed"
+          },
+          {
+            "name": "status: critical",
+            "description": "grave problem or usability issue that affects lots of users",
+            "color": "e11d21"
+          },
+          {
+            "name": "status: help wanted",
+            "description": "developers would like help from experts on this topic",
+            "color": "159818"
+          },
+          {
+            "name": "status: needs information",
+            "description": "reporter needs to provide more information; can be closed after 2 or more weeks of inactivity",
+            "color": "5319e7"
+          },
+          {
+            "name": "topic: approx",
+            "description": "related to pytest.approx function",
+            "color": "11d6a1"
+          },
+          {
+            "name": "topic: collection",
+            "description": "related to the collection phase",
+            "color": "006b75"
+          },
+          {
+            "name": "topic: config",
+            "description": "related to config handling, argument parsing and config file",
+            "color": "006b75"
+          },
+          {
+            "name": "topic: fixtures",
+            "description": "anything involving fixtures directly or indirectly",
+            "color": "5319e7"
+          },
+          {
+            "name": "topic: marks",
+            "description": "related to marks, either the general marks or builtin",
+            "color": "b60205"
+          },
+          {
+            "name": "topic: nonpython",
+            "description": "related to support for non-Python collectors & items",
+            "color": "c36e96"
+          },
+          {
+            "name": "topic: parametrize",
+            "description": "related to @pytest.mark.parametrize",
+            "color": "fbca04"
+          },
+          {
+            "name": "topic: reporting",
+            "description": "related to terminal output and user-facing messages and errors",
+            "color": "fef2c0"
+          },
+          {
+            "name": "topic: rewrite",
+            "description": "related to the assertion rewrite mechanism",
+            "color": "0e8a16"
+          },
+          {
+            "name": "topic: selection",
+            "description": "related to test selection from the command line",
+            "color": "c2e0c6"
+          },
+          {
+            "name": "topic: tracebacks",
+            "description": "related to displaying and handling of tracebacks",
+            "color": "c5def5"
+          },
+          {
+            "name": "topic: typing",
+            "description": "type-annotation issue",
+            "color": "605dc6"
+          },
+          {
+            "name": "topic: website",
+            "description": "about the pytest website",
+            "color": "7dedda"
+          },
+          {
+            "name": "type: backward compatibility",
+            "description": "might present some backward compatibility issues which should be carefully noted in the changelog",
+            "color": "f7c6c7"
+          },
+          {
+            "name": "type: bug",
+            "description": "problem that needs to be addressed",
+            "color": "fc2929"
+          },
+          {
+            "name": "type: deprecation",
+            "description": "feature that will be removed in the future",
+            "color": "e99695"
+          },
+          {
+            "name": "type: docs",
+            "description": "documentation improvement, missing or needing clarification",
+            "color": "fbca04"
+          },
+          {
+            "name": "type: enhancement",
+            "description": "new feature or API change, should be merged into features branch",
+            "color": "84b6eb"
+          },
+          {
+            "name": "type: feature-branch",
+            "description": "new feature or API change, should be merged into features branch",
+            "color": "0052cc"
+          },
+          {
+            "name": "type: infrastructure",
+            "description": "improvement to development/releases/CI structure",
+            "color": "5319e7"
+          },
+          {
+            "name": "type: performance",
+            "description": "performance or memory problem/improvement",
+            "color": "207de5"
+          },
+          {
+            "name": "type: proposal",
+            "description": "proposal for a new feature, often to gather opinions or design the API around the new feature",
+            "color": "006b75"
+          },
+          {
+            "name": "type: question",
+            "description": "general question, might be closed after 2 weeks of inactivity",
+            "color": "cc317c"
+          },
+          {
+            "name": "type: refactoring",
+            "description": "internal improvements to the code",
+            "color": "0052cc"
+          },
+          {
+            "name": "type: regression",
+            "description": "indicates a problem that was introduced in a release which was working previously",
+            "color": "f7c6c7"
+          },
+          {
+            "name": "type: removal",
+            "description": "marks the actual removal of a feature, usually done in major releases",
+            "color": "b60205"
+          },
+          {
+            "name": "type: selftests",
+            "description": "a problem in the tests of pytest",
+            "color": "5319e7"
+          }
+        ],
+        "labels_source_id": "S12",
+        "labels_complete": true,
+        "issue_templates": [],
+        "templates_source_id": null,
+        "templates_complete": null,
+        "context_builds": [
+          {
+            "request_number": 1,
+            "budget_tokens": 12000,
+            "estimated_tokens_before": 4739,
+            "estimated_tokens": 4739,
+            "margin_tokens": 1024,
+            "repair_reserve_tokens": 256,
+            "future_reserve_tokens": 512,
+            "future_reserve_target_tokens": 512,
+            "future_reserve_minimum_tokens": 512,
+            "phase": "investigation",
+            "fits": true,
+            "sent": true,
+            "sources": [],
+            "reused_call_ids": []
+          },
+          {
+            "request_number": 2,
+            "budget_tokens": 12000,
+            "estimated_tokens_before": 5356,
+            "estimated_tokens": 5318,
+            "margin_tokens": 1024,
+            "repair_reserve_tokens": 256,
+            "future_reserve_tokens": 4960,
+            "future_reserve_target_tokens": 4960,
+            "future_reserve_minimum_tokens": 512,
+            "phase": "investigation",
+            "fits": true,
+            "sent": true,
+            "sources": [
+              {
+                "source_id": "S1",
+                "kind": "issue",
+                "action": "kept",
+                "reason": "Protected evidence is retained without further excerpt reduction.",
+                "excerpt_tokens": 198,
+                "priority": null
+              }
+            ],
+            "reused_call_ids": []
+          },
+          {
+            "request_number": 3,
+            "budget_tokens": 12000,
+            "estimated_tokens_before": 7008,
+            "estimated_tokens": 6757,
+            "margin_tokens": 1024,
+            "repair_reserve_tokens": 256,
+            "future_reserve_tokens": 4960,
+            "future_reserve_target_tokens": 4960,
+            "future_reserve_minimum_tokens": 512,
+            "phase": "investigation",
+            "fits": true,
+            "sent": true,
+            "sources": [
+              {
+                "source_id": "S2",
+                "kind": "comment",
+                "action": "kept",
+                "reason": "Comment heuristic: 2 matching title terms; maintainer association: False.",
+                "excerpt_tokens": 96,
+                "priority": 14
+              },
+              {
+                "source_id": "S3",
+                "kind": "comment",
+                "action": "kept",
+                "reason": "Comment heuristic: 0 matching title terms; maintainer association: True.",
+                "excerpt_tokens": 44,
+                "priority": 13
+              },
+              {
+                "source_id": "S4",
+                "kind": "comment",
+                "action": "kept",
+                "reason": "Comment heuristic: 0 matching title terms; maintainer association: True.",
+                "excerpt_tokens": 46,
+                "priority": 13
+              },
+              {
+                "source_id": "S5",
+                "kind": "comment",
+                "action": "omitted",
+                "reason": "Fetched excerpt omitted before first model exposure to fit the request and its reserves within the local context budget.",
+                "excerpt_tokens": 75,
+                "priority": 12
+              },
+              {
+                "source_id": "S6",
+                "kind": "comment",
+                "action": "kept",
+                "reason": "Comment heuristic: 0 matching title terms; maintainer association: True.",
+                "excerpt_tokens": 44,
+                "priority": 13
+              },
+              {
+                "source_id": "S7",
+                "kind": "comment",
+                "action": "kept",
+                "reason": "Comment heuristic: 2 matching title terms; maintainer association: False.",
+                "excerpt_tokens": 144,
+                "priority": 14
+              },
+              {
+                "source_id": "S8",
+                "kind": "comment",
+                "action": "kept",
+                "reason": "Comment heuristic: 2 matching title terms; maintainer association: True.",
+                "excerpt_tokens": 76,
+                "priority": 17
+              },
+              {
+                "source_id": "S9",
+                "kind": "comment",
+                "action": "kept",
+                "reason": "Comment heuristic: 1 matching title terms; maintainer association: False.",
+                "excerpt_tokens": 97,
+                "priority": 12
+              },
+              {
+                "source_id": "S10",
+                "kind": "comment",
+                "action": "kept",
+                "reason": "Comment heuristic: 1 matching title terms; maintainer association: True.",
+                "excerpt_tokens": 33,
+                "priority": 15
+              },
+              {
+                "source_id": "S11",
+                "kind": "comment",
+                "action": "omitted",
+                "reason": "Fetched excerpt omitted before first model exposure to fit the request and its reserves within the local context budget.",
+                "excerpt_tokens": 99,
+                "priority": 10
+              }
+            ],
+            "reused_call_ids": []
+          },
+          {
+            "request_number": 4,
+            "budget_tokens": 12000,
+            "estimated_tokens_before": 9093,
+            "estimated_tokens": 9078,
+            "margin_tokens": 1024,
+            "repair_reserve_tokens": 256,
+            "future_reserve_tokens": 2666,
+            "future_reserve_target_tokens": 3936,
+            "future_reserve_minimum_tokens": 512,
+            "phase": "investigation",
+            "fits": true,
+            "sent": true,
+            "sources": [
+              {
+                "source_id": "S12",
+                "kind": "repo_labels",
+                "action": "kept",
+                "reason": "Protected evidence is retained without further excerpt reduction.",
+                "excerpt_tokens": 1407,
+                "priority": null
+              }
+            ],
+            "reused_call_ids": []
+          },
+          {
+            "request_number": 5,
+            "budget_tokens": 12000,
+            "estimated_tokens_before": 9802,
+            "estimated_tokens": 9653,
+            "margin_tokens": 1024,
+            "repair_reserve_tokens": 256,
+            "future_reserve_tokens": 2091,
+            "future_reserve_target_tokens": 2912,
+            "future_reserve_minimum_tokens": 2400,
+            "phase": "investigation",
+            "fits": false,
+            "sent": false,
+            "sources": [
+              {
+                "source_id": "S13",
+                "kind": "search",
+                "action": "redundant",
+                "reason": "Exact search metadata is retained in the search object.",
+                "excerpt_tokens": 67,
+                "priority": null
+              }
+            ],
+            "reused_call_ids": []
+          },
+          {
+            "request_number": 5,
+            "budget_tokens": 12000,
+            "estimated_tokens_before": 9783,
+            "estimated_tokens": 9634,
+            "margin_tokens": 1024,
+            "repair_reserve_tokens": 256,
+            "future_reserve_tokens": 0,
+            "future_reserve_target_tokens": 0,
+            "future_reserve_minimum_tokens": 0,
+            "phase": "investigation",
+            "fits": true,
+            "sent": true,
+            "sources": [
+              {
+                "source_id": "S13",
+                "kind": "search",
+                "action": "redundant",
+                "reason": "Exact search metadata is retained in the search object.",
+                "excerpt_tokens": 67,
+                "priority": null
+              }
+            ],
+            "reused_call_ids": []
+          }
+        ],
+        "rejected_answers": [],
+        "limitations": [
+          "Context Builder omitted fetched excerpts from model input: S5, S11. Retrieved excerpts remain available in Sources; omitted content was not reviewed by the model.",
+          "Finalizing early: at least 2400 tokens for future evidence and loop growth could not be reserved within the local context budget. No further tool calls are allowed; pending checks remain incomplete.",
+          "Only part of the comments was retrieved, or comment counts were inconsistent; coverage is incomplete.",
+          "Search candidates were found, but no grounded comparison was completed."
+        ],
+        "usage": {
+          "model_requests": 5,
+          "tool_calls": 4,
+          "total_tokens": 26527,
+          "elapsed_seconds": 20.09
+        }
+      },
+      "events": [
+        {
+          "id": 1,
+          "kind": "status",
+          "message": "Model: gpt-5.6; reasoning effort: medium; output limit: 2400 tokens including reasoning and visible text.",
+          "created_at": "2026-11-10T06:58:07.140502Z"
+        },
+        {
+          "id": 2,
+          "kind": "status",
+          "message": "Context request 1: estimated 4739/12000 input tokens including 1024 margin; 256 tokens reserved for repair feedback; 512/512 tokens reserved for future evidence and loop growth (minimum 512); 0 excerpts omitted; 0 repeated results reused.",
+          "created_at": "2026-11-10T06:58:07.148674Z"
+        },
+        {
+          "id": 3,
+          "kind": "model",
+          "message": "Investigation step 1: choosing the next action.",
+          "created_at": "2026-11-10T06:58:07.148679Z"
+        },
+        {
+          "id": 4,
+          "kind": "tool",
+          "message": "Calling get_issue with {}.",
+          "created_at": "2026-11-10T06:58:08.070910Z"
+        },
+        {
+          "id": 5,
+          "kind": "tool",
+          "message": "Finished get_issue; 1 sources collected.",
+          "created_at": "2026-11-10T06:58:08.340425Z"
+        },
+        {
+          "id": 6,
+          "kind": "status",
+          "message": "Comment check: not_read; reported: 11; retrieved: 0; pages read: []; failed pages: []; complete: False.",
+          "created_at": "2026-11-10T06:58:08.340487Z"
+        },
+        {
+          "id": 7,
+          "kind": "status",
+          "message": "Context request 2: estimated 5318/12000 input tokens including 1024 margin; 256 tokens reserved for repair feedback; 4960/4960 tokens reserved for future evidence and loop growth (minimum 512); 0 excerpts omitted; 0 repeated results reused.",
+          "created_at": "2026-11-10T06:58:08.345629Z"
+        },
+        {
+          "id": 8,
+          "kind": "model",
+          "message": "Investigation step 2: choosing the next action.",
+          "created_at": "2026-11-10T06:58:08.345640Z"
+        },
+        {
+          "id": 9,
+          "kind": "status",
+          "message": "Required lookup before finalization: get_issue_comments.",
+          "created_at": "2026-11-10T06:58:10.582146Z"
+        },
+        {
+          "id": 10,
+          "kind": "tool",
+          "message": "Calling get_issue_comments with {\"page\":1}.",
+          "created_at": "2026-11-10T06:58:10.582203Z"
+        },
+        {
+          "id": 11,
+          "kind": "tool",
+          "message": "Finished get_issue_comments; 11 sources collected.",
+          "created_at": "2026-11-10T06:58:10.768389Z"
+        },
+        {
+          "id": 12,
+          "kind": "status",
+          "message": "Comment check: partial; reported: 11; retrieved: 10; pages read: [1]; failed pages: []; complete: False.",
+          "created_at": "2026-11-10T06:58:10.768436Z"
+        },
+        {
+          "id": 13,
+          "kind": "status",
+          "message": "Context request 3: estimated 6757/12000 input tokens including 1024 margin; 256 tokens reserved for repair feedback; 4960/4960 tokens reserved for future evidence and loop growth (minimum 512); 2 excerpts omitted; 0 repeated results reused.",
+          "created_at": "2026-11-10T06:58:10.778784Z"
+        },
+        {
+          "id": 14,
+          "kind": "warning",
+          "message": "Context Builder omitted fetched excerpts from model input: S5, S11. Retrieved excerpts remain available in Sources; omitted content was not reviewed by the model.",
+          "created_at": "2026-11-10T06:58:10.778799Z"
+        },
+        {
+          "id": 15,
+          "kind": "model",
+          "message": "Investigation step 3: choosing the next action.",
+          "created_at": "2026-11-10T06:58:10.778801Z"
+        },
+        {
+          "id": 16,
+          "kind": "status",
+          "message": "Required lookup before finalization: get_repo_labels.",
+          "created_at": "2026-11-10T06:58:12.575463Z"
+        },
+        {
+          "id": 17,
+          "kind": "tool",
+          "message": "Calling get_repo_labels with {}.",
+          "created_at": "2026-11-10T06:58:12.575502Z"
+        },
+        {
+          "id": 18,
+          "kind": "tool",
+          "message": "Finished get_repo_labels; 12 sources collected.",
+          "created_at": "2026-11-10T06:58:12.773235Z"
+        },
+        {
+          "id": 19,
+          "kind": "status",
+          "message": "Context request 4: estimated 9078/12000 input tokens including 1024 margin; 256 tokens reserved for repair feedback; 2666/3936 tokens reserved for future evidence and loop growth (minimum 512); 0 excerpts omitted; 0 repeated results reused.",
+          "created_at": "2026-11-10T06:58:12.775934Z"
+        },
+        {
+          "id": 20,
+          "kind": "model",
+          "message": "Investigation step 4: choosing the next action.",
+          "created_at": "2026-11-10T06:58:12.775936Z"
+        },
+        {
+          "id": 21,
+          "kind": "status",
+          "message": "Required lookup before finalization: search_issues.",
+          "created_at": "2026-11-10T06:58:14.213316Z"
+        },
+        {
+          "id": 22,
+          "kind": "tool",
+          "message": "Calling search_issues with {\"query\":\"getattr KeyError parametrize\"}.",
+          "created_at": "2026-11-10T06:58:14.213351Z"
+        },
+        {
+          "id": 23,
+          "kind": "tool",
+          "message": "Finished search_issues; 13 sources collected.",
+          "created_at": "2026-11-10T06:58:14.541483Z"
+        },
+        {
+          "id": 24,
+          "kind": "status",
+          "message": "Similar-issue check: search=candidates_found; candidate=not_checked; read=[]; failed=[].",
+          "created_at": "2026-11-10T06:58:14.541499Z"
+        },
+        {
+          "id": 25,
+          "kind": "warning",
+          "message": "Finalizing early: at least 2400 tokens for future evidence and loop growth could not be reserved within the local context budget. No further tool calls are allowed; pending checks remain incomplete.",
+          "created_at": "2026-11-10T06:58:14.544293Z"
+        },
+        {
+          "id": 26,
+          "kind": "status",
+          "message": "Context request 5: estimated 9634/12000 input tokens including 1024 margin; 256 tokens reserved for repair feedback; 0/0 tokens reserved for future evidence and loop growth (minimum 0); 0 excerpts omitted; 0 repeated results reused.",
+          "created_at": "2026-11-10T06:58:14.546627Z"
+        },
+        {
+          "id": 27,
+          "kind": "model",
+          "message": "Investigation step 5: choosing the next action.",
+          "created_at": "2026-11-10T06:58:14.546629Z"
+        }
+      ]
+    },
+    {
+      "case_id": "ruff_lazy_import_rule",
+      "kind": "feature_request",
+      "target_url": "https://github.com/astral-sh/ruff/issues/29177",
+      "outcome": "completed",
+      "error_type": null,
+      "functional_checks": {
+        "final_answer_accepted": true,
+        "no_known_unperformed_maintainer_action": true,
+        "no_known_closure_resolution_inference": true,
+        "label_decision_consistent": true,
+        "target_retrieved": true,
+        "same_repository_search_completed": true,
+        "minimum_similar_issue_checks_completed": true,
+        "label_catalog_retrieved": true,
+        "dispatched_contexts_within_budget": true,
+        "known_first_person_reproduction_pattern_absent": true,
+        "known_assistant_service_offer_pattern_absent": true,
+        "draft_time_claims_attributed": true,
+        "reported_comments_first_page_attempted": true,
+        "known_comment_claim_patterns_supported": true,
+        "no_known_pr_only_label_recommendations": true
+      },
+      "human_review": {
+        "status": "pending",
+        "predeclared_checks": [
+          "Recognize a proposed lint rule for top-level use that immediately resolves a lazy import, preserving the short supplied code example and motivation rather than treating it as a crash report.",
+          "A participant links the lazy-import-immediately-resolved documentation page. Attribute that link when visible; do not claim the page was read or assert a current implementation/release version from the URL or closed state alone.",
+          "Do not demand bug-only tracebacks, operating-system details or reproduction fields for this feature request. Any follow-up about intended rule behavior must remain a focused design question.",
+          "Keep labels and candidate relationships evidence-linked and tentative; compare only fully retrieved bodies. Treat template required-state and skipped lookups honestly."
+        ],
+        "notes": ""
+      },
+      "result": {
+        "analysis_date": "2026-11-10",
+        "issue": {
+          "title": "new rule: lazy import used at top level",
+          "url": "https://github.com/astral-sh/ruff/issues/29177",
+          "number": 29177,
+          "state": "closed",
+          "author": "KotlinIsland",
+          "labels": [],
+          "comment_count": 1,
+          "created_at": "2026-10-07T07:17:43Z",
+          "closed_at": "2026-10-07T11:15:29Z"
+        },
+        "content": {
+          "summary": {
+            "text": "The report requests a lint rule for a PEP 810 lazy import that is referenced at module scope, thereby resolving it during module loading. The issue is closed, and the sole comment links the existing `lazy-import-immediately-resolved` rule documentation.",
+            "source_ids": [
+              "S1",
+              "S2"
+            ]
+          },
+          "known_facts": [
+            {
+              "text": "The supplied example uses `lazy import amongus` and then assigns the imported name to a module-level variable; the reporter says this largely defeats the purpose of a lazy import.",
+              "source_ids": [
+                "S1"
+              ]
+            },
+            {
+              "text": "A contributor responded with a link to Ruff's `lazy-import-immediately-resolved` rule documentation.",
+              "source_ids": [
+                "S2"
+              ]
+            },
+            {
+              "text": "Earlier issue #25014 proposed warning when names created by lazy imports are used at unconditional module scope or in an immediately nested class body.",
+              "source_ids": [
+                "S5"
+              ]
+            },
+            {
+              "text": "The target issue was opened and closed on October 7, 2026, and has no labels.",
+              "source_ids": [
+                "S1"
+              ]
+            }
+          ],
+          "missing_information": [],
+          "draft_reply": "Thanks for the concise example. This case appears to be covered by the existing `lazy-import-immediately-resolved` rule linked above. The earlier proposal in #25014 explicitly included lazy-imported names used at unconditional module scope, which matches the assignment shown here. The recommendation is therefore to use that existing rule rather than add a separate diagnostic.",
+          "limitations": [
+            "The linked rule documentation, Ruff source code, tests, and releases were not inspected, so present implementation details and version availability were not independently verified.",
+            "Only the title and body of candidate issue #25014 were available; its comments and any linked implementation were not reviewed.",
+            "The search returned three candidates, but only the most directly relevant candidate was read in full."
+          ],
+          "comparisons": [
+            {
+              "issue_number": 25014,
+              "relationship": "possible_duplicate",
+              "reason": "Both issues request detection of a lazy-imported name being used at module scope and therefore resolved during module loading. The earlier proposal expressly includes global-scope uses, making the target's assignment example a concrete instance of its requested behavior.",
+              "similarities": [
+                "Both concern PEP 810 lazy imports that are resolved during module loading.",
+                "Both seek a lint diagnostic for use of a lazy-imported name at module scope.",
+                "Both describe the behavior as contrary to the apparent intent of declaring the import lazy."
+              ],
+              "differences": [
+                "The target demonstrates a direct module-level assignment, while #25014 illustrates a module-level class inheriting from the imported name.",
+                "Issue #25014 discusses broader scope boundaries and whether an autofix would be appropriate; the target does not address those design details."
+              ],
+              "source_ids": [
+                "S1",
+                "S5"
+              ]
+            }
+          ],
+          "label_recommendations": [
+            {
+              "name": "rule",
+              "reason": "The issue explicitly requests a new lint rule for detecting an immediately resolved lazy import, matching the catalog's rule-related scope.",
+              "source_ids": [
+                "S1",
+                "S3"
+              ]
+            }
+          ]
+        },
+        "sources": [
+          {
+            "id": "S1",
+            "kind": "issue",
+            "title": "new rule: lazy import used at top level",
+            "url": "https://github.com/astral-sh/ruff/issues/29177",
+            "excerpt": "### Summary\n\n```py\nlazy import amongus\n\na = amongus  # reports here\n```\n\nwhile not completely useless, this pretty much defeats the point of using a lazy import"
+          },
+          {
+            "id": "S2",
+            "kind": "comment",
+            "title": "Comment by DetachHead",
+            "url": "https://github.com/astral-sh/ruff/issues/29177#issuecomment-6036293317",
+            "excerpt": "Author association: CONTRIBUTOR\nCreated: 2026-10-07T10:46:16Z\n\nhttps://docs.astral.sh/ruff/rules/lazy-import-immediately-resolved/"
+          },
+          {
+            "id": "S3",
+            "kind": "repo_labels",
+            "title": "Repository label catalog",
+            "url": "https://github.com/astral-sh/ruff/labels",
+            "excerpt": "{\"labels\": [{\"name\": \"accepted\", \"description\": \"Ready for implementation\"}, {\"name\": \"analyze\", \"description\": \"Related to the `ruff analyze` subcommand\"}, {\"name\": \"bot:ai-policy-close\", \"description\": \"Auto-close a PR due to a violation of the org AI policy\"}, {\"name\": \"bot:ai-policy-comment\", \"description\": \"Trigger a bot comment explaining the org AI policy\"}, {\"name\": \"breaking\", \"description\": \"Backwards-incompatible changes\"}, {\"name\": \"bug\", \"description\": \"An issue describing something that isn't working, or a PR that fixes a bug\"}, {\"name\": \"cache\", \"description\": \"Related to Ruff's cache\"}, {\"name\": \"ci\", \"description\": \"Related to internal CI tooling\"}, {\"name\": \"cli\", \"description\": \"Related to the command-line interface of Ruff or ty\"}, {\"name\": \"configuration\", \"description\": \"Related to settings and configuration of Ruff or ty\"}, {\"name\": \"core\", \"description\": \"Related to core functionality of Ruff\"}, {\"name\": \"dependencies\", \"description\": \"Issues relating to dependencies, or PRs that update a dependency file\"}, {\"name\": \"diagnostics\", \"description\": \"Diagnostic messages, annotations, fixes & rendering infra--not for PRs that just add new diagnostics\"}, {\"name\": \"do-not-merge\", \"description\": \"Do not merge this pull request\"}, {\"name\": \"docstring\", \"description\": \"Related to docstring linting, formatting, or rendering in Ruff or ty\"}, {\"name\": \"documentation\", \"description\": \"Improvements or additions to public-facing documentation\"}, {\"name\": \"duplicate\", \"description\": \"\"}, {\"name\": \"fixes\", \"description\": \"Related to suggested fixes for violations\"}, {\"name\": \"formatter\", \"description\": \"Related to the Ruff formatter\"}, {\"name\": \"fuzzer\", \"description\": \"Fuzzing, or an issue surfaced via fuzzing\"}, {\"name\": \"good first issue\", \"description\": \"An issue good for human newcomers\"}, {\"name\": \"great writeup\", \"description\": \"A wonderful example of a quality contribution\"}, {\"name\": \"help wanted\", \"description\": \"Contributions especially welcome\"}, {\"name\": \"incompatibility\", \"description\": \"Incompatibility between different Ruff tools or rules (formatter, isort, linter)\"}, {\"name\": \"internal\", \"description\": \"An internal refactor or improvement (not for changelogs)\"}, {\"name\": \"isort\", \"description\": \"Related to Ruff import sorting\"}, {\"name\": \"linter\", \"description\": \"Related to the Ruff linter\"}, {\"name\": \"memory\", \"description\": \"An issue regarding poor memory usage, or a PR improving memory usage\"}, {\"name\": \"needs-decision\", \"description\": \"Awaiting a decision from a maintainer\"}, {\"name\": \"needs-design\", \"description\": \"Needs further design before implementation\"}, {\"name\": \"needs-info\", \"description\": \"More information is needed from the issue author\"}, {\"name\": \"needs-mre\", \"description\": \"Needs more information for reproduction\"}, {\"name\": \"needs-triage\", \"description\": \"This issue still needs to be triaged\"}, {\"name\": \"no-build\", \"description\": \"Skip release artifact builds on this pull request\"}, {\"name\": \"no-test\", \"description\": \"Disable most CI for this pull request\"}, {\"name\": \"notebook\", \"description\": \"Related to (Jupyter) notebooks\"}, {\"name\": \"packaging\", \"description\": \"Related to package management, e.g. uv\"}, {\"name\": \"parser\", \"description\": \"Related to the parser\"}, {\"name\": \"performance\", \"description\": \"Potential performance improvement\"}, {\"name\": \"playground\", \"description\": \"An issue or PR specific to the Ruff and/or ty playground\"}, {\"name\": \"plugin\", \"description\": \"Implementing a known but unsupported Ruff plugin\"}, {\"name\": \"preview\", \"description\": \"Related to preview-mode features\"}, {\"name\": \"priority:medium\", \"description\": \"\"}, {\"name\": \"python:uv\", \"description\": \"Pull requests that update python:uv code\"}, {\"name\": \"python312\", \"description\": \"Related to Python 3.12\"}, {\"name\": \"python313\", \"description\": \"Related to Python 3.13\"}, {\"name\": \"python314\", \"description\": \"Related to Python 3.14\"}, {\"name\": \"python315\", \"description\": \"Related to Python 3.15\"}, {\"name\": \"python316\", \"description\": \"Related to Python 3.16\"}, {\"name\": \"question\", \"description\": \"An issue asking for support or clarification\"}, {\"name\": \"release\", \"description\": \"Related to the release process (not for changelogs)\"}, {\"name\": \"rule\", \"description\": \"Implementing or modifying a lint rule\"}, {\"name\": \"rule-selection\", \"description\": \"Related to enabling or disabling rules\"}, {\"name\": \"security\", \"description\": \"Related to security vulnerabilities\"}, {\"name\": \"server\", \"description\": \"Related to the Ruff or ty LSP server\"}, {\"name\": \"style\", \"description\": \"How should Ruff-formatted code look\"}, {\"name\": \"suppression\", \"description\": \"Related to supression of violations e.g. noqa\"}, {\"name\": \"testing\", \"description\": \"Related to testing Ruff or ty\"}, {\"name\": \"tracking\", \"description\": \"A \\\"meta\\\" issue that tracks completion of a bigger task via a list of smaller scoped issues.\"}, {\"name\": \"ty\", \"description\": \"The ty type checker\"}, {\"name\": \"type-inference\", \"description\": \"Requires more advanced type inference in Ruff\"}, {\"name\": \"typing\", \"description\": \"A Ruff issue or PR related to type annotations\"}, {\"name\": \"upstream\", \"description\": \"An upstream dependency is involved\"}, {\"name\": \"uv\", \"description\": \"Interactions between Ruff and uv, or between ty and uv\"}, {\"name\": \"windows\", \"description\": \"Specific to the Windows platform\"}, {\"name\": \"wish\", \"description\": \"Not on the current roadmap; maybe in the future\"}, {\"name\": \"wontfix\", \"description\": \"This will not be worked on\"}], \"complete\": true}"
+          },
+          {
+            "id": "S4",
+            "kind": "search",
+            "title": "Issue search: lazy import immediately resolved",
+            "url": "https://github.com/search?q=repo%3Aastral-sh%2Fruff+is%3Aissue+in%3Atitle%2Cbody+%22lazy%22+%22import%22+%22immediately%22+%22resolved%22&type=issues",
+            "excerpt": "{\"query\": \"repo:astral-sh/ruff is:issue in:title,body \\\"lazy\\\" \\\"import\\\" \\\"immediately\\\" \\\"resolved\\\"\", \"total_count\": 3, \"incomplete_results\": false, \"candidate_numbers\": [25418, 28206, 25014]}"
+          },
+          {
+            "id": "S5",
+            "kind": "related_issue",
+            "title": "Lint against PEP 810 lazy imports that would be immediately resolved",
+            "url": "https://github.com/astral-sh/ruff/issues/25014",
+            "excerpt": "Title: Lint against PEP 810 lazy imports that would be immediately resolved\nState: closed\n\n### Summary\n\nWith the new PEP-810 lazy imports in Python 3.15, it's possible to write code like this:\n\n```python\nlazy import foo\n\nclass Bar(foo.Foo): ...\n```\n\nwhere the \"lazy\" import gets resolved immediately at module load time. That isn't what the user intended, so linters should warn against it.\n\nThe rule should check for names created through a lazy import and used either in the module global scope (and not within an except block or conditional block) or in a class body that is immediately within the global scope. More ambitiously, we could also check function bodies that we detect are called directly from the module scope (e.g. decorators, dataclass annotations). Doing this in full generality is obviously intractable, but some heuristics could go a long way.\n\nI'm not sure the rule should have an autofix. Removing \"lazy\" is an obvious solution, but it may not be what the user wants: if they wrote `lazy` they probably intended it to be lazy, and we should give them a chance to fix their code."
+          }
+        ],
+        "comment_check": {
+          "status": "read",
+          "reported_count": 1,
+          "attempted_pages": [
+            1
+          ],
+          "read_pages": [
+            1
+          ],
+          "failed_pages": [],
+          "retrieved_count": 1,
+          "source_ids": [
+            "S2"
+          ],
+          "has_next_page": false,
+          "count_mismatch": false,
+          "complete": true
+        },
+        "candidates": [
+          {
+            "number": 25418,
+            "title": "Conflict (infinite loop) between `lazy-import-mismatch (TID254)` and `lazy-import-immediately-resolved (TID255)` with `lint.flake8-tidy-imports.require-lazy=\"all\"``",
+            "url": "https://github.com/astral-sh/ruff/issues/25418",
+            "state": "closed",
+            "source_id": null
+          },
+          {
+            "number": 28206,
+            "title": "Python 3.15 Support",
+            "url": "https://github.com/astral-sh/ruff/issues/28206",
+            "state": "closed",
+            "source_id": null
+          },
+          {
+            "number": 25014,
+            "title": "Lint against PEP 810 lazy imports that would be immediately resolved",
+            "url": "https://github.com/astral-sh/ruff/issues/25014",
+            "state": "closed",
+            "source_id": "S5"
+          }
+        ],
+        "searches": [
+          {
+            "query": "repo:astral-sh/ruff is:issue in:title,body \"lazy\" \"import\" \"immediately\" \"resolved\"",
+            "total_count": 3,
+            "incomplete_results": false,
+            "candidate_numbers": [
+              25418,
+              28206,
+              25014
+            ],
+            "source_id": "S4"
+          }
+        ],
+        "similar_issue_check": {
+          "search_status": "candidates_found",
+          "attempted_queries": [
+            "lazy import immediately resolved"
+          ],
+          "failed_queries": [],
+          "candidate_status": "read",
+          "attempted_candidate_numbers": [
+            25014
+          ],
+          "failed_candidate_numbers": [],
+          "read_candidate_numbers": [
+            25014
+          ],
+          "compared_candidate_numbers": [
+            25014
+          ],
+          "comparison_status": "compared"
+        },
+        "repo_labels": [
+          {
+            "name": "accepted",
+            "description": "Ready for implementation",
+            "color": "54C60C"
+          },
+          {
+            "name": "analyze",
+            "description": "Related to the `ruff analyze` subcommand",
+            "color": "d4c5f9"
+          },
+          {
+            "name": "bot:ai-policy-close",
+            "description": "Auto-close a PR due to a violation of the org AI policy",
+            "color": "fbca04"
+          },
+          {
+            "name": "bot:ai-policy-comment",
+            "description": "Trigger a bot comment explaining the org AI policy",
+            "color": "fbca04"
+          },
+          {
+            "name": "breaking",
+            "description": "Backwards-incompatible changes",
+            "color": "fc392b"
+          },
+          {
+            "name": "bug",
+            "description": "An issue describing something that isn't working, or a PR that fixes a bug",
+            "color": "d73a4a"
+          },
+          {
+            "name": "cache",
+            "description": "Related to Ruff's cache",
+            "color": "98F7EB"
+          },
+          {
+            "name": "ci",
+            "description": "Related to internal CI tooling",
+            "color": "905251"
+          },
+          {
+            "name": "cli",
+            "description": "Related to the command-line interface of Ruff or ty",
+            "color": "EF2BB2"
+          },
+          {
+            "name": "configuration",
+            "description": "Related to settings and configuration of Ruff or ty",
+            "color": "D4C5F9"
+          },
+          {
+            "name": "core",
+            "description": "Related to core functionality of Ruff",
+            "color": "3D4C64"
+          },
+          {
+            "name": "dependencies",
+            "description": "Issues relating to dependencies, or PRs that update a dependency file",
+            "color": "0366d6"
+          },
+          {
+            "name": "diagnostics",
+            "description": "Diagnostic messages, annotations, fixes & rendering infra--not for PRs that just add new diagnostics",
+            "color": "ffa500"
+          },
+          {
+            "name": "do-not-merge",
+            "description": "Do not merge this pull request",
+            "color": "B60205"
+          },
+          {
+            "name": "docstring",
+            "description": "Related to docstring linting, formatting, or rendering in Ruff or ty",
+            "color": "C1D5A3"
+          },
+          {
+            "name": "documentation",
+            "description": "Improvements or additions to public-facing documentation",
+            "color": "0075ca"
+          },
+          {
+            "name": "duplicate",
+            "description": "",
+            "color": "cfd3d7"
+          },
+          {
+            "name": "fixes",
+            "description": "Related to suggested fixes for violations",
+            "color": "0E8A16"
+          },
+          {
+            "name": "formatter",
+            "description": "Related to the Ruff formatter",
+            "color": "8BF3F0"
+          },
+          {
+            "name": "fuzzer",
+            "description": "Fuzzing, or an issue surfaced via fuzzing",
+            "color": "89C8E4"
+          },
+          {
+            "name": "good first issue",
+            "description": "An issue good for human newcomers",
+            "color": "7057ff"
+          },
+          {
+            "name": "great writeup",
+            "description": "A wonderful example of a quality contribution",
+            "color": "c2e0c6"
+          },
+          {
+            "name": "help wanted",
+            "description": "Contributions especially welcome",
+            "color": "64215A"
+          },
+          {
+            "name": "incompatibility",
+            "description": "Incompatibility between different Ruff tools or rules (formatter, isort, linter)",
+            "color": "F9D0C4"
+          },
+          {
+            "name": "internal",
+            "description": "An internal refactor or improvement (not for changelogs)",
+            "color": "153FC0"
+          },
+          {
+            "name": "isort",
+            "description": "Related to Ruff import sorting",
+            "color": "060D03"
+          },
+          {
+            "name": "linter",
+            "description": "Related to the Ruff linter",
+            "color": "C5DEF5"
+          },
+          {
+            "name": "memory",
+            "description": "An issue regarding poor memory usage, or a PR improving memory usage",
+            "color": "B87952"
+          },
+          {
+            "name": "needs-decision",
+            "description": "Awaiting a decision from a maintainer",
+            "color": "D810FB"
+          },
+          {
+            "name": "needs-design",
+            "description": "Needs further design before implementation",
+            "color": "F9D0C4"
+          },
+          {
+            "name": "needs-info",
+            "description": "More information is needed from the issue author",
+            "color": "FBCA04"
+          },
+          {
+            "name": "needs-mre",
+            "description": "Needs more information for reproduction",
+            "color": "463BEF"
+          },
+          {
+            "name": "needs-triage",
+            "description": "This issue still needs to be triaged",
+            "color": "FBCA04"
+          },
+          {
+            "name": "no-build",
+            "description": "Skip release artifact builds on this pull request",
+            "color": "C5DEF5"
+          },
+          {
+            "name": "no-test",
+            "description": "Disable most CI for this pull request",
+            "color": "C5DEF5"
+          },
+          {
+            "name": "notebook",
+            "description": "Related to (Jupyter) notebooks",
+            "color": "bfd4f2"
+          },
+          {
+            "name": "packaging",
+            "description": "Related to package management, e.g. uv",
+            "color": "D4C5F9"
+          },
+          {
+            "name": "parser",
+            "description": "Related to the parser",
+            "color": "B6DFA6"
+          },
+          {
+            "name": "performance",
+            "description": "Potential performance improvement",
+            "color": "43D159"
+          },
+          {
+            "name": "playground",
+            "description": "An issue or PR specific to the Ruff and/or ty playground",
+            "color": "1C71A4"
+          },
+          {
+            "name": "plugin",
+            "description": "Implementing a known but unsupported Ruff plugin",
+            "color": "93EFB2"
+          },
+          {
+            "name": "preview",
+            "description": "Related to preview-mode features",
+            "color": "52c4e8"
+          },
+          {
+            "name": "priority:medium",
+            "description": "",
+            "color": "aaaaaa"
+          },
+          {
+            "name": "python:uv",
+            "description": "Pull requests that update python:uv code",
+            "color": "2b67c6"
+          },
+          {
+            "name": "python312",
+            "description": "Related to Python 3.12",
+            "color": "87E09B"
+          },
+          {
+            "name": "python313",
+            "description": "Related to Python 3.13",
+            "color": "87E09B"
+          },
+          {
+            "name": "python314",
+            "description": "Related to Python 3.14",
+            "color": "87E09B"
+          },
+          {
+            "name": "python315",
+            "description": "Related to Python 3.15",
+            "color": "aaaaaa"
+          },
+          {
+            "name": "python316",
+            "description": "Related to Python 3.16",
+            "color": "A1ECF0"
+          },
+          {
+            "name": "question",
+            "description": "An issue asking for support or clarification",
+            "color": "BFD4F2"
+          },
+          {
+            "name": "release",
+            "description": "Related to the release process (not for changelogs)",
+            "color": "c5def5"
+          },
+          {
+            "name": "rule",
+            "description": "Implementing or modifying a lint rule",
+            "color": "127F40"
+          },
+          {
+            "name": "rule-selection",
+            "description": "Related to enabling or disabling rules",
+            "color": "c2e0c6"
+          },
+          {
+            "name": "security",
+            "description": "Related to security vulnerabilities",
+            "color": "DA3468"
+          },
+          {
+            "name": "server",
+            "description": "Related to the Ruff or ty LSP server",
+            "color": "21218F"
+          },
+          {
+            "name": "style",
+            "description": "How should Ruff-formatted code look",
+            "color": "C2E0C6"
+          },
+          {
+            "name": "suppression",
+            "description": "Related to supression of violations e.g. noqa",
+            "color": "705393"
+          },
+          {
+            "name": "testing",
+            "description": "Related to testing Ruff or ty",
+            "color": "BFD4F2"
+          },
+          {
+            "name": "tracking",
+            "description": "A \"meta\" issue that tracks completion of a bigger task via a list of smaller scoped issues.",
+            "color": "99F6BA"
+          },
+          {
+            "name": "ty",
+            "description": "The ty type checker",
+            "color": "46EBE1"
+          },
+          {
+            "name": "type-inference",
+            "description": "Requires more advanced type inference in Ruff",
+            "color": "fef2c0"
+          },
+          {
+            "name": "typing",
+            "description": "A Ruff issue or PR related to type annotations",
+            "color": "d4c5f9"
+          },
+          {
+            "name": "upstream",
+            "description": "An upstream dependency is involved",
+            "color": "F9D0C4"
+          },
+          {
+            "name": "uv",
+            "description": "Interactions between Ruff and uv, or between ty and uv",
+            "color": "0e8a16"
+          },
+          {
+            "name": "windows",
+            "description": "Specific to the Windows platform",
+            "color": "0078d4"
+          },
+          {
+            "name": "wish",
+            "description": "Not on the current roadmap; maybe in the future",
+            "color": "CDFC48"
+          },
+          {
+            "name": "wontfix",
+            "description": "This will not be worked on",
+            "color": "ffffff"
+          }
+        ],
+        "labels_source_id": "S3",
+        "labels_complete": true,
+        "issue_templates": [],
+        "templates_source_id": null,
+        "templates_complete": null,
+        "context_builds": [
+          {
+            "request_number": 1,
+            "budget_tokens": 12000,
+            "estimated_tokens_before": 4740,
+            "estimated_tokens": 4740,
+            "margin_tokens": 1024,
+            "repair_reserve_tokens": 256,
+            "future_reserve_tokens": 512,
+            "future_reserve_target_tokens": 512,
+            "future_reserve_minimum_tokens": 512,
+            "phase": "investigation",
+            "fits": true,
+            "sent": true,
+            "sources": [],
+            "reused_call_ids": []
+          },
+          {
+            "request_number": 2,
+            "budget_tokens": 12000,
+            "estimated_tokens_before": 5156,
+            "estimated_tokens": 5118,
+            "margin_tokens": 1024,
+            "repair_reserve_tokens": 256,
+            "future_reserve_tokens": 4960,
+            "future_reserve_target_tokens": 4960,
+            "future_reserve_minimum_tokens": 512,
+            "phase": "investigation",
+            "fits": true,
+            "sent": true,
+            "sources": [
+              {
+                "source_id": "S1",
+                "kind": "issue",
+                "action": "kept",
+                "reason": "Protected evidence is retained without further excerpt reduction.",
+                "excerpt_tokens": 38,
+                "priority": null
+              }
+            ],
+            "reused_call_ids": []
+          },
+          {
+            "request_number": 3,
+            "budget_tokens": 12000,
+            "estimated_tokens_before": 5455,
+            "estimated_tokens": 5431,
+            "margin_tokens": 1024,
+            "repair_reserve_tokens": 256,
+            "future_reserve_tokens": 4960,
+            "future_reserve_target_tokens": 4960,
+            "future_reserve_minimum_tokens": 512,
+            "phase": "investigation",
+            "fits": true,
+            "sent": true,
+            "sources": [
+              {
+                "source_id": "S2",
+                "kind": "comment",
+                "action": "kept",
+                "reason": "Comment heuristic: 0 matching title terms; maintainer association: False.",
+                "excerpt_tokens": 41,
+                "priority": 10
+              }
+            ],
+            "reused_call_ids": []
+          },
+          {
+            "request_number": 4,
+            "budget_tokens": 12000,
+            "estimated_tokens_before": 7694,
+            "estimated_tokens": 7681,
+            "margin_tokens": 1024,
+            "repair_reserve_tokens": 256,
+            "future_reserve_tokens": 3936,
+            "future_reserve_target_tokens": 3936,
+            "future_reserve_minimum_tokens": 512,
+            "phase": "investigation",
+            "fits": true,
+            "sent": true,
+            "sources": [
+              {
+                "source_id": "S3",
+                "kind": "repo_labels",
+                "action": "kept",
+                "reason": "Protected evidence is retained without further excerpt reduction.",
+                "excerpt_tokens": 1330,
+                "priority": null
+              }
+            ],
+            "reused_call_ids": []
+          },
+          {
+            "request_number": 5,
+            "budget_tokens": 12000,
+            "estimated_tokens_before": 8317,
+            "estimated_tokens": 8190,
+            "margin_tokens": 1024,
+            "repair_reserve_tokens": 256,
+            "future_reserve_tokens": 2912,
+            "future_reserve_target_tokens": 2912,
+            "future_reserve_minimum_tokens": 2400,
+            "phase": "investigation",
+            "fits": true,
+            "sent": true,
+            "sources": [
+              {
+                "source_id": "S4",
+                "kind": "search",
+                "action": "redundant",
+                "reason": "Exact search metadata is retained in the search object.",
+                "excerpt_tokens": 61,
+                "priority": null
+              }
+            ],
+            "reused_call_ids": []
+          },
+          {
+            "request_number": 6,
+            "budget_tokens": 12000,
+            "estimated_tokens_before": 8750,
+            "estimated_tokens": 8727,
+            "margin_tokens": 1024,
+            "repair_reserve_tokens": 256,
+            "future_reserve_tokens": 0,
+            "future_reserve_target_tokens": 0,
+            "future_reserve_minimum_tokens": 0,
+            "phase": "investigation",
+            "fits": true,
+            "sent": true,
+            "sources": [
+              {
+                "source_id": "S5",
+                "kind": "related_issue",
+                "action": "kept",
+                "reason": "Protected evidence is retained without further excerpt reduction.",
+                "excerpt_tokens": 244,
+                "priority": null
+              }
+            ],
+            "reused_call_ids": []
+          }
+        ],
+        "rejected_answers": [],
+        "limitations": [],
+        "usage": {
+          "model_requests": 6,
+          "tool_calls": 5,
+          "total_tokens": 28286,
+          "elapsed_seconds": 25.8
+        }
+      },
+      "events": [
+        {
+          "id": 1,
+          "kind": "status",
+          "message": "Model: gpt-5.6; reasoning effort: medium; output limit: 2400 tokens including reasoning and visible text.",
+          "created_at": "2026-11-10T06:58:27.234116Z"
+        },
+        {
+          "id": 2,
+          "kind": "status",
+          "message": "Context request 1: estimated 4740/12000 input tokens including 1024 margin; 256 tokens reserved for repair feedback; 512/512 tokens reserved for future evidence and loop growth (minimum 512); 0 excerpts omitted; 0 repeated results reused.",
+          "created_at": "2026-11-10T06:58:27.243629Z"
+        },
+        {
+          "id": 3,
+          "kind": "model",
+          "message": "Investigation step 1: choosing the next action.",
+          "created_at": "2026-11-10T06:58:27.243633Z"
+        },
+        {
+          "id": 4,
+          "kind": "tool",
+          "message": "Calling get_issue with {}.",
+          "created_at": "2026-11-10T06:58:28.319477Z"
+        },
+        {
+          "id": 5,
+          "kind": "tool",
+          "message": "Finished get_issue; 1 sources collected.",
+          "created_at": "2026-11-10T06:58:28.570470Z"
+        },
+        {
+          "id": 6,
+          "kind": "status",
+          "message": "Comment check: not_read; reported: 1; retrieved: 0; pages read: []; failed pages: []; complete: False.",
+          "created_at": "2026-11-10T06:58:28.570485Z"
+        },
+        {
+          "id": 7,
+          "kind": "status",
+          "message": "Context request 2: estimated 5118/12000 input tokens including 1024 margin; 256 tokens reserved for repair feedback; 4960/4960 tokens reserved for future evidence and loop growth (minimum 512); 0 excerpts omitted; 0 repeated results reused.",
+          "created_at": "2026-11-10T06:58:28.572618Z"
+        },
+        {
+          "id": 8,
+          "kind": "model",
+          "message": "Investigation step 2: choosing the next action.",
+          "created_at": "2026-11-10T06:58:28.572626Z"
+        },
+        {
+          "id": 9,
+          "kind": "status",
+          "message": "Required lookup before finalization: get_issue_comments.",
+          "created_at": "2026-11-10T06:58:30.932936Z"
+        },
+        {
+          "id": 10,
+          "kind": "tool",
+          "message": "Calling get_issue_comments with {\"page\":1}.",
+          "created_at": "2026-11-10T06:58:30.932996Z"
+        },
+        {
+          "id": 11,
+          "kind": "tool",
+          "message": "Finished get_issue_comments; 2 sources collected.",
+          "created_at": "2026-11-10T06:58:31.117191Z"
+        },
+        {
+          "id": 12,
+          "kind": "status",
+          "message": "Comment check: read; reported: 1; retrieved: 1; pages read: [1]; failed pages: []; complete: True.",
+          "created_at": "2026-11-10T06:58:31.117261Z"
+        },
+        {
+          "id": 13,
+          "kind": "status",
+          "message": "Context request 3: estimated 5431/12000 input tokens including 1024 margin; 256 tokens reserved for repair feedback; 4960/4960 tokens reserved for future evidence and loop growth (minimum 512); 0 excerpts omitted; 0 repeated results reused.",
+          "created_at": "2026-11-10T06:58:31.121661Z"
+        },
+        {
+          "id": 14,
+          "kind": "model",
+          "message": "Investigation step 3: choosing the next action.",
+          "created_at": "2026-11-10T06:58:31.121671Z"
+        },
+        {
+          "id": 15,
+          "kind": "status",
+          "message": "Required lookup before finalization: get_repo_labels.",
+          "created_at": "2026-11-10T06:58:32.283671Z"
+        },
+        {
+          "id": 16,
+          "kind": "tool",
+          "message": "Calling get_repo_labels with {}.",
+          "created_at": "2026-11-10T06:58:32.283731Z"
+        },
+        {
+          "id": 17,
+          "kind": "tool",
+          "message": "Finished get_repo_labels; 3 sources collected.",
+          "created_at": "2026-11-10T06:58:32.487767Z"
+        },
+        {
+          "id": 18,
+          "kind": "status",
+          "message": "Context request 4: estimated 7681/12000 input tokens including 1024 margin; 256 tokens reserved for repair feedback; 3936/3936 tokens reserved for future evidence and loop growth (minimum 512); 0 excerpts omitted; 0 repeated results reused.",
+          "created_at": "2026-11-10T06:58:32.490380Z"
+        },
+        {
+          "id": 19,
+          "kind": "model",
+          "message": "Investigation step 4: choosing the next action.",
+          "created_at": "2026-11-10T06:58:32.490384Z"
+        },
+        {
+          "id": 20,
+          "kind": "status",
+          "message": "Required lookup before finalization: search_issues.",
+          "created_at": "2026-11-10T06:58:33.862662Z"
+        },
+        {
+          "id": 21,
+          "kind": "tool",
+          "message": "Calling search_issues with {\"query\":\"lazy import immediately resolved\"}.",
+          "created_at": "2026-11-10T06:58:33.862721Z"
+        },
+        {
+          "id": 22,
+          "kind": "tool",
+          "message": "Finished search_issues; 4 sources collected.",
+          "created_at": "2026-11-10T06:58:34.233368Z"
+        },
+        {
+          "id": 23,
+          "kind": "status",
+          "message": "Similar-issue check: search=candidates_found; candidate=not_checked; read=[]; failed=[].",
+          "created_at": "2026-11-10T06:58:34.233413Z"
+        },
+        {
+          "id": 24,
+          "kind": "status",
+          "message": "Context request 5: estimated 8190/12000 input tokens including 1024 margin; 256 tokens reserved for repair feedback; 2912/2912 tokens reserved for future evidence and loop growth (minimum 2400); 0 excerpts omitted; 0 repeated results reused.",
+          "created_at": "2026-11-10T06:58:34.240133Z"
+        },
+        {
+          "id": 25,
+          "kind": "model",
+          "message": "Investigation step 5: choosing the next action.",
+          "created_at": "2026-11-10T06:58:34.240142Z"
+        },
+        {
+          "id": 26,
+          "kind": "status",
+          "message": "Required lookup before finalization: get_related_issue.",
+          "created_at": "2026-11-10T06:58:38.381958Z"
+        },
+        {
+          "id": 27,
+          "kind": "tool",
+          "message": "Calling get_related_issue with {\"issue_number\":25014}.",
+          "created_at": "2026-11-10T06:58:38.382024Z"
+        },
+        {
+          "id": 28,
+          "kind": "tool",
+          "message": "Finished get_related_issue; 5 sources collected.",
+          "created_at": "2026-11-10T06:58:38.604998Z"
+        },
+        {
+          "id": 29,
+          "kind": "status",
+          "message": "Similar-issue check: search=candidates_found; candidate=read; read=[25014]; failed=[].",
+          "created_at": "2026-11-10T06:58:38.605079Z"
+        },
+        {
+          "id": 30,
+          "kind": "status",
+          "message": "Context request 6: estimated 8727/12000 input tokens including 1024 margin; 256 tokens reserved for repair feedback; 0/0 tokens reserved for future evidence and loop growth (minimum 0); 0 excerpts omitted; 0 repeated results reused.",
+          "created_at": "2026-11-10T06:58:38.614350Z"
+        },
+        {
+          "id": 31,
+          "kind": "model",
+          "message": "Investigation step 6: choosing the next action.",
+          "created_at": "2026-11-10T06:58:38.614369Z"
+        },
+        {
+          "id": 32,
+          "kind": "status",
+          "message": "Finalizing with existing evidence; reserving up to 2 requests for validation repair.",
+          "created_at": "2026-11-10T06:58:38.614378Z"
+        }
+      ]
+    }
+  ],
+  "cases_not_run": [],
+  "human_review_status": "pending",
+  "stop_reason": null,
+  "limitations": [
+    "Three deliberately selected historical issues are a development acceptance exercise, not a representative quality benchmark.",
+    "GitHub content can change between selection and investigation; results retain the bounded source excerpts actually retrieved.",
+    "Only URLs enter AgentRun; selection notes and review criteria remain outside model input.",
+    "Functional checks and accepted final JSON do not establish semantic correctness or completed human review.",
+    "Reported token usage may omit failed or incomplete API requests. Tool calls are not HTTP request counts."
+  ],
+  "elapsed_seconds": 72.92
+}

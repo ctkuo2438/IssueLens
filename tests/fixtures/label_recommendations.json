@@ -1,0 +1,13 @@
+{
+  "existing_labels": ["question"],
+  "labels": [
+    {"name": "type:bug", "description": "Unexpected behavior, errors or application crashes.", "color": "d73a4a"},
+    {"name": "needs-reproduction", "description": "A minimal reproducible example or clear reproduction steps are missing.", "color": "fbca04"},
+    {"name": "question", "description": null, "color": "d876e3"},
+    {"name": "legacy-bug", "description": "An archived category that must not be suggested.", "color": "aaaaaa", "archived_at": "2026-01-01T00:00:00Z"}
+  ],
+  "recommendations": [
+    {"name": "type:bug", "reason": "The issue reports that exporting unexpectedly closes the application, matching this repository's error and crash category.", "source_ids": ["S1", "S2"]},
+    {"name": "needs-reproduction", "reason": "The issue identifies its version and operating system but provides no minimal example or detailed reproduction steps.", "source_ids": ["S1", "S2"]}
+  ]
+}

@@ -1,0 +1,248 @@
+{
+  "started_at_utc": "2026-11-10T04:04:08.395882+00:00",
+  "finished_at_utc": "2026-11-10T04:04:43.484163+00:00",
+  "model_api": "real",
+  "github_data": "fixed_saved_live_excerpts",
+  "fresh_github_requests": 0,
+  "protocol": {
+    "source_report": "evidence/live-acceptance/20261110T031609_643746Z/report.json",
+    "source_sha256": "7878ef522cfc8d7eaf7765c44a3cb3e2988198dad4297a5f64ed988c1db90af6",
+    "case_id": "complete_bug",
+    "selection_reason": "A rich historical bug report tests attribution, answered information, labels and a fetched candidate while exposing output-budget pressure.",
+    "models_in_order": [
+      "gpt-5.4-mini",
+      "gpt-5.6"
+    ],
+    "attempts_per_model": 1,
+    "retries": 0,
+    "repairs": 0,
+    "reasoning_effort": "medium",
+    "max_output_tokens": 2400,
+    "timeout_seconds_per_model": 90,
+    "input_budget_tokens": 12000,
+    "input_estimate_including_margin": 11197,
+    "common_request_sha256_excluding_model": "2b29cc068e7e9899cd89a4935cd2437390275c0ba03c5be508c41c5a3e756dd4",
+    "review_checks": [
+      "Attribute historical fix expectations and version pins to their authors and dates; do not verify a released fix or current workaround safety.",
+      "Acknowledge the reporter's idempotence clarification and preserve cleanup timing as the concern; do not re-request supplied information.",
+      "Compare only the supplied candidate body with citations to both target and candidate; keep relationship and root cause tentative.",
+      "Ground label reasons in the active catalog and source text; keep prose consistent with the recommendation list.",
+      "Make no first-person reproduction, repository mutation, or closure-to-resolution claim."
+    ],
+    "human_review_status": "pending",
+    "prior_reasoning_items": 0,
+    "pricing_usd_per_million_tokens": {
+      "gpt-5.4-mini": {
+        "input": 0.75,
+        "cached_input": 0.075,
+        "output": 4.5
+      },
+      "gpt-5.6": {
+        "input": 4.0,
+        "cached_input": 0.4,
+        "output": 20.0
+      }
+    },
+    "pricing_checked_local_date": "2026-11-09",
+    "gpt_5_6_promotional_price_until": "2026-11-30",
+    "pricing_sources": [
+      "https://developers.openai.com/api/docs/models/gpt-5.4-mini",
+      "https://developers.openai.com/api/docs/models/gpt-5.6-sol"
+    ]
+  },
+  "results": [
+    {
+      "requested_model": "gpt-5.4-mini",
+      "attempted": true,
+      "common_request_sha256": "2b29cc068e7e9899cd89a4935cd2437390275c0ba03c5be508c41c5a3e756dd4",
+      "human_review_status": "pending",
+      "response_model": "gpt-5.4-mini-2026-03-17",
+      "response_id": "resp_027d52b70e1edbcd016af297b92c9887d0b7c278149c961001",
+      "status": "incomplete",
+      "incomplete_reason": "max_output_tokens",
+      "output_text": "{\"summary\":{\"text\":\"The issue reports a 3.1.2 regression in `stream_with_context()` where `teardown_request()` runs before response generation, and the maintainer thread says it should be fixed as a side effect of #5812 in 3.2.\",\"source_ids\":[\"S1\",\"S2\"]},\"known_facts\":[{\"text\":\"The reporter provides a minimal example showing that Flask 3.1.1 calls the teardown function only after the streamed response is generated, while 3.1.2 calls it before the generator starts and again afterward.\",\"source_ids\":[\"S1\"]},{\"text\":\"A maintainer responded that the problem would be fixed as a side effect of #5812 in 3.2, and noted that teardown callbacks are not guaranteed to run only once or in a specific order.\",\"source_ids\":[\"S2\"]},{\"text\":\"The reporter clarified that the core concern is timing: `te",
+      "usage": {
+        "input_tokens": 9165,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0,
+          "cache_write_tokens_details": null
+        },
+        "output_tokens": 2400,
+        "output_tokens_details": {
+          "reasoning_tokens": 2201
+        },
+        "total_tokens": 11565
+      },
+      "output_cap_exhausted": true,
+      "content": null,
+      "output_types": [
+        "reasoning",
+        "message"
+      ],
+      "reasoning_tokens": 2201,
+      "non_reasoning_output_tokens": 199,
+      "output_text_tokens_local_estimate": 190,
+      "estimated_standard_text_cost_usd": 0.01767375,
+      "checks": {
+        "schema_valid": false,
+        "retrieved_citations": null,
+        "known_draft_rules": null
+      },
+      "elapsed_seconds": 17.62
+    },
+    {
+      "requested_model": "gpt-5.6",
+      "attempted": true,
+      "common_request_sha256": "2b29cc068e7e9899cd89a4935cd2437390275c0ba03c5be508c41c5a3e756dd4",
+      "human_review_status": "pending",
+      "response_model": "gpt-5.6-sol",
+      "response_id": "resp_07abb151065e53be016af297caa3f887d09d294f27c42df699",
+      "status": "completed",
+      "incomplete_reason": null,
+      "output_text": "{\"summary\":{\"text\":\"The report documents a Flask 3.1.2 streaming regression in which `teardown_request` runs before response generation and then runs again, causing request-scoped data used by the generator to be removed. A maintainer said the behavior was expected to be addressed as a side effect of #5812 in 3.2, but the collected evidence does not verify the change in a released version.\",\"source_ids\":[\"S1\",\"S2\",\"S9\"]},\"known_facts\":[{\"text\":\"The reporter supplied a minimal example on Python 3.13 and Werkzeug 3.1.3. Under Flask 3.1.1, generation precedes a single teardown; under Flask 3.1.2, teardown occurs before generation and again afterward, leading to `AttributeError` and `KeyError` in the example.\",\"source_ids\":[\"S1\"]},{\"text\":\"The reporter explained that the real teardown callbacks were idempotent and that `g.pop()` was only used to demonstrate the premature teardown. Their practical workaround was pinning Flask below 3.1.2.\",\"source_ids\":[\"S3\"]},{\"text\":\"A maintainer acknowledged the issue, said it would be fixed as a side effect of #5812 in 3.2, and cautioned that teardown callbacks should not assume a particular invocation count or preceding lifecycle state.\",\"source_ids\":[\"S2\"]},{\"text\":\"Another participant reported encountering the same behavior with Flask 3.1.2 and also pinning below that version. A maintainer later confirmed that resolution was expected in 3.2.0.\",\"source_ids\":[\"S8\",\"S9\"]},{\"text\":\"The issue is closed, but closure alone does not establish that a fix was implemented or released.\",\"source_ids\":[\"S1\",\"S9\"]}],\"missing_information\":[\"Was the original minimal reproduction verified against an actual Flask 3.2 release, rather than a development build?\",\"Which commit or released version ultimately changed the teardown ordering associated with #5812?\"],\"draft_reply\":\"Thanks for the detailed reproduction and follow-up. The report showed that Flask 3.1.2 invoked `teardown_request` before iterating the `stream_with_context` generator and then invoked it again, while affected users worked around the regression by pinning Flask below 3.1.2. The maintainer discussion expected #5812 to address this in 3.2 and also noted that teardown callbacks should remain safe across multiple invocations. Since the collected discussion does not include verification against a released 3.2 build, the concrete recommendation is to rerun the original minimal example on the applicable 3.2 release and report the exact version and output if the premature teardown remains observable.\",\"limitations\":[\"No source code, pull request contents, release notes, or released Flask build was inspected, and no reproduction was executed.\",\"The available issue-template lookup has unknown coverage, so no current template requirements can be assessed.\",\"All eight reported comments were retrieved, but one participant comment was clipped; conclusions do not rely on its omitted portion.\",\"The searches used two query combinations. Only issue #6123 had a supplied full body suitable for comparison; the other search candidates were not compared.\",\"The current behavior in released Flask versions remains unknown from the supplied evidence.\"],\"comparisons\":[{\"issue_number\":6123,\"relationship\":\"related_but_different\",\"reason\":\"Both issues concern `stream_with_context` and incorrect context or teardown lifecycle behavior, but they describe affirmatively different failure conditions. The target concerns premature and repeated `teardown_request` during ordinary response generation in Flask 3.1.2. Issue #6123 concerns an abandoned generator after client disconnect, cross-thread finalization, a leaked app context, and later requests skipping `teardown_appcontext`. Issue #6123 itself distinguishes its abandonment case from #5804's teardown-ordering case.\",\"similarities\":[\"Both involve lifecycle problems around `stream_with_context`.\",\"Both report teardown or context behavior that persists beyond the expected request/stream boundary.\",\"Both include Python 3.13 reproductions.\"],\"differences\":[\"The target reports `teardown_request` firing too early and twice; #6123 reports `teardown_appcontext` failing to run for later requests.\",\"The target reproduces while iterating a normal streaming response; #6123 requires an abandoned response iterator, client disconnect semantics, and finalization on another thread.\",\"The target identifies a Flask 3.1.2 regression relative to 3.1.1; #6123 reports the abandonment behavior on Flask 3.1.3 and considers 3.2 development code potentially affected.\",\"The target's immediate symptom is removal of `g` data before generator access; #6123's symptom is a stale ambient app context on a pooled worker thread and associated resource leakage.\"],\"source_ids\":[\"S1\",\"S13\"]}],\"label_recommendations\":[{\"name\":\"bug\",\"reason\":\"The issue provides a version-to-version regression demonstration with a minimal example, traceback, expected lifecycle behavior, and maintainer acknowledgment. The target currently has no labels, and `bug` is an active repository label applicable to issues.\",\"source_ids\":[\"S1\",\"S10\"]}]}",
+      "usage": {
+        "input_tokens": 9165,
+        "input_tokens_details": {
+          "cache_write_tokens": 9162,
+          "cached_tokens": 0,
+          "cache_write_tokens_details": null
+        },
+        "output_tokens": 1585,
+        "output_tokens_details": {
+          "reasoning_tokens": 516
+        },
+        "total_tokens": 10750
+      },
+      "output_cap_exhausted": false,
+      "content": {
+        "summary": {
+          "text": "The report documents a Flask 3.1.2 streaming regression in which `teardown_request` runs before response generation and then runs again, causing request-scoped data used by the generator to be removed. A maintainer said the behavior was expected to be addressed as a side effect of #5812 in 3.2, but the collected evidence does not verify the change in a released version.",
+          "source_ids": [
+            "S1",
+            "S2",
+            "S9"
+          ]
+        },
+        "known_facts": [
+          {
+            "text": "The reporter supplied a minimal example on Python 3.13 and Werkzeug 3.1.3. Under Flask 3.1.1, generation precedes a single teardown; under Flask 3.1.2, teardown occurs before generation and again afterward, leading to `AttributeError` and `KeyError` in the example.",
+            "source_ids": [
+              "S1"
+            ]
+          },
+          {
+            "text": "The reporter explained that the real teardown callbacks were idempotent and that `g.pop()` was only used to demonstrate the premature teardown. Their practical workaround was pinning Flask below 3.1.2.",
+            "source_ids": [
+              "S3"
+            ]
+          },
+          {
+            "text": "A maintainer acknowledged the issue, said it would be fixed as a side effect of #5812 in 3.2, and cautioned that teardown callbacks should not assume a particular invocation count or preceding lifecycle state.",
+            "source_ids": [
+              "S2"
+            ]
+          },
+          {
+            "text": "Another participant reported encountering the same behavior with Flask 3.1.2 and also pinning below that version. A maintainer later confirmed that resolution was expected in 3.2.0.",
+            "source_ids": [
+              "S8",
+              "S9"
+            ]
+          },
+          {
+            "text": "The issue is closed, but closure alone does not establish that a fix was implemented or released.",
+            "source_ids": [
+              "S1",
+              "S9"
+            ]
+          }
+        ],
+        "missing_information": [
+          "Was the original minimal reproduction verified against an actual Flask 3.2 release, rather than a development build?",
+          "Which commit or released version ultimately changed the teardown ordering associated with #5812?"
+        ],
+        "draft_reply": "Thanks for the detailed reproduction and follow-up. The report showed that Flask 3.1.2 invoked `teardown_request` before iterating the `stream_with_context` generator and then invoked it again, while affected users worked around the regression by pinning Flask below 3.1.2. The maintainer discussion expected #5812 to address this in 3.2 and also noted that teardown callbacks should remain safe across multiple invocations. Since the collected discussion does not include verification against a released 3.2 build, the concrete recommendation is to rerun the original minimal example on the applicable 3.2 release and report the exact version and output if the premature teardown remains observable.",
+        "limitations": [
+          "No source code, pull request contents, release notes, or released Flask build was inspected, and no reproduction was executed.",
+          "The available issue-template lookup has unknown coverage, so no current template requirements can be assessed.",
+          "All eight reported comments were retrieved, but one participant comment was clipped; conclusions do not rely on its omitted portion.",
+          "The searches used two query combinations. Only issue #6123 had a supplied full body suitable for comparison; the other search candidates were not compared.",
+          "The current behavior in released Flask versions remains unknown from the supplied evidence."
+        ],
+        "comparisons": [
+          {
+            "issue_number": 6123,
+            "relationship": "related_but_different",
+            "reason": "Both issues concern `stream_with_context` and incorrect context or teardown lifecycle behavior, but they describe affirmatively different failure conditions. The target concerns premature and repeated `teardown_request` during ordinary response generation in Flask 3.1.2. Issue #6123 concerns an abandoned generator after client disconnect, cross-thread finalization, a leaked app context, and later requests skipping `teardown_appcontext`. Issue #6123 itself distinguishes its abandonment case from #5804's teardown-ordering case.",
+            "similarities": [
+              "Both involve lifecycle problems around `stream_with_context`.",
+              "Both report teardown or context behavior that persists beyond the expected request/stream boundary.",
+              "Both include Python 3.13 reproductions."
+            ],
+            "differences": [
+              "The target reports `teardown_request` firing too early and twice; #6123 reports `teardown_appcontext` failing to run for later requests.",
+              "The target reproduces while iterating a normal streaming response; #6123 requires an abandoned response iterator, client disconnect semantics, and finalization on another thread.",
+              "The target identifies a Flask 3.1.2 regression relative to 3.1.1; #6123 reports the abandonment behavior on Flask 3.1.3 and considers 3.2 development code potentially affected.",
+              "The target's immediate symptom is removal of `g` data before generator access; #6123's symptom is a stale ambient app context on a pooled worker thread and associated resource leakage."
+            ],
+            "source_ids": [
+              "S1",
+              "S13"
+            ]
+          }
+        ],
+        "label_recommendations": [
+          {
+            "name": "bug",
+            "reason": "The issue provides a version-to-version regression demonstration with a minimal example, traceback, expected lifecycle behavior, and maintainer acknowledgment. The target currently has no labels, and `bug` is an active repository label applicable to issues.",
+            "source_ids": [
+              "S1",
+              "S10"
+            ]
+          }
+        ]
+      },
+      "output_types": [
+        "reasoning",
+        "message"
+      ],
+      "reasoning_tokens": 516,
+      "non_reasoning_output_tokens": 1069,
+      "output_text_tokens_local_estimate": 1059,
+      "estimated_standard_text_cost_usd": 0.06836,
+      "checks": {
+        "schema_valid": true,
+        "retrieved_citations": true,
+        "no_first_person_reproduction": true,
+        "no_unperformed_action": true,
+        "no_closure_resolution_inference": true,
+        "draft_time_claims_attributed": true,
+        "maintainer_draft_voice": true,
+        "label_decision_consistent": true,
+        "no_known_pr_only_labels": true,
+        "known_comment_claims_supported": true
+      },
+      "elapsed_seconds": 17.43
+    }
+  ],
+  "models_not_run": [],
+  "stop_reason": null,
+  "human_review_status": "pending",
+  "code_sha256": {
+    "scripts/compare_models.py": "3ced89cbfaba7a87590869aa3ae6e0a438c06890da58dbade86a1bbd9047ea09",
+    "backend/app/agent.py": "e34ce4de4380dbcc040b75f663dede26a2bffd1143f9f52fbbacd9dad2c774ac",
+    "backend/app/models.py": "c56cd88386a8b22ba486e30006397d437a94b96431d240e808f8efb63faade4c",
+    "backend/app/quality.py": "5e4c8e519db87c8ef5cacab3379802835437990f0f736fe9aef7d3f3ae3bc689",
+    "backend/app/context.py": "b87683c538491b55695064c0219c42ed883a50a45f75eb9470be877ef660706f"
+  },
+  "limitations": [
+    "One known case and one request per model do not establish production accuracy or stable model superiority.",
+    "This is final-answer synthesis, not the autonomous agent loop, search, repair, or a fix for the frozen-history input-budget failure.",
+    "Both receive a fresh full saved source packet; S13 was fetched but unsent in the original live run.",
+    "Source excerpts retain the original clipping. No old model answer or review criterion enters model input.",
+    "Medium is the same requested effort label, not necessarily equal computation. No earlier reasoning items are replayed.",
+    "Cost is a standard text-token estimate excluding cache-write fees, surcharges and unreported failed-request usage.",
+    "Known-pattern checks and schema validity do not establish full application acceptance or semantic source support."
+  ]
+}

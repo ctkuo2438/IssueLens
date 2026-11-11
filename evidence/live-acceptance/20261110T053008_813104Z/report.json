@@ -1,0 +1,2202 @@
+{
+  "started_at": "2026-11-10T05:30:08.813104+00:00",
+  "finished_at": "2026-11-10T05:31:12.946909+00:00",
+  "model_api": "real",
+  "github_data": "live_public_github",
+  "model": "gpt-5.6",
+  "reasoning_effort": "medium",
+  "max_output_tokens": 2400,
+  "github_authenticated": false,
+  "case_manifest_sha256": "a5dc99dcb0a34150ddb7ab868fe3269ea32d6e305ceeb5e4aef4d7b5e04ea08d",
+  "selection_sha256": "998f28b71472d2edd6f985d66b0fefa773ad5adf5687f3ffc6500dc667493f89",
+  "code_sha256": {
+    "backend/app/agent.py": "600c2cdef6cf8a6b07fa692d50101beca740a799457df6221dc0984b516e4c48",
+    "backend/app/github.py": "77a1104744ba072d988052c4c0cbb27d60ecce9b4185eedf7015fdfe030f0ee4",
+    "backend/app/models.py": "e3ce6515c7d2e5e9263ad0beb80c65920b2e189466d1a80a7b70c1060f1624d7",
+    "backend/app/config.py": "960d55909a18519f099d9bc2ef513b19ebfe1ab7cc6c6752e24c4953759ed5a7",
+    "backend/app/quality.py": "647e983af7cf7d4837a27d4196143f73f1ad6572ca89a962cc6563ea0afd1e49",
+    "backend/app/templates.py": "93ed623e8c5b020171e94a1923e764364356d86dee9c201568c558d6bf24fd74",
+    "backend/app/context.py": "2c3435d3c2e74ba8f63e257518f4953d639115408cb602e633eb206806ce8216",
+    "scripts/acceptance.py": "aea61f3ba0de5921a64960b0a9636f33a7cb312e7a9d16b53d0a22031c467cfa"
+  },
+  "limits_per_case": {
+    "model_requests": 8,
+    "tool_calls": 15,
+    "runtime_seconds": 90.0,
+    "context_tokens": 12000,
+    "candidates": 20,
+    "candidate_reads": 5
+  },
+  "scope": "Three deliberately selected closed historical issues from Pallets repositories. Not a representative sample or production accuracy benchmark.",
+  "cases": [
+    {
+      "case_id": "complete_bug",
+      "kind": "complete_bug_report",
+      "target_url": "https://github.com/pallets/flask/issues/5804",
+      "outcome": "partial",
+      "error_type": null,
+      "functional_checks": {
+        "final_answer_accepted": true,
+        "no_known_unperformed_maintainer_action": true,
+        "no_known_closure_resolution_inference": true,
+        "label_decision_consistent": true,
+        "target_retrieved": true,
+        "same_repository_search_completed": true,
+        "minimum_similar_issue_checks_completed": false,
+        "label_catalog_retrieved": true,
+        "dispatched_contexts_within_budget": true,
+        "known_first_person_reproduction_pattern_absent": true,
+        "known_assistant_service_offer_pattern_absent": true,
+        "draft_time_claims_attributed": true,
+        "reported_comments_first_page_attempted": true,
+        "known_comment_claim_patterns_supported": true,
+        "no_known_pr_only_label_recommendations": true
+      },
+      "human_review": {
+        "status": "pending",
+        "predeclared_checks": [
+          "Preserve the reported regression, versions and timing of teardown calls; do not re-request information already visible.",
+          "Attribute reproduction, workarounds and the 3.2 fix plan to their authors; do not claim code execution or a verified released fix.",
+          "Keep author suggestions separate from maintainer guidance and acknowledge closed status.",
+          "Use retrieved catalog labels and applicable templates conservatively; optional extra diagnostics do not prove essential information is absent."
+        ],
+        "notes": ""
+      },
+      "result": {
+        "analysis_date": "2026-11-10",
+        "issue": {
+          "title": "3.1.2 regression: `stream_with_context` triggers `teardown_request()` calls before response generation",
+          "url": "https://github.com/pallets/flask/issues/5804",
+          "number": 5804,
+          "state": "closed",
+          "author": "noirbee",
+          "labels": [],
+          "comment_count": 8,
+          "created_at": "2025-09-01T14:24:02Z",
+          "closed_at": "2026-01-25T03:54:29Z"
+        },
+        "content": {
+          "summary": {
+            "text": "The reporter describes a Flask 3.1.2 regression in which `stream_with_context` causes request teardown callbacks to run before streamed response generation and then again afterward, breaking generator access to data stored on `g`. The issue is now closed, but the retrieved evidence does not establish the resolving change or release.",
+            "source_ids": [
+              "S1"
+            ]
+          },
+          "known_facts": [
+            {
+              "text": "The report provides a minimal application and compares Flask 3.1.1 with 3.1.2 on Python 3.13 and Werkzeug 3.1.3.",
+              "source_ids": [
+                "S1"
+              ]
+            },
+            {
+              "text": "In the reported 3.1.2 run, the teardown callback removes `g.hello` before the generator accesses it, resulting in `AttributeError: hello`; a second teardown then raises `KeyError: 'hello'`.",
+              "source_ids": [
+                "S1"
+              ]
+            },
+            {
+              "text": "The reporter associates the behavior change with a specific `stream_with_context` commit, but this proposed cause was not independently verified here.",
+              "source_ids": [
+                "S1"
+              ]
+            },
+            {
+              "text": "Another participant reported encountering the problem with OpenTelemetry and asked about a Flask 3.2.0 release date.",
+              "source_ids": [
+                "S4"
+              ]
+            },
+            {
+              "text": "The issue was closed on January 25, 2026. Closure alone does not show that a fix was merged or released.",
+              "source_ids": [
+                "S1"
+              ]
+            }
+          ],
+          "missing_information": [],
+          "draft_reply": "Thanks for the detailed regression report and minimal example. The comparison showed that Flask 3.1.2 invoked the teardown callback before the streamed generator accessed `g`, then invoked it again as the streaming context exited, whereas the reported 3.1.1 behavior performed teardown only after generation. That made the lifecycle change observable independently of the subsequent `AttributeError` and `KeyError`.\n\nFor future readers, could a maintainer link the resolving commit and identify the first release containing the relevant behavior change?",
+          "limitations": [
+            "No source code or release history was inspected, and the reported behavior was not independently reproduced.",
+            "Although all eight comments were retrieved, six comment excerpts were omitted from the available evidence. Their contents cannot be inferred, so any maintainer explanation or resolution they contained could not be assessed.",
+            "The searches found two possible candidates, but their full issue records were not read; therefore, no duplicate relationship was classified.",
+            "The active label catalog was complete, but several labels had no descriptions, limiting repository-specific interpretation."
+          ],
+          "comparisons": [],
+          "label_recommendations": [
+            {
+              "name": "bug",
+              "reason": "The report presents a version-to-version behavioral regression with a minimal reproducer and concrete exceptions, supporting cautious classification as a bug.",
+              "source_ids": [
+                "S1",
+                "S10"
+              ]
+            }
+          ]
+        },
+        "sources": [
+          {
+            "id": "S1",
+            "kind": "issue",
+            "title": "3.1.2 regression: `stream_with_context` triggers `teardown_request()` calls before response generation",
+            "url": "https://github.com/pallets/flask/issues/5804",
+            "excerpt": "<!--\nThis issue tracker is a tool to address bugs in Flask itself. Please use\nGitHub Discussions or the Pallets Discord for questions about your own code.\n\nReplace this comment with a clear outline of what the bug is.\n-->\n\n<!--\nDescribe how to replicate the bug.\n\nInclude a minimal reproducible example that demonstrates the bug.\nInclude the full traceback if there was an exception.\n-->\n\n<!--\nDescribe the expected behavior that should have happened but didn't.\n-->\nHello,\n\nI believe the changes to `stream_with_context()` in https://github.com/pallets/flask/pull/5799/commits/9822a0351574790cb66c652fcc396ad7aa2b09d8 introduced a bug where the `teardown_request()` callables are invoked too early in the request/response lifecycle (and actually invoked twice, before generating the response and a second time after the end of the request). Take the following example:\n\n```python\n# flask_teardown_stream_with_context.py\nfrom flask import Flask, g, stream_with_context\n\n\ndef _teardown_request(_):\n    print(\"do_teardown_request() called\")\n    g.pop(\"hello\")\n\n\napp = Flask(__name__)\n\napp.teardown_request(_teardown_request)\n\n\n@app.get(\"/stream\")\ndef streamed_response():\n    g.hello = \"world\"\n\n    def generate():\n        print(\"Starting to generate response\")\n        yield f\"<p>Hello {g.hello} !</p>\"\n\n    return stream_with_context(generate())\n\n\napp.run(debug=True)\n```\n\nIn 3.1.1:\n\n```\n% /tmp/venv/bin/flask --version           \nPython 3.13.7\nFlask 3.1.1\nWerkzeug 3.1.3\n% /tmp/venv/bin/python flask_teardown_stream_with_context.py \n[\u2026]\nStarting to generate response\n127.0.0.1 - - [01/Sep/2025 16:07:05] \"GET /stream HTTP/1.1\" 200 -\ndo_teardown_request() called\n```\n\nIn 3.1.2:\n\n```\n% /tmp/venv/bin/flask --version                             \nPython 3.13.7\nFlask 3.1.2\nWerkzeug 3.1.3\n% /tmp/venv/bin/python flask_teardown_stream_with_context.py\ndo_teardown_request() called\nStarting to generate response\ndo_teardown_request() called\nDebugging middleware caught exception in streamed response at a point where response headers were already sent.\nTraceback (most recent call last):\n  File \"/tmp/venv/lib/python3.13/site-packages/flask/helpers.py\", line 132, in generator\n    yield from gen\n  File \"/tmp/flask_teardown_stream_with_context.py\", line 21, in generate\n    yield f\"<p>Hello {g.hello} !</p>\"\n                      ^^^^^^^\n  File \"/tmp/venv/lib/python3.13/site-packages/flask/ctx.py\", line 56, in __getattr__\n    raise AttributeError(name) from None\nAttributeError: hello\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/tmp/venv/lib/python3.13/site-packages/werkzeug/wsgi.py\", line 256, in __next__\n    return self._next()\n           ~~~~~~~~~~^^\n  File \"/tmp/venv/lib/python3.13/site-packages/werkzeug/wrappers/response.py\", line 32, in _iter_encoded\n    for item in iterable:\n                ^^^^^^^^\n  File \"/tmp/venv/lib/python3.13/site-packages/flask/helpers.py\", line 130, in generator\n    with app_ctx, req_ctx:\n                  ^^^^^^^\n  File \"/tmp/venv/lib/python3.13/site-packages/flask/ctx.py\", line 443, in __exit__\n    self.pop(exc_value)\n    ~~~~~~~~^^^^^^^^^^^\n  File \"/tmp/venv/lib/python3.13/site-packages/flask/ctx.py\", line 410, in pop\n    self.app.do_teardown_request(exc)\n    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^\n  File \"/tmp/venv/lib/python3.13/site-packages/flask/app.py\", line 1356, in do_teardown_request\n    self.ensure_sync(func)(exc)\n    ~~~~~~~~~~~~~~~~~~~~~~^^^^^\n  File \"/tmp/flask_teardown_stream_with_context.py\", line 7, in _teardown_request\n    g.pop(\"hello\")\n    ~~~~~^^^^^^^^^\n  File \"/tmp/venv/lib/python3.13/site-packages/flask/ctx.py\", line 88, in pop\n    return self.__dict__.pop(name)\n           ~~~~~~~~~~~~~~~~~^^^^^^\nKeyError: 'hello'\n127.0.0.1 - - [01/Sep/2025 16:09:35] \"GET /stream HTTP/1.1\" 200 -\n```\n\nSpecifically,\n\n```\ndo_teardown_request() called\nStarting to generate response\ndo_teardown_request() called\n```\n\nSo `_teardown_request()` is called before flask start to iterate on the response generator.\n\nThis is a simplified version of our own code; I'm not sure we can actually expect `g` to still be available during response generators, but given it worked in 3.1.1 and the phrasing / intent of `teardown_request()`, I'd expect it not to be called before the response is actually generated. Note also that removing the code which causes the error, i.e. the `g` access, and keeping just the `print()` for debugging, will still show `_teardown_request()` being called twice.\n\nIt's not obvious to me where exactly the bug is triggered. Adding a `traceback.print_stack()` call to `_teardown_request()`:\n* in 3.1.1, the only call, once the request is done, is triggered by https://github.com/pallets/flask/blob/7fff56f5172c48b6f3aedf17ee14ef5c2533dfd1/src/flask/helpers.py#L115 \u21d2 https://github.com/pallets/flask/blob/330123258e8c3dc391cbe55ab1ed94891ca83af3/src/flask/ctx.py#L443 \n* in 3.1.2, the (new) first call before entering the response generator is triggered by https://github.com/pallets/flask/blob/330123258e8c3dc391cbe55ab1ed94891ca83af3/src/flask/app.py#L1527 ; the second is similar to 3.1.1, i.e. https://github.com/pallets/flask/blob/330123258e8c3dc391cbe55ab1ed94891ca83af3/src/flask/helpers.py#L130 \u21d2 https://github.com/pallets/flask/blob/330123258e8c3dc391cbe55ab1ed94891ca83af3/src/flask/ctx.py#L443\n\nEnvironment:\n\n- Python version: 3.13\n- Flask version: 3.1.2\n"
+          },
+          {
+            "id": "S2",
+            "kind": "comment",
+            "title": "Comment by davidism",
+            "url": "https://github.com/pallets/flask/issues/5804#issuecomment-3288692782",
+            "excerpt": "Author association: MEMBER\nCreated: 2025-09-13T18:05:39Z\n\nThis will be fixed as a side effect of #5812 in 3.2. I'm not sure how to fix it in the mean time, without reintroducing the other issue, but I'm open to reviewing a PR if you can figure it out sooner.\n\nI do understand how this is an issue, but note that the docs already call out that you can't make assumptions about how many times teardown functions will run or what will have or have not run before them. That's something you should address regardless of this being fixed."
+          },
+          {
+            "id": "S3",
+            "kind": "comment",
+            "title": "Comment by noirbee",
+            "url": "https://github.com/pallets/flask/issues/5804#issuecomment-3292350761",
+            "excerpt": "Author association: NONE\nCreated: 2025-09-15T14:05:20Z\n\n> This will be fixed as a side effect of https://github.com/pallets/flask/pull/5812 in 3.2. I'm not sure how to fix it in the mean time\n\nSeems like it does the trick indeed, thanks. The fact that it won't be fixed until then is not really an issue for us, I've just pinned flask to <3.1.2 until we can upgrade.\n\n> the docs already call out that you can't make assumptions about how many times teardown functions will run or what will have or have not run before them\n\nhttps://flask.palletsprojects.com/en/stable/reqcontext/#teardown-callbacks here ? It's not immediately obvious to me that they could run more than once, but even then this isn't the original issue we encountered, because our teardown callbacks are indeed idempotent \u2014 the `g.pop()` was used here to exhibit the issue.\n\nMy issue was more around *when* it can be called: in this specific case, even before entering the generator passed to `stream_with_context()`. I wouldn't expect a teardown callback to be called at this point, considering `do_teardown_request()` is \u00ab Called after the request is dispatched and the response is returned \u00bb."
+          },
+          {
+            "id": "S4",
+            "kind": "comment",
+            "title": "Comment by qiqizjl",
+            "url": "https://github.com/pallets/flask/issues/5804#issuecomment-3322169181",
+            "excerpt": "Author association: NONE\nCreated: 2025-09-23T02:46:59Z\n\nIs there an expected release date for 3.2.0? We also encountered this problem in OTEL."
+          },
+          {
+            "id": "S5",
+            "kind": "comment",
+            "title": "Comment by relu101",
+            "url": "https://github.com/pallets/flask/issues/5804#issuecomment-3348309915",
+            "excerpt": "Author association: NONE\nCreated: 2025-09-29T17:58:33Z\n\nHi I tested the code of @noirbee and indeed it does give the same error\n(venv-flask) \u279c  flask git:(fix-streaming-teardown) \u2717 flask --version\nPython 3.13.5\nFlask 3.2.0.dev0\nWerkzeug 3.1.3\n * Running on http://127.0.0.1:5000\nPress CTRL+C to quit\n * Restarting with stat\n * Debugger is active!\n * Debugger PIN: 140-638-840\nStarting to generate response\n127.0.0.1 - - [29/Sep/2025 23:09:47] \"GET /stream HTTP/1.1\" 200 -\ndo_teardown_request() called\ndo_teardown_request() called\nDebugging middleware caught exception in streamed response at a point where response headers were already sent.\nTraceback (most recent call last):\n  File \"/Users/anand/Desktop/oss/flask/src/flask/app.py\", line 1500, in __call__\n    return self.wsgi_app(environ, start_response)\n           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/anand/Desktop/oss/flask/src/flask/app.py\", line 1491, in wsgi_app\n    ctx.pop(error)\n    ~~~~~~~^^^^^^^\n  File \"/Users/anand/Desktop/oss/flask/src/flask/ctx.py\", line 474, in pop\n    self.app.do_teardown_request(exc)\n    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^\n "
+          },
+          {
+            "id": "S6",
+            "kind": "comment",
+            "title": "Comment by relu101",
+            "url": "https://github.com/pallets/flask/issues/5804#issuecomment-3348322234",
+            "excerpt": "Author association: NONE\nCreated: 2025-09-29T18:02:26Z\n\nI think we should supress the error as a warning till the issue gets resolves as a side effect by wrapping the \nteardown call on the lines of:\n\nfrom contextlib import suppress\n\ndef do_teardown_request(self, exc: BaseException | None = None) -> None:\n    \"\"\"Called after the request is dispatched and the response is finalized.\"\"\"\n    req = _cv_app.get().request\n\n    for name in chain(req.blueprints, (None,)):\n        if name in self.teardown_request_funcs:\n            for func in reversed(self.teardown_request_funcs[name]):\n                with suppress(KeyError):\n                    self.ensure_sync(func)(exc)\n\n    request_tearing_down.send(self, _async_wrapper=self.ensure_sync, exc=exc)\n"
+          },
+          {
+            "id": "S7",
+            "kind": "comment",
+            "title": "Comment by relu101",
+            "url": "https://github.com/pallets/flask/issues/5804#issuecomment-3348324230",
+            "excerpt": "Author association: NONE\nCreated: 2025-09-29T18:03:07Z\n\nsorry I am new to open source contribution so please forgive if formatting issues,"
+          },
+          {
+            "id": "S8",
+            "kind": "comment",
+            "title": "Comment by watttman",
+            "url": "https://github.com/pallets/flask/issues/5804#issuecomment-3665784285",
+            "excerpt": "Author association: NONE\nCreated: 2025-12-17T15:09:18Z\n\nWe are suffering the same issue with 3.1.2, and had to pin Flask to version < 3.1.2.\nDid not quite get it: is this expected to be resolved in Flask 3.2.0? \nThanks"
+          },
+          {
+            "id": "S9",
+            "kind": "comment",
+            "title": "Comment by davidism",
+            "url": "https://github.com/pallets/flask/issues/5804#issuecomment-3665928055",
+            "excerpt": "Author association: MEMBER\nCreated: 2025-12-17T15:38:24Z\n\n> is this expected to be resolved in Flask 3.2.0?\n\nyes"
+          },
+          {
+            "id": "S10",
+            "kind": "repo_labels",
+            "title": "Repository label catalog",
+            "url": "https://github.com/pallets/flask/labels",
+            "excerpt": "{\"labels\": [{\"name\": \"async\", \"description\": \"\"}, {\"name\": \"auto-closed\", \"description\": \"\"}, {\"name\": \"blocker\", \"description\": \"\"}, {\"name\": \"blueprints\", \"description\": \"\"}, {\"name\": \"bug\", \"description\": \"\"}, {\"name\": \"cli\", \"description\": \"\"}, {\"name\": \"dependencies\", \"description\": \"Pull requests that update a dependency file\"}, {\"name\": \"discussion\", \"description\": \"\"}, {\"name\": \"docs\", \"description\": \"\"}, {\"name\": \"github_actions\", \"description\": \"Pull requests that update Github_actions code\"}, {\"name\": \"good first issue\", \"description\": \"\"}, {\"name\": \"hacktoberfest-accepted\", \"description\": \"\"}, {\"name\": \"Invalid\", \"description\": \"Hacktoberfest: Very low quality PRs (or spam)\"}, {\"name\": \"json\", \"description\": \"\"}, {\"name\": \"logging\", \"description\": \"\"}, {\"name\": \"packaging\", \"description\": \"\"}, {\"name\": \"python\", \"description\": \"Pull requests that update Python code\"}, {\"name\": \"question\", \"description\": \"\"}, {\"name\": \"rejected AI\", \"description\": \"\"}, {\"name\": \"save-for-sprint\", \"description\": \"Please don't pick this unless you're participating in an official sprint.\"}, {\"name\": \"security\", \"description\": \"Pull requests that address a security vulnerability\"}, {\"name\": \"session\", \"description\": \"\"}, {\"name\": \"testing\", \"description\": \"\"}, {\"name\": \"typing\", \"description\": \"\"}], \"complete\": true}"
+          },
+          {
+            "id": "S11",
+            "kind": "search",
+            "title": "Issue search: stream_with_context teardown_request",
+            "url": "https://github.com/search?q=repo%3Apallets%2Fflask+is%3Aissue+in%3Atitle%2Cbody+%22stream_with_context%22+%22teardown_request%22&type=issues",
+            "excerpt": "{\"query\": \"repo:pallets/flask is:issue in:title,body \\\"stream_with_context\\\" \\\"teardown_request\\\"\", \"total_count\": 1, \"incomplete_results\": false, \"candidate_numbers\": []}"
+          },
+          {
+            "id": "S12",
+            "kind": "search",
+            "title": "Issue search: streaming teardown",
+            "url": "https://github.com/search?q=repo%3Apallets%2Fflask+is%3Aissue+in%3Atitle%2Cbody+%22streaming%22+%22teardown%22&type=issues",
+            "excerpt": "{\"query\": \"repo:pallets/flask is:issue in:title,body \\\"streaming\\\" \\\"teardown\\\"\", \"total_count\": 2, \"incomplete_results\": false, \"candidate_numbers\": [6123, 3566]}"
+          }
+        ],
+        "comment_check": {
+          "status": "read",
+          "reported_count": 8,
+          "attempted_pages": [
+            1
+          ],
+          "read_pages": [
+            1
+          ],
+          "failed_pages": [],
+          "retrieved_count": 8,
+          "source_ids": [
+            "S2",
+            "S3",
+            "S4",
+            "S5",
+            "S6",
+            "S7",
+            "S8",
+            "S9"
+          ],
+          "has_next_page": false,
+          "count_mismatch": false,
+          "complete": true
+        },
+        "candidates": [
+          {
+            "number": 6123,
+            "title": "`stream_with_context`: abandoned generator leaves the app context current on the worker thread; later requests skip `teardown_appcontext`",
+            "url": "https://github.com/pallets/flask/issues/6123",
+            "state": "closed",
+            "source_id": null
+          },
+          {
+            "number": 3566,
+            "title": "1.1.2: test suite is failing",
+            "url": "https://github.com/pallets/flask/issues/3566",
+            "state": "closed",
+            "source_id": null
+          }
+        ],
+        "searches": [
+          {
+            "query": "repo:pallets/flask is:issue in:title,body \"stream_with_context\" \"teardown_request\"",
+            "total_count": 1,
+            "incomplete_results": false,
+            "candidate_numbers": [],
+            "source_id": "S11"
+          },
+          {
+            "query": "repo:pallets/flask is:issue in:title,body \"streaming\" \"teardown\"",
+            "total_count": 2,
+            "incomplete_results": false,
+            "candidate_numbers": [
+              6123,
+              3566
+            ],
+            "source_id": "S12"
+          }
+        ],
+        "similar_issue_check": {
+          "search_status": "candidates_found",
+          "attempted_queries": [
+            "stream_with_context teardown_request",
+            "streaming teardown"
+          ],
+          "failed_queries": [],
+          "candidate_status": "not_checked",
+          "attempted_candidate_numbers": [],
+          "failed_candidate_numbers": [],
+          "read_candidate_numbers": [],
+          "compared_candidate_numbers": [],
+          "comparison_status": "not_checked"
+        },
+        "repo_labels": [
+          {
+            "name": "async",
+            "description": "",
+            "color": "2cb7a9"
+          },
+          {
+            "name": "auto-closed",
+            "description": "",
+            "color": "ededed"
+          },
+          {
+            "name": "blocker",
+            "description": "",
+            "color": "b60205"
+          },
+          {
+            "name": "blueprints",
+            "description": "",
+            "color": "1d76db"
+          },
+          {
+            "name": "bug",
+            "description": "",
+            "color": "d93f0b"
+          },
+          {
+            "name": "cli",
+            "description": "",
+            "color": "1d76db"
+          },
+          {
+            "name": "dependencies",
+            "description": "Pull requests that update a dependency file",
+            "color": "0366d6"
+          },
+          {
+            "name": "discussion",
+            "description": "",
+            "color": "c5def5"
+          },
+          {
+            "name": "docs",
+            "description": "",
+            "color": "0e8a16"
+          },
+          {
+            "name": "github_actions",
+            "description": "Pull requests that update Github_actions code",
+            "color": "000000"
+          },
+          {
+            "name": "good first issue",
+            "description": "",
+            "color": "fbca04"
+          },
+          {
+            "name": "hacktoberfest-accepted",
+            "description": "",
+            "color": "f2a476"
+          },
+          {
+            "name": "Invalid",
+            "description": "Hacktoberfest: Very low quality PRs (or spam)",
+            "color": "ffaaff"
+          },
+          {
+            "name": "json",
+            "description": "",
+            "color": "1d76db"
+          },
+          {
+            "name": "logging",
+            "description": "",
+            "color": "1d76db"
+          },
+          {
+            "name": "packaging",
+            "description": "",
+            "color": "006b75"
+          },
+          {
+            "name": "python",
+            "description": "Pull requests that update Python code",
+            "color": "2b67c6"
+          },
+          {
+            "name": "question",
+            "description": "",
+            "color": "ededed"
+          },
+          {
+            "name": "rejected AI",
+            "description": "",
+            "color": "7F8AA0"
+          },
+          {
+            "name": "save-for-sprint",
+            "description": "Please don't pick this unless you're participating in an official sprint.",
+            "color": "ff6bd2"
+          },
+          {
+            "name": "security",
+            "description": "Pull requests that address a security vulnerability",
+            "color": "ee0701"
+          },
+          {
+            "name": "session",
+            "description": "",
+            "color": "1d76db"
+          },
+          {
+            "name": "testing",
+            "description": "",
+            "color": "006b75"
+          },
+          {
+            "name": "typing",
+            "description": "",
+            "color": "6087FE"
+          }
+        ],
+        "labels_source_id": "S10",
+        "labels_complete": true,
+        "issue_templates": [],
+        "templates_source_id": null,
+        "templates_complete": null,
+        "context_builds": [
+          {
+            "request_number": 1,
+            "budget_tokens": 12000,
+            "estimated_tokens_before": 4739,
+            "estimated_tokens": 4739,
+            "margin_tokens": 1024,
+            "repair_reserve_tokens": 256,
+            "future_reserve_tokens": 512,
+            "future_reserve_target_tokens": 512,
+            "future_reserve_minimum_tokens": 512,
+            "phase": "investigation",
+            "fits": true,
+            "sent": true,
+            "sources": [],
+            "reused_call_ids": []
+          },
+          {
+            "request_number": 2,
+            "budget_tokens": 12000,
+            "estimated_tokens_before": 6934,
+            "estimated_tokens": 6884,
+            "margin_tokens": 1024,
+            "repair_reserve_tokens": 256,
+            "future_reserve_tokens": 4860,
+            "future_reserve_target_tokens": 4960,
+            "future_reserve_minimum_tokens": 512,
+            "phase": "investigation",
+            "fits": true,
+            "sent": true,
+            "sources": [
+              {
+                "source_id": "S1",
+                "kind": "issue",
+                "action": "kept",
+                "reason": "Protected evidence is retained without further excerpt reduction.",
+                "excerpt_tokens": 1532,
+                "priority": null
+              }
+            ],
+            "reused_call_ids": []
+          },
+          {
+            "request_number": 3,
+            "budget_tokens": 12000,
+            "estimated_tokens_before": 8874,
+            "estimated_tokens": 7672,
+            "margin_tokens": 1024,
+            "repair_reserve_tokens": 256,
+            "future_reserve_tokens": 4072,
+            "future_reserve_target_tokens": 4960,
+            "future_reserve_minimum_tokens": 512,
+            "phase": "investigation",
+            "fits": true,
+            "sent": true,
+            "sources": [
+              {
+                "source_id": "S2",
+                "kind": "comment",
+                "action": "omitted",
+                "reason": "Fetched excerpt omitted before first model exposure to fit the request and its reserves within the local context budget.",
+                "excerpt_tokens": 127,
+                "priority": 15
+              },
+              {
+                "source_id": "S3",
+                "kind": "comment",
+                "action": "omitted",
+                "reason": "Fetched excerpt omitted before first model exposure to fit the request and its reserves within the local context budget.",
+                "excerpt_tokens": 273,
+                "priority": 16
+              },
+              {
+                "source_id": "S4",
+                "kind": "comment",
+                "action": "kept",
+                "reason": "Comment heuristic: 0 matching title terms; maintainer association: False.",
+                "excerpt_tokens": 45,
+                "priority": 10
+              },
+              {
+                "source_id": "S5",
+                "kind": "comment",
+                "action": "omitted",
+                "reason": "Fetched excerpt omitted before first model exposure to fit the request and its reserves within the local context budget.",
+                "excerpt_tokens": 350,
+                "priority": 12
+              },
+              {
+                "source_id": "S6",
+                "kind": "comment",
+                "action": "omitted",
+                "reason": "Fetched excerpt omitted before first model exposure to fit the request and its reserves within the local context budget.",
+                "excerpt_tokens": 171,
+                "priority": 12
+              },
+              {
+                "source_id": "S7",
+                "kind": "comment",
+                "action": "kept",
+                "reason": "Comment heuristic: 0 matching title terms; maintainer association: False.",
+                "excerpt_tokens": 37,
+                "priority": 10
+              },
+              {
+                "source_id": "S8",
+                "kind": "comment",
+                "action": "omitted",
+                "reason": "Fetched excerpt omitted before first model exposure to fit the request and its reserves within the local context budget.",
+                "excerpt_tokens": 74,
+                "priority": 10
+              },
+              {
+                "source_id": "S9",
+                "kind": "comment",
+                "action": "omitted",
+                "reason": "Fetched excerpt omitted before first model exposure to fit the request and its reserves within the local context budget.",
+                "excerpt_tokens": 39,
+                "priority": 13
+              }
+            ],
+            "reused_call_ids": []
+          },
+          {
+            "request_number": 4,
+            "budget_tokens": 12000,
+            "estimated_tokens_before": 8524,
+            "estimated_tokens": 8508,
+            "margin_tokens": 1024,
+            "repair_reserve_tokens": 256,
+            "future_reserve_tokens": 3236,
+            "future_reserve_target_tokens": 3936,
+            "future_reserve_minimum_tokens": 512,
+            "phase": "investigation",
+            "fits": true,
+            "sent": true,
+            "sources": [
+              {
+                "source_id": "S10",
+                "kind": "repo_labels",
+                "action": "kept",
+                "reason": "Protected evidence is retained without further excerpt reduction.",
+                "excerpt_tokens": 343,
+                "priority": null
+              }
+            ],
+            "reused_call_ids": []
+          },
+          {
+            "request_number": 5,
+            "budget_tokens": 12000,
+            "estimated_tokens_before": 8893,
+            "estimated_tokens": 8817,
+            "margin_tokens": 1024,
+            "repair_reserve_tokens": 256,
+            "future_reserve_tokens": 2927,
+            "future_reserve_target_tokens": 3936,
+            "future_reserve_minimum_tokens": 512,
+            "phase": "investigation",
+            "fits": true,
+            "sent": true,
+            "sources": [
+              {
+                "source_id": "S11",
+                "kind": "search",
+                "action": "redundant",
+                "reason": "Exact search metadata is retained in the search object.",
+                "excerpt_tokens": 47,
+                "priority": null
+              }
+            ],
+            "reused_call_ids": []
+          },
+          {
+            "request_number": 6,
+            "budget_tokens": 12000,
+            "estimated_tokens_before": 10603,
+            "estimated_tokens": 10504,
+            "margin_tokens": 1024,
+            "repair_reserve_tokens": 256,
+            "future_reserve_tokens": 1240,
+            "future_reserve_target_tokens": 2912,
+            "future_reserve_minimum_tokens": 2400,
+            "phase": "investigation",
+            "fits": false,
+            "sent": false,
+            "sources": [
+              {
+                "source_id": "S12",
+                "kind": "search",
+                "action": "redundant",
+                "reason": "Exact search metadata is retained in the search object.",
+                "excerpt_tokens": 51,
+                "priority": null
+              }
+            ],
+            "reused_call_ids": []
+          },
+          {
+            "request_number": 6,
+            "budget_tokens": 12000,
+            "estimated_tokens_before": 10584,
+            "estimated_tokens": 10485,
+            "margin_tokens": 1024,
+            "repair_reserve_tokens": 256,
+            "future_reserve_tokens": 0,
+            "future_reserve_target_tokens": 0,
+            "future_reserve_minimum_tokens": 0,
+            "phase": "investigation",
+            "fits": true,
+            "sent": true,
+            "sources": [
+              {
+                "source_id": "S12",
+                "kind": "search",
+                "action": "redundant",
+                "reason": "Exact search metadata is retained in the search object.",
+                "excerpt_tokens": 51,
+                "priority": null
+              }
+            ],
+            "reused_call_ids": []
+          }
+        ],
+        "rejected_answers": [],
+        "limitations": [
+          "Context Builder omitted fetched excerpts from model input: S2, S3, S5, S6, S8, S9. Retrieved excerpts remain available in Sources; omitted content was not reviewed by the model.",
+          "Finalizing early: at least 2400 tokens for future evidence and loop growth could not be reserved within the local context budget. No further tool calls are allowed; pending checks remain incomplete.",
+          "S5: Comment by relu101 was truncated to 350 text tokens.",
+          "Search candidates were found, but no grounded comparison was completed."
+        ],
+        "usage": {
+          "model_requests": 6,
+          "tool_calls": 5,
+          "total_tokens": 34825,
+          "elapsed_seconds": 23.44
+        }
+      },
+      "events": [
+        {
+          "id": 1,
+          "kind": "status",
+          "message": "Model: gpt-5.6; reasoning effort: medium; output limit: 2400 tokens including reasoning and visible text.",
+          "created_at": "2026-11-10T05:30:08.814261Z"
+        },
+        {
+          "id": 2,
+          "kind": "status",
+          "message": "Context request 1: estimated 4739/12000 input tokens including 1024 margin; 256 tokens reserved for repair feedback; 512/512 tokens reserved for future evidence and loop growth (minimum 512); 0 excerpts omitted; 0 repeated results reused.",
+          "created_at": "2026-11-10T05:30:09.092741Z"
+        },
+        {
+          "id": 3,
+          "kind": "model",
+          "message": "Investigation step 1: choosing the next action.",
+          "created_at": "2026-11-10T05:30:09.092749Z"
+        },
+        {
+          "id": 4,
+          "kind": "tool",
+          "message": "Calling get_issue with {}.",
+          "created_at": "2026-11-10T05:30:11.373301Z"
+        },
+        {
+          "id": 5,
+          "kind": "tool",
+          "message": "Finished get_issue; 1 sources collected.",
+          "created_at": "2026-11-10T05:30:11.624743Z"
+        },
+        {
+          "id": 6,
+          "kind": "status",
+          "message": "Comment check: not_read; reported: 8; retrieved: 0; pages read: []; failed pages: []; complete: False.",
+          "created_at": "2026-11-10T05:30:11.624819Z"
+        },
+        {
+          "id": 7,
+          "kind": "status",
+          "message": "Context request 2: estimated 6884/12000 input tokens including 1024 margin; 256 tokens reserved for repair feedback; 4860/4960 tokens reserved for future evidence and loop growth (minimum 512); 0 excerpts omitted; 0 repeated results reused.",
+          "created_at": "2026-11-10T05:30:11.630749Z"
+        },
+        {
+          "id": 8,
+          "kind": "model",
+          "message": "Investigation step 2: choosing the next action.",
+          "created_at": "2026-11-10T05:30:11.630759Z"
+        },
+        {
+          "id": 9,
+          "kind": "status",
+          "message": "Required lookup before finalization: get_issue_comments.",
+          "created_at": "2026-11-10T05:30:13.751795Z"
+        },
+        {
+          "id": 10,
+          "kind": "tool",
+          "message": "Calling get_issue_comments with {\"page\":1}.",
+          "created_at": "2026-11-10T05:30:13.751834Z"
+        },
+        {
+          "id": 11,
+          "kind": "tool",
+          "message": "Finished get_issue_comments; 9 sources collected.",
+          "created_at": "2026-11-10T05:30:13.932153Z"
+        },
+        {
+          "id": 12,
+          "kind": "status",
+          "message": "Comment check: read; reported: 8; retrieved: 8; pages read: [1]; failed pages: []; complete: True.",
+          "created_at": "2026-11-10T05:30:13.932238Z"
+        },
+        {
+          "id": 13,
+          "kind": "status",
+          "message": "Context request 3: estimated 7672/12000 input tokens including 1024 margin; 256 tokens reserved for repair feedback; 4072/4960 tokens reserved for future evidence and loop growth (minimum 512); 6 excerpts omitted; 0 repeated results reused.",
+          "created_at": "2026-11-10T05:30:13.956554Z"
+        },
+        {
+          "id": 14,
+          "kind": "warning",
+          "message": "Context Builder omitted fetched excerpts from model input: S2, S3, S5, S6, S8, S9. Retrieved excerpts remain available in Sources; omitted content was not reviewed by the model.",
+          "created_at": "2026-11-10T05:30:13.956565Z"
+        },
+        {
+          "id": 15,
+          "kind": "model",
+          "message": "Investigation step 3: choosing the next action.",
+          "created_at": "2026-11-10T05:30:13.956566Z"
+        },
+        {
+          "id": 16,
+          "kind": "status",
+          "message": "Required lookup before finalization: get_repo_labels.",
+          "created_at": "2026-11-10T05:30:15.468944Z"
+        },
+        {
+          "id": 17,
+          "kind": "tool",
+          "message": "Calling get_repo_labels with {}.",
+          "created_at": "2026-11-10T05:30:15.469012Z"
+        },
+        {
+          "id": 18,
+          "kind": "tool",
+          "message": "Finished get_repo_labels; 10 sources collected.",
+          "created_at": "2026-11-10T05:30:15.616575Z"
+        },
+        {
+          "id": 19,
+          "kind": "status",
+          "message": "Context request 4: estimated 8508/12000 input tokens including 1024 margin; 256 tokens reserved for repair feedback; 3236/3936 tokens reserved for future evidence and loop growth (minimum 512); 0 excerpts omitted; 0 repeated results reused.",
+          "created_at": "2026-11-10T05:30:15.622147Z"
+        },
+        {
+          "id": 20,
+          "kind": "model",
+          "message": "Investigation step 4: choosing the next action.",
+          "created_at": "2026-11-10T05:30:15.622158Z"
+        },
+        {
+          "id": 21,
+          "kind": "status",
+          "message": "Required lookup before finalization: search_issues.",
+          "created_at": "2026-11-10T05:30:17.043707Z"
+        },
+        {
+          "id": 22,
+          "kind": "tool",
+          "message": "Calling search_issues with {\"query\":\"stream_with_context teardown_request\"}.",
+          "created_at": "2026-11-10T05:30:17.043741Z"
+        },
+        {
+          "id": 23,
+          "kind": "tool",
+          "message": "Finished search_issues; 11 sources collected.",
+          "created_at": "2026-11-10T05:30:17.278755Z"
+        },
+        {
+          "id": 24,
+          "kind": "status",
+          "message": "Similar-issue check: search=partial; candidate=not_checked; read=[]; failed=[].",
+          "created_at": "2026-11-10T05:30:17.278808Z"
+        },
+        {
+          "id": 25,
+          "kind": "status",
+          "message": "Context request 5: estimated 8817/12000 input tokens including 1024 margin; 256 tokens reserved for repair feedback; 2927/3936 tokens reserved for future evidence and loop growth (minimum 512); 0 excerpts omitted; 0 repeated results reused.",
+          "created_at": "2026-11-10T05:30:17.285646Z"
+        },
+        {
+          "id": 26,
+          "kind": "model",
+          "message": "Investigation step 5: choosing the next action.",
+          "created_at": "2026-11-10T05:30:17.285657Z"
+        },
+        {
+          "id": 27,
+          "kind": "status",
+          "message": "Required lookup before finalization: search_issues.",
+          "created_at": "2026-11-10T05:30:19.365604Z"
+        },
+        {
+          "id": 28,
+          "kind": "tool",
+          "message": "Calling search_issues with {\"query\":\"streaming teardown\"}.",
+          "created_at": "2026-11-10T05:30:19.366630Z"
+        },
+        {
+          "id": 29,
+          "kind": "tool",
+          "message": "Finished search_issues; 12 sources collected.",
+          "created_at": "2026-11-10T05:30:19.642108Z"
+        },
+        {
+          "id": 30,
+          "kind": "status",
+          "message": "Similar-issue check: search=candidates_found; candidate=not_checked; read=[]; failed=[].",
+          "created_at": "2026-11-10T05:30:19.642172Z"
+        },
+        {
+          "id": 31,
+          "kind": "warning",
+          "message": "Finalizing early: at least 2400 tokens for future evidence and loop growth could not be reserved within the local context budget. No further tool calls are allowed; pending checks remain incomplete.",
+          "created_at": "2026-11-10T05:30:19.653066Z"
+        },
+        {
+          "id": 32,
+          "kind": "status",
+          "message": "Context request 6: estimated 10485/12000 input tokens including 1024 margin; 256 tokens reserved for repair feedback; 0/0 tokens reserved for future evidence and loop growth (minimum 0); 0 excerpts omitted; 0 repeated results reused.",
+          "created_at": "2026-11-10T05:30:19.658413Z"
+        },
+        {
+          "id": 33,
+          "kind": "model",
+          "message": "Investigation step 6: choosing the next action.",
+          "created_at": "2026-11-10T05:30:19.658423Z"
+        }
+      ]
+    },
+    {
+      "case_id": "missing_reproduction",
+      "kind": "insufficient_information_report",
+      "target_url": "https://github.com/pallets/flask/issues/4032",
+      "outcome": "no_final_answer",
+      "error_type": null,
+      "functional_checks": {
+        "final_answer_accepted": false,
+        "no_known_unperformed_maintainer_action": null,
+        "no_known_closure_resolution_inference": null,
+        "label_decision_consistent": null,
+        "target_retrieved": true,
+        "same_repository_search_completed": true,
+        "minimum_similar_issue_checks_completed": null,
+        "label_catalog_retrieved": true,
+        "dispatched_contexts_within_budget": true,
+        "known_first_person_reproduction_pattern_absent": null,
+        "known_assistant_service_offer_pattern_absent": null,
+        "draft_time_claims_attributed": null,
+        "reported_comments_first_page_attempted": true,
+        "known_comment_claim_patterns_supported": null,
+        "no_known_pr_only_label_recommendations": null
+      },
+      "human_review": {
+        "status": "pending",
+        "predeclared_checks": [
+          "Identify the missing complete minimal application or route/integration details without asking again for the supplied Python and Flask versions.",
+          "Treat the reporter's Werkzeug issue link as an attributed claim; the current tools cannot read arbitrary cross-repository issues.",
+          "Do not manufacture confirmed root causes or affirmative differences from missing details.",
+          "Ask focused triage questions; any information-needed label must exist in the loaded catalog and satisfy its description."
+        ],
+        "notes": ""
+      },
+      "result": {
+        "analysis_date": "2026-11-10",
+        "issue": {
+          "title": "webtest does not get file",
+          "url": "https://github.com/pallets/flask/issues/4032",
+          "number": 4032,
+          "state": "closed",
+          "author": "gbmarc1",
+          "labels": [],
+          "comment_count": 2,
+          "created_at": "2021-05-13T00:40:46Z",
+          "closed_at": "2021-05-13T03:02:43Z"
+        },
+        "content": null,
+        "sources": [
+          {
+            "id": "S1",
+            "kind": "issue",
+            "title": "webtest does not get file",
+            "url": "https://github.com/pallets/flask/issues/4032",
+            "excerpt": "File parameter not included in request view args\r\n\r\nI have the following post request that fails with flask==2.0.0; but was working fine with flask<2.0.0.\r\n\r\nHere is my call with the webtest wsgi app\r\n```\r\nfrom webtest import TestApp\r\napi = TestApp(\"my_app_url\")\r\napi.post(\r\n    f\"projects/200000/workUnits/1/workUnitData/files\",\r\n    upload_files=[(\"file\", \"my_file_path.csv\")],\r\n    status=404,\r\n)\r\n```\r\nResponse is 400 because file is not included in `req.view_args`:\r\nhttps://github.com/pallets/flask/blob/d575de5159a6e40944275763c9ada2801214058b/src/flask/app.py#L1485\r\n\r\nThe endpoint function is:\r\n```\r\ndef projects_project_id_work_unit_work_unit_id_work_unit_data_files_post(project_id, work_unit_id, file): \r\n\r\n    return implementation.projects_project_id_work_unit_work_unit_id_work_unit_data_files_post(project_id, work_unit_id, file)\r\n```\r\n\r\nThe value of req.view_args is:\r\n\r\n`req.view_args = {'projectId': 200000, 'workUnitId': 1}`\r\n\r\n`file` arg is missing even if provided\r\n\r\nEnvironment:\r\n\r\n- Python version: 3.8.5\r\n- Flask version: 2.0.0\r\n"
+          },
+          {
+            "id": "S2",
+            "kind": "comment",
+            "title": "Comment by davidism",
+            "url": "https://github.com/pallets/flask/issues/4032#issuecomment-840206449",
+            "excerpt": "Author association: MEMBER\nCreated: 2021-05-13T01:00:13Z\n\nPlease provide a minimal reproducible example demonstrating the issue with Flask. Otherwise, this sounds like something webtest will need to address."
+          },
+          {
+            "id": "S3",
+            "kind": "comment",
+            "title": "Comment by gbmarc1",
+            "url": "https://github.com/pallets/flask/issues/4032#issuecomment-841339337",
+            "excerpt": "Author association: NONE\nCreated: 2021-05-14T16:06:32Z\n\nSeems that the error is in werkzeug. It is not a webtest error... Webtest hasn't change since Apr 27, 2020 it would have been surprising that the error was there. Flask, and werkzeug  just bumped their major version to 2 so it was surely somewhere there...\r\n\r\nhttps://github.com/pallets/werkzeug/issues/2125"
+          },
+          {
+            "id": "S4",
+            "kind": "repo_labels",
+            "title": "Repository label catalog",
+            "url": "https://github.com/pallets/flask/labels",
+            "excerpt": "{\"labels\": [{\"name\": \"async\", \"description\": \"\"}, {\"name\": \"auto-closed\", \"description\": \"\"}, {\"name\": \"blocker\", \"description\": \"\"}, {\"name\": \"blueprints\", \"description\": \"\"}, {\"name\": \"bug\", \"description\": \"\"}, {\"name\": \"cli\", \"description\": \"\"}, {\"name\": \"dependencies\", \"description\": \"Pull requests that update a dependency file\"}, {\"name\": \"discussion\", \"description\": \"\"}, {\"name\": \"docs\", \"description\": \"\"}, {\"name\": \"github_actions\", \"description\": \"Pull requests that update Github_actions code\"}, {\"name\": \"good first issue\", \"description\": \"\"}, {\"name\": \"hacktoberfest-accepted\", \"description\": \"\"}, {\"name\": \"Invalid\", \"description\": \"Hacktoberfest: Very low quality PRs (or spam)\"}, {\"name\": \"json\", \"description\": \"\"}, {\"name\": \"logging\", \"description\": \"\"}, {\"name\": \"packaging\", \"description\": \"\"}, {\"name\": \"python\", \"description\": \"Pull requests that update Python code\"}, {\"name\": \"question\", \"description\": \"\"}, {\"name\": \"rejected AI\", \"description\": \"\"}, {\"name\": \"save-for-sprint\", \"description\": \"Please don't pick this unless you're participating in an official sprint.\"}, {\"name\": \"security\", \"description\": \"Pull requests that address a security vulnerability\"}, {\"name\": \"session\", \"description\": \"\"}, {\"name\": \"testing\", \"description\": \"\"}, {\"name\": \"typing\", \"description\": \"\"}], \"complete\": true}"
+          },
+          {
+            "id": "S5",
+            "kind": "search",
+            "title": "Issue search: view_args file",
+            "url": "https://github.com/search?q=repo%3Apallets%2Fflask+is%3Aissue+in%3Atitle%2Cbody+%22view_args%22+%22file%22&type=issues",
+            "excerpt": "{\"query\": \"repo:pallets/flask is:issue in:title,body \\\"view_args\\\" \\\"file\\\"\", \"total_count\": 5, \"incomplete_results\": false, \"candidate_numbers\": [5430, 5199, 5069, 4932, 1435]}"
+          }
+        ],
+        "comment_check": {
+          "status": "read",
+          "reported_count": 2,
+          "attempted_pages": [
+            1
+          ],
+          "read_pages": [
+            1
+          ],
+          "failed_pages": [],
+          "retrieved_count": 2,
+          "source_ids": [
+            "S2",
+            "S3"
+          ],
+          "has_next_page": false,
+          "count_mismatch": false,
+          "complete": true
+        },
+        "candidates": [
+          {
+            "number": 5430,
+            "title": "@app.errorhandler() cannot be used in blueprint when debug=False",
+            "url": "https://github.com/pallets/flask/issues/5430",
+            "state": "closed",
+            "source_id": null
+          },
+          {
+            "number": 5199,
+            "title": "class-based endpoints do not accept positional arguments",
+            "url": "https://github.com/pallets/flask/issues/5199",
+            "state": "closed",
+            "source_id": null
+          },
+          {
+            "number": 5069,
+            "title": "Unit testing a delete endpoint causes ValueError: Invalid location argument: args",
+            "url": "https://github.com/pallets/flask/issues/5069",
+            "state": "closed",
+            "source_id": null
+          },
+          {
+            "number": 4932,
+            "title": "Unable to unlock Console after file reloading in debug mode",
+            "url": "https://github.com/pallets/flask/issues/4932",
+            "state": "closed",
+            "source_id": null
+          },
+          {
+            "number": 1435,
+            "title": "htmlsafe_dumps doesn't handle lazy strings",
+            "url": "https://github.com/pallets/flask/issues/1435",
+            "state": "closed",
+            "source_id": null
+          }
+        ],
+        "searches": [
+          {
+            "query": "repo:pallets/flask is:issue in:title,body \"view_args\" \"file\"",
+            "total_count": 5,
+            "incomplete_results": false,
+            "candidate_numbers": [
+              5430,
+              5199,
+              5069,
+              4932,
+              1435
+            ],
+            "source_id": "S5"
+          }
+        ],
+        "similar_issue_check": {
+          "search_status": "candidates_found",
+          "attempted_queries": [
+            "view_args file"
+          ],
+          "failed_queries": [],
+          "candidate_status": "not_checked",
+          "attempted_candidate_numbers": [],
+          "failed_candidate_numbers": [],
+          "read_candidate_numbers": [],
+          "compared_candidate_numbers": [],
+          "comparison_status": "not_checked"
+        },
+        "repo_labels": [
+          {
+            "name": "async",
+            "description": "",
+            "color": "2cb7a9"
+          },
+          {
+            "name": "auto-closed",
+            "description": "",
+            "color": "ededed"
+          },
+          {
+            "name": "blocker",
+            "description": "",
+            "color": "b60205"
+          },
+          {
+            "name": "blueprints",
+            "description": "",
+            "color": "1d76db"
+          },
+          {
+            "name": "bug",
+            "description": "",
+            "color": "d93f0b"
+          },
+          {
+            "name": "cli",
+            "description": "",
+            "color": "1d76db"
+          },
+          {
+            "name": "dependencies",
+            "description": "Pull requests that update a dependency file",
+            "color": "0366d6"
+          },
+          {
+            "name": "discussion",
+            "description": "",
+            "color": "c5def5"
+          },
+          {
+            "name": "docs",
+            "description": "",
+            "color": "0e8a16"
+          },
+          {
+            "name": "github_actions",
+            "description": "Pull requests that update Github_actions code",
+            "color": "000000"
+          },
+          {
+            "name": "good first issue",
+            "description": "",
+            "color": "fbca04"
+          },
+          {
+            "name": "hacktoberfest-accepted",
+            "description": "",
+            "color": "f2a476"
+          },
+          {
+            "name": "Invalid",
+            "description": "Hacktoberfest: Very low quality PRs (or spam)",
+            "color": "ffaaff"
+          },
+          {
+            "name": "json",
+            "description": "",
+            "color": "1d76db"
+          },
+          {
+            "name": "logging",
+            "description": "",
+            "color": "1d76db"
+          },
+          {
+            "name": "packaging",
+            "description": "",
+            "color": "006b75"
+          },
+          {
+            "name": "python",
+            "description": "Pull requests that update Python code",
+            "color": "2b67c6"
+          },
+          {
+            "name": "question",
+            "description": "",
+            "color": "ededed"
+          },
+          {
+            "name": "rejected AI",
+            "description": "",
+            "color": "7F8AA0"
+          },
+          {
+            "name": "save-for-sprint",
+            "description": "Please don't pick this unless you're participating in an official sprint.",
+            "color": "ff6bd2"
+          },
+          {
+            "name": "security",
+            "description": "Pull requests that address a security vulnerability",
+            "color": "ee0701"
+          },
+          {
+            "name": "session",
+            "description": "",
+            "color": "1d76db"
+          },
+          {
+            "name": "testing",
+            "description": "",
+            "color": "006b75"
+          },
+          {
+            "name": "typing",
+            "description": "",
+            "color": "6087FE"
+          }
+        ],
+        "labels_source_id": "S4",
+        "labels_complete": true,
+        "issue_templates": [],
+        "templates_source_id": null,
+        "templates_complete": null,
+        "context_builds": [
+          {
+            "request_number": 1,
+            "budget_tokens": 12000,
+            "estimated_tokens_before": 4739,
+            "estimated_tokens": 4739,
+            "margin_tokens": 1024,
+            "repair_reserve_tokens": 256,
+            "future_reserve_tokens": 512,
+            "future_reserve_target_tokens": 512,
+            "future_reserve_minimum_tokens": 512,
+            "phase": "investigation",
+            "fits": true,
+            "sent": true,
+            "sources": [],
+            "reused_call_ids": []
+          },
+          {
+            "request_number": 2,
+            "budget_tokens": 12000,
+            "estimated_tokens_before": 6752,
+            "estimated_tokens": 6714,
+            "margin_tokens": 1024,
+            "repair_reserve_tokens": 256,
+            "future_reserve_tokens": 4960,
+            "future_reserve_target_tokens": 4960,
+            "future_reserve_minimum_tokens": 512,
+            "phase": "investigation",
+            "fits": true,
+            "sent": true,
+            "sources": [
+              {
+                "source_id": "S1",
+                "kind": "issue",
+                "action": "kept",
+                "reason": "Protected evidence is retained without further excerpt reduction.",
+                "excerpt_tokens": 288,
+                "priority": null
+              }
+            ],
+            "reused_call_ids": []
+          },
+          {
+            "request_number": 3,
+            "budget_tokens": 12000,
+            "estimated_tokens_before": 7225,
+            "estimated_tokens": 7088,
+            "margin_tokens": 1024,
+            "repair_reserve_tokens": 256,
+            "future_reserve_tokens": 4656,
+            "future_reserve_target_tokens": 4960,
+            "future_reserve_minimum_tokens": 512,
+            "phase": "investigation",
+            "fits": true,
+            "sent": true,
+            "sources": [
+              {
+                "source_id": "S2",
+                "kind": "comment",
+                "action": "omitted",
+                "reason": "Fetched excerpt omitted before first model exposure to fit the request and its reserves within the local context budget.",
+                "excerpt_tokens": 48,
+                "priority": 15
+              },
+              {
+                "source_id": "S3",
+                "kind": "comment",
+                "action": "omitted",
+                "reason": "Fetched excerpt omitted before first model exposure to fit the request and its reserves within the local context budget.",
+                "excerpt_tokens": 98,
+                "priority": 14
+              }
+            ],
+            "reused_call_ids": []
+          },
+          {
+            "request_number": 4,
+            "budget_tokens": 12000,
+            "estimated_tokens_before": 7936,
+            "estimated_tokens": 7920,
+            "margin_tokens": 1024,
+            "repair_reserve_tokens": 256,
+            "future_reserve_tokens": 3824,
+            "future_reserve_target_tokens": 3936,
+            "future_reserve_minimum_tokens": 512,
+            "phase": "investigation",
+            "fits": true,
+            "sent": true,
+            "sources": [
+              {
+                "source_id": "S4",
+                "kind": "repo_labels",
+                "action": "kept",
+                "reason": "Protected evidence is retained without further excerpt reduction.",
+                "excerpt_tokens": 343,
+                "priority": null
+              }
+            ],
+            "reused_call_ids": []
+          },
+          {
+            "request_number": 5,
+            "budget_tokens": 12000,
+            "estimated_tokens_before": 9889,
+            "estimated_tokens": 9749,
+            "margin_tokens": 1024,
+            "repair_reserve_tokens": 256,
+            "future_reserve_tokens": 1995,
+            "future_reserve_target_tokens": 2912,
+            "future_reserve_minimum_tokens": 2400,
+            "phase": "investigation",
+            "fits": false,
+            "sent": false,
+            "sources": [
+              {
+                "source_id": "S5",
+                "kind": "search",
+                "action": "redundant",
+                "reason": "Exact search metadata is retained in the search object.",
+                "excerpt_tokens": 62,
+                "priority": null
+              }
+            ],
+            "reused_call_ids": []
+          },
+          {
+            "request_number": 5,
+            "budget_tokens": 12000,
+            "estimated_tokens_before": 9870,
+            "estimated_tokens": 9730,
+            "margin_tokens": 1024,
+            "repair_reserve_tokens": 256,
+            "future_reserve_tokens": 0,
+            "future_reserve_target_tokens": 0,
+            "future_reserve_minimum_tokens": 0,
+            "phase": "investigation",
+            "fits": true,
+            "sent": true,
+            "sources": [
+              {
+                "source_id": "S5",
+                "kind": "search",
+                "action": "redundant",
+                "reason": "Exact search metadata is retained in the search object.",
+                "excerpt_tokens": 62,
+                "priority": null
+              }
+            ],
+            "reused_call_ids": []
+          },
+          {
+            "request_number": 6,
+            "budget_tokens": 12000,
+            "estimated_tokens_before": 9796,
+            "estimated_tokens": 9796,
+            "margin_tokens": 1024,
+            "repair_reserve_tokens": 0,
+            "future_reserve_tokens": 2204,
+            "future_reserve_target_tokens": 2912,
+            "future_reserve_minimum_tokens": 2400,
+            "phase": "repair",
+            "fits": false,
+            "sent": false,
+            "sources": [],
+            "reused_call_ids": []
+          }
+        ],
+        "rejected_answers": [
+          {
+            "request_number": 5,
+            "reason": "Cite only evidence included in model input; an omitted excerpt cannot support factual claims.",
+            "output_text": "{\"summary\":{\"text\":\"This closed 2021 report describes an apparent Flask 2.0.0 regression: a multipart file uploaded through WebTest was not present in `req.view_args`, leading to a 400 response where the reporter expected a 404.\",\"source_ids\":[\"S1\"]},\"known_facts\":[{\"text\":\"The reporter states that the same request worked with Flask versions before 2.0.0 and failed with Flask 2.0.0 on Python 3.8.5.\",\"source_ids\":[\"S1\"]},{\"text\":\"The WebTest request supplied a CSV through `upload_files` under the field name `file`.\",\"source_ids\":[\"S1\"]},{\"text\":\"The endpoint expected `project_id`, `work_unit_id`, and `file`, while the shown `req.view_args` contained only the two URL identifiers.\",\"source_ids\":[\"S1\"]},{\"text\":\"The issue was closed on May 13, 2021, the same day it was opened; closed state alone does not establish whether code was changed or the behavior was otherwise resolved.\",\"source_ids\":[\"S1\"]},{\"text\":\"Two comments were retrieved, but their excerpts were omitted from the available evidence, so their guidance or conclusions cannot be summarized reliably.\",\"source_ids\":[\"S2\",\"S3\"]}],\"missing_information\":[\"A minimal route declaration and any framework or generated adapter responsible for mapping the multipart field to the endpoint parameter are not shown in the visible issue excerpt.\",\"The exact pre-2.0 Flask version and otherwise identical environment in which the request reportedly worked are not specified.\",\"The visible evidence does not establish whether the expected behavior was native Flask behavior or parameter injection performed by another integration.\"],\"draft_reply\":\"Thanks for the report. At the time, this showed a Flask 2.0.0 request made through WebTest where the uploaded `file` field was not included in `req.view_args`, although the endpoint expected a `file` argument. The excerpt includes the request, endpoint signature, and environment, but not the route declaration or any integration responsible for turning multipart fields into endpoint arguments, so it does not establish whether this was a Flask regression or an adapter-level mapping issue. If this behavior is investigated again, please provide a minimal standalone application including the route registration and parameter-mapping layer, together with the exact earlier Flask version where the same request succeeds.\",\"limitations\":[\"No source code or releases were inspected, and the reported behavior was not reproduced.\",\"Although retrieval metadata indicates both comments were fetched, their text was omitted from the evidence available for analysis; any maintainer explanation or reporter follow-up in them could not be evaluated.\",\"The recorded keyword search returned candidate issues, but none was available for full review, so no duplicate comparison is made. This does not rule out a duplicate.\",\"The current label catalog may differ from the labels available when the issue was filed.\"],\"comparisons\":[],\"label_recommendations\":[{\"name\":\"bug\",\"reason\":\"The reporter characterizes the behavior as a regression introduced in Flask 2.0.0 and provides a concrete failing request and observed response. The catalog supplies no narrower description, so this recommendation reflects the reported symptom rather than a confirmed Flask defect.\",\"source_ids\":[\"S1\",\"S4\"]}]}",
+            "output_sha256": "dac45a42ba7e151a9274a83a611b9b8672e5bd935b6366c925bc865980239a86",
+            "feedback": "Cite only evidence included in model input; an omitted excerpt cannot support factual claims. Available IDs: ['S1', 'S4', 'S5']. Regenerate consistent final JSON from the supplied evidence."
+          }
+        ],
+        "limitations": [
+          "Context Builder omitted fetched excerpts from model input: S2, S3. Retrieved excerpts remain available in Sources; omitted content was not reviewed by the model.",
+          "Finalizing early: at least 2400 tokens for future evidence and loop growth could not be reserved within the local context budget. No further tool calls are allowed; pending checks remain incomplete.",
+          "Search candidates were found, but no grounded comparison was completed.",
+          "The local context budget was reached: protected evidence and unchanged replay history could not fit. Newly fetched evidence in this build was not sent to the model."
+        ],
+        "usage": {
+          "model_requests": 5,
+          "tool_calls": 4,
+          "total_tokens": 21773,
+          "elapsed_seconds": 20.53
+        }
+      },
+      "events": [
+        {
+          "id": 1,
+          "kind": "status",
+          "message": "Model: gpt-5.6; reasoning effort: medium; output limit: 2400 tokens including reasoning and visible text.",
+          "created_at": "2026-11-10T05:30:32.263968Z"
+        },
+        {
+          "id": 2,
+          "kind": "status",
+          "message": "Context request 1: estimated 4739/12000 input tokens including 1024 margin; 256 tokens reserved for repair feedback; 512/512 tokens reserved for future evidence and loop growth (minimum 512); 0 excerpts omitted; 0 repeated results reused.",
+          "created_at": "2026-11-10T05:30:32.274765Z"
+        },
+        {
+          "id": 3,
+          "kind": "model",
+          "message": "Investigation step 1: choosing the next action.",
+          "created_at": "2026-11-10T05:30:32.274770Z"
+        },
+        {
+          "id": 4,
+          "kind": "tool",
+          "message": "Calling get_issue with {}.",
+          "created_at": "2026-11-10T05:30:34.054574Z"
+        },
+        {
+          "id": 5,
+          "kind": "tool",
+          "message": "Finished get_issue; 1 sources collected.",
+          "created_at": "2026-11-10T05:30:34.282915Z"
+        },
+        {
+          "id": 6,
+          "kind": "status",
+          "message": "Comment check: not_read; reported: 2; retrieved: 0; pages read: []; failed pages: []; complete: False.",
+          "created_at": "2026-11-10T05:30:34.282959Z"
+        },
+        {
+          "id": 7,
+          "kind": "status",
+          "message": "Context request 2: estimated 6714/12000 input tokens including 1024 margin; 256 tokens reserved for repair feedback; 4960/4960 tokens reserved for future evidence and loop growth (minimum 512); 0 excerpts omitted; 0 repeated results reused.",
+          "created_at": "2026-11-10T05:30:34.288918Z"
+        },
+        {
+          "id": 8,
+          "kind": "model",
+          "message": "Investigation step 2: choosing the next action.",
+          "created_at": "2026-11-10T05:30:34.288927Z"
+        },
+        {
+          "id": 9,
+          "kind": "status",
+          "message": "Required lookup before finalization: get_issue_comments.",
+          "created_at": "2026-11-10T05:30:35.428657Z"
+        },
+        {
+          "id": 10,
+          "kind": "tool",
+          "message": "Calling get_issue_comments with {\"page\":1}.",
+          "created_at": "2026-11-10T05:30:35.428721Z"
+        },
+        {
+          "id": 11,
+          "kind": "tool",
+          "message": "Finished get_issue_comments; 3 sources collected.",
+          "created_at": "2026-11-10T05:30:35.573222Z"
+        },
+        {
+          "id": 12,
+          "kind": "status",
+          "message": "Comment check: read; reported: 2; retrieved: 2; pages read: [1]; failed pages: []; complete: True.",
+          "created_at": "2026-11-10T05:30:35.573280Z"
+        },
+        {
+          "id": 13,
+          "kind": "status",
+          "message": "Context request 3: estimated 7088/12000 input tokens including 1024 margin; 256 tokens reserved for repair feedback; 4656/4960 tokens reserved for future evidence and loop growth (minimum 512); 2 excerpts omitted; 0 repeated results reused.",
+          "created_at": "2026-11-10T05:30:35.584404Z"
+        },
+        {
+          "id": 14,
+          "kind": "warning",
+          "message": "Context Builder omitted fetched excerpts from model input: S2, S3. Retrieved excerpts remain available in Sources; omitted content was not reviewed by the model.",
+          "created_at": "2026-11-10T05:30:35.584414Z"
+        },
+        {
+          "id": 15,
+          "kind": "model",
+          "message": "Investigation step 3: choosing the next action.",
+          "created_at": "2026-11-10T05:30:35.584418Z"
+        },
+        {
+          "id": 16,
+          "kind": "status",
+          "message": "Required lookup before finalization: get_repo_labels.",
+          "created_at": "2026-11-10T05:30:36.863269Z"
+        },
+        {
+          "id": 17,
+          "kind": "tool",
+          "message": "Calling get_repo_labels with {}.",
+          "created_at": "2026-11-10T05:30:36.863329Z"
+        },
+        {
+          "id": 18,
+          "kind": "tool",
+          "message": "Finished get_repo_labels; 4 sources collected.",
+          "created_at": "2026-11-10T05:30:36.893654Z"
+        },
+        {
+          "id": 19,
+          "kind": "status",
+          "message": "Context request 4: estimated 7920/12000 input tokens including 1024 margin; 256 tokens reserved for repair feedback; 3824/3936 tokens reserved for future evidence and loop growth (minimum 512); 0 excerpts omitted; 0 repeated results reused.",
+          "created_at": "2026-11-10T05:30:36.901171Z"
+        },
+        {
+          "id": 20,
+          "kind": "model",
+          "message": "Investigation step 4: choosing the next action.",
+          "created_at": "2026-11-10T05:30:36.901187Z"
+        },
+        {
+          "id": 21,
+          "kind": "status",
+          "message": "Required lookup before finalization: search_issues.",
+          "created_at": "2026-11-10T05:30:38.291093Z"
+        },
+        {
+          "id": 22,
+          "kind": "tool",
+          "message": "Calling search_issues with {\"query\":\"view_args file\"}.",
+          "created_at": "2026-11-10T05:30:38.291137Z"
+        },
+        {
+          "id": 23,
+          "kind": "tool",
+          "message": "Finished search_issues; 5 sources collected.",
+          "created_at": "2026-11-10T05:30:38.588427Z"
+        },
+        {
+          "id": 24,
+          "kind": "status",
+          "message": "Similar-issue check: search=candidates_found; candidate=not_checked; read=[]; failed=[].",
+          "created_at": "2026-11-10T05:30:38.588441Z"
+        },
+        {
+          "id": 25,
+          "kind": "warning",
+          "message": "Finalizing early: at least 2400 tokens for future evidence and loop growth could not be reserved within the local context budget. No further tool calls are allowed; pending checks remain incomplete.",
+          "created_at": "2026-11-10T05:30:38.593034Z"
+        },
+        {
+          "id": 26,
+          "kind": "status",
+          "message": "Context request 5: estimated 9730/12000 input tokens including 1024 margin; 256 tokens reserved for repair feedback; 0/0 tokens reserved for future evidence and loop growth (minimum 0); 0 excerpts omitted; 0 repeated results reused.",
+          "created_at": "2026-11-10T05:30:38.596582Z"
+        },
+        {
+          "id": 27,
+          "kind": "model",
+          "message": "Investigation step 5: choosing the next action.",
+          "created_at": "2026-11-10T05:30:38.596602Z"
+        },
+        {
+          "id": 28,
+          "kind": "warning",
+          "message": "The answer failed validation: Cite only evidence included in model input; an omitted excerpt cannot support factual claims. Requesting a correction.",
+          "created_at": "2026-11-10T05:30:52.776825Z"
+        },
+        {
+          "id": 29,
+          "kind": "status",
+          "message": "Context request 6: estimated 9796/12000 input tokens including 1024 margin; 0 tokens reserved for repair feedback; 2204/2912 tokens reserved for future evidence and loop growth (minimum 2400); 0 excerpts omitted; 0 repeated results reused.",
+          "created_at": "2026-11-10T05:30:52.796287Z"
+        },
+        {
+          "id": 30,
+          "kind": "warning",
+          "message": "The local context budget cannot fit protected evidence and replay history; no model request was sent.",
+          "created_at": "2026-11-10T05:30:52.796292Z"
+        }
+      ]
+    },
+    {
+      "case_id": "cache_control_feature",
+      "kind": "feature_request",
+      "target_url": "https://github.com/pallets/werkzeug/issues/2948",
+      "outcome": "completed",
+      "error_type": null,
+      "functional_checks": {
+        "final_answer_accepted": true,
+        "no_known_unperformed_maintainer_action": true,
+        "no_known_closure_resolution_inference": true,
+        "label_decision_consistent": true,
+        "target_retrieved": true,
+        "same_repository_search_completed": true,
+        "minimum_similar_issue_checks_completed": true,
+        "label_catalog_retrieved": true,
+        "dispatched_contexts_within_budget": true,
+        "known_first_person_reproduction_pattern_absent": true,
+        "known_assistant_service_offer_pattern_absent": true,
+        "draft_time_claims_attributed": true,
+        "reported_comments_first_page_attempted": null,
+        "known_comment_claim_patterns_supported": true,
+        "no_known_pr_only_label_recommendations": true
+      },
+      "human_review": {
+        "status": "pending",
+        "predeclared_checks": [
+          "Recognize a feature request for stale-while-revalidate and stale-if-error in ResponseCacheControl.",
+          "Do not demand bug-only fields or repeat already supplied feature purpose and use cases.",
+          "Closed status alone does not establish implemented behavior, a release version or a confirmed resolution.",
+          "Ground comparisons and labels in retrieved evidence and preserve template required-state uncertainty."
+        ],
+        "notes": ""
+      },
+      "result": {
+        "analysis_date": "2026-11-10",
+        "issue": {
+          "title": "Add support for RFC5861 Cache-Control headers",
+          "url": "https://github.com/pallets/werkzeug/issues/2948",
+          "number": 2948,
+          "state": "closed",
+          "author": "calpaterson",
+          "labels": [],
+          "comment_count": 0,
+          "created_at": "2024-09-09T12:37:26Z",
+          "closed_at": "2024-10-25T23:19:57Z"
+        },
+        "content": {
+          "summary": {
+            "text": "This closed feature request asked Werkzeug\u2019s ResponseCacheControl to support the RFC 5861 stale-while-revalidate and stale-if-error Cache-Control extensions, primarily for CDN request coalescing and serving stale content during outages.",
+            "source_ids": [
+              "S1"
+            ]
+          },
+          "known_facts": [
+            {
+              "text": "The issue was opened on September 9, 2024 and closed on October 25, 2024 without labels.",
+              "source_ids": [
+                "S1"
+              ]
+            },
+            {
+              "text": "The reporter noted that these directives could be handled without Werkzeug changes, but argued that first-class support was appropriate because they are standardized.",
+              "source_ids": [
+                "S1"
+              ]
+            },
+            {
+              "text": "The issue metadata reports zero comments, so it contains no recorded maintainer explanation of the closure.",
+              "source_ids": [
+                "S1"
+              ]
+            },
+            {
+              "text": "The recorded searches found one related issue about ResponseCacheControl, but it concerns an error when assigning an integer to the existing s_maxage property rather than support for RFC 5861 directives.",
+              "source_ids": [
+                "S1",
+                "S5"
+              ]
+            }
+          ],
+          "missing_information": [
+            "Whether RFC 5861 support was subsequently implemented or released cannot be determined without examining source code, linked changes, changelogs, and release history.",
+            "The issue does not specify the intended public property names or the expected parsing and serialization behavior for the two directives."
+          ],
+          "draft_reply": "Thanks for the clear proposal and the RFC reference. Supporting `stale-while-revalidate` and `stale-if-error` on `ResponseCacheControl` would provide first-class access to the two standardized directives and cover the CDN use cases described here. Any implementation should include parsing, mutation, deletion, and serialization tests for both integer-valued directives, along with API documentation. Since the issue was later closed without discussion, the implementation and release history should be checked before making any statement about current support.",
+          "limitations": [
+            "No source code, pull requests, changelog entries, or releases were inspected, so closure does not establish that the feature was implemented or released.",
+            "The related candidate was compared using its title and body only; its comments and linked fixes were not retrieved.",
+            "Duplicate searching was limited to the recorded repository searches and cannot rule out differently worded issues."
+          ],
+          "comparisons": [
+            {
+              "issue_number": 2364,
+              "relationship": "related_but_different",
+              "reason": "Both issues concern ResponseCacheControl and integer-valued Cache-Control directives, but issue 2364 reports a TypeError when setting the already-supported s_maxage directive, whereas the target requests first-class support for two additional RFC 5861 directives.",
+              "similarities": [
+                "Both concern the ResponseCacheControl API.",
+                "Both involve Cache-Control directives whose values are numeric durations."
+              ],
+              "differences": [
+                "The target is a standards-support feature request for stale-while-revalidate and stale-if-error.",
+                "Issue 2364 is a regression report for assigning an integer to the existing s_maxage property in Werkzeug 2.1.0."
+              ],
+              "source_ids": [
+                "S1",
+                "S5"
+              ]
+            }
+          ],
+          "label_recommendations": [
+            {
+              "name": "standards",
+              "reason": "The request explicitly seeks support for two Cache-Control extensions standardized by RFC 5861, directly matching the repository\u2019s standards-related label.",
+              "source_ids": [
+                "S1",
+                "S2"
+              ]
+            }
+          ]
+        },
+        "sources": [
+          {
+            "id": "S1",
+            "kind": "issue",
+            "title": "Add support for RFC5861 Cache-Control headers",
+            "url": "https://github.com/pallets/werkzeug/issues/2948",
+            "excerpt": "[RFC5861](https://datatracker.ietf.org/doc/html/rfc5861) standardised two Cache-Control extensions:\r\n1. `stale-while-revalidate`\r\n2. `stale-if-error`\r\n\r\nPlease add support for these in the standard werkzerg `ResponseCacheControl`.\r\n\r\nOne use case of these extensions is to allow sites to have their CDNs \"coalesce\" requests for content when it goes stale.  Another is to serve a stale representation from the CDN when the site is having an outage.  It's possible to solve this problem without changes to werkzeug, but as it's a standard feature, I think it would be nice to have it in the library."
+          },
+          {
+            "id": "S2",
+            "kind": "repo_labels",
+            "title": "Repository label catalog",
+            "url": "https://github.com/pallets/werkzeug/labels",
+            "excerpt": "{\"labels\": [{\"name\": \"ASGI\", \"description\": \"\"}, {\"name\": \"bug\", \"description\": \"\"}, {\"name\": \"debugger\", \"description\": \"\"}, {\"name\": \"dependencies\", \"description\": \"Pull requests that update a dependency file\"}, {\"name\": \"docs\", \"description\": \"\"}, {\"name\": \"github_actions\", \"description\": \"Pull requests that update GitHub Actions code\"}, {\"name\": \"good first issue\", \"description\": \"\"}, {\"name\": \"infrastructure\", \"description\": \"\"}, {\"name\": \"python\", \"description\": \"Pull requests that update Python code\"}, {\"name\": \"rejected AI\", \"description\": \"\"}, {\"name\": \"reloader\", \"description\": \"\"}, {\"name\": \"routing\", \"description\": \"\"}, {\"name\": \"save-for-sprint\", \"description\": \"\"}, {\"name\": \"security\", \"description\": \"Pull requests that address a security vulnerability\"}, {\"name\": \"server\", \"description\": \"\"}, {\"name\": \"standards\", \"description\": \"\"}, {\"name\": \"typing\", \"description\": \"\"}, {\"name\": \"user-agent\", \"description\": \"\"}], \"complete\": true}"
+          },
+          {
+            "id": "S3",
+            "kind": "search",
+            "title": "Issue search: stale-while-revalidate stale-if-error",
+            "url": "https://github.com/search?q=repo%3Apallets%2Fwerkzeug+is%3Aissue+in%3Atitle%2Cbody+%22stale-while-revalidate%22+%22stale-if-error%22&type=issues",
+            "excerpt": "{\"query\": \"repo:pallets/werkzeug is:issue in:title,body \\\"stale-while-revalidate\\\" \\\"stale-if-error\\\"\", \"total_count\": 1, \"incomplete_results\": false, \"candidate_numbers\": []}"
+          },
+          {
+            "id": "S4",
+            "kind": "search",
+            "title": "Issue search: Cache-Control ResponseCacheControl",
+            "url": "https://github.com/search?q=repo%3Apallets%2Fwerkzeug+is%3Aissue+in%3Atitle%2Cbody+%22Cache-Control%22+%22ResponseCacheControl%22&type=issues",
+            "excerpt": "{\"query\": \"repo:pallets/werkzeug is:issue in:title,body \\\"Cache-Control\\\" \\\"ResponseCacheControl\\\"\", \"total_count\": 2, \"incomplete_results\": false, \"candidate_numbers\": [2364]}"
+          },
+          {
+            "id": "S5",
+            "kind": "related_issue",
+            "title": "`ResponseCacheControl.s_maxage` raises error when set to an int",
+            "url": "https://github.com/pallets/werkzeug/issues/2364",
+            "excerpt": "Title: `ResponseCacheControl.s_maxage` raises error when set to an int\nState: closed\n\n`Response().cache_control.s_maxage` errors with `None` is not callable\r\n\r\n```\r\nfrom werkzeug.datastructures import ResponseCacheControl\r\n\r\ncc = ResponseCacheControl()\r\ncc.s_maxage = 1\r\n\r\n---------------------------------------------------------------------------\r\nTypeError                                 Traceback (most recent call last)\r\nInput In [13], in <cell line: 1>()\r\n----> 1 cc.s_maxage = 1\r\n\r\nFile /usr/local/lib/python3.10/site-packages/werkzeug/datastructures.py:1958, in cache_control_property.<locals>.<lambda>(x, v)\r\n   1949 def cache_control_property(key, empty, type):\r\n   1950     \"\"\"Return a new property object for a cache header. Useful if you\r\n   1951     want to add support for a cache extension in a subclass.\r\n   1952 \r\n   1953     .. versionchanged:: 2.0\r\n   1954         Renamed from ``cache_property``.\r\n   1955     \"\"\"\r\n   1956     return property(\r\n   1957         lambda x: x._get_cache_value(key, empty, type),\r\n-> 1958         lambda x, v: x._set_cache_value(key, v, type),\r\n   1959         lambda x: x._del_cache_value(key),\r\n   1960         f\"accessor for {key!r}\",\r\n   1961     )\r\n\r\nFile /usr/local/lib/python3.10/site-packages/werkzeug/datastructures.py:2039, in _CacheControl._set_cache_value(self, key, value, type)\r\n   2037     self[key] = None\r\n   2038 else:\r\n-> 2039     self[key] = type(value)\r\n\r\nTypeError: 'NoneType' object is not callable\r\n```\r\n\r\n2.0.3 is OK\r\n\r\n\r\nFlask use case\r\n```\r\nfrom flask import Response\r\n\r\nresponse = Response()\r\nresponse.cache_control.s_maxage = 1\r\n```\r\n\r\nEnvironment:\r\n\r\n- Python version: 3.10.4\r\n- Werkzeug version: 2.1.0\r\n"
+          }
+        ],
+        "comment_check": {
+          "status": "not_read",
+          "reported_count": 0,
+          "attempted_pages": [],
+          "read_pages": [],
+          "failed_pages": [],
+          "retrieved_count": 0,
+          "source_ids": [],
+          "has_next_page": null,
+          "count_mismatch": false,
+          "complete": false
+        },
+        "candidates": [
+          {
+            "number": 2364,
+            "title": "`ResponseCacheControl.s_maxage` raises error when set to an int",
+            "url": "https://github.com/pallets/werkzeug/issues/2364",
+            "state": "closed",
+            "source_id": "S5"
+          }
+        ],
+        "searches": [
+          {
+            "query": "repo:pallets/werkzeug is:issue in:title,body \"stale-while-revalidate\" \"stale-if-error\"",
+            "total_count": 1,
+            "incomplete_results": false,
+            "candidate_numbers": [],
+            "source_id": "S3"
+          },
+          {
+            "query": "repo:pallets/werkzeug is:issue in:title,body \"Cache-Control\" \"ResponseCacheControl\"",
+            "total_count": 2,
+            "incomplete_results": false,
+            "candidate_numbers": [
+              2364
+            ],
+            "source_id": "S4"
+          }
+        ],
+        "similar_issue_check": {
+          "search_status": "candidates_found",
+          "attempted_queries": [
+            "stale-while-revalidate stale-if-error",
+            "cache-control responsecachecontrol"
+          ],
+          "failed_queries": [],
+          "candidate_status": "read",
+          "attempted_candidate_numbers": [
+            2364
+          ],
+          "failed_candidate_numbers": [],
+          "read_candidate_numbers": [
+            2364
+          ],
+          "compared_candidate_numbers": [
+            2364
+          ],
+          "comparison_status": "compared"
+        },
+        "repo_labels": [
+          {
+            "name": "ASGI",
+            "description": "",
+            "color": "a31f58"
+          },
+          {
+            "name": "bug",
+            "description": "",
+            "color": "bc2b39"
+          },
+          {
+            "name": "debugger",
+            "description": "",
+            "color": "5319e7"
+          },
+          {
+            "name": "dependencies",
+            "description": "Pull requests that update a dependency file",
+            "color": "0366d6"
+          },
+          {
+            "name": "docs",
+            "description": "",
+            "color": "fef2c0"
+          },
+          {
+            "name": "github_actions",
+            "description": "Pull requests that update GitHub Actions code",
+            "color": "000000"
+          },
+          {
+            "name": "good first issue",
+            "description": "",
+            "color": "fbca04"
+          },
+          {
+            "name": "infrastructure",
+            "description": "",
+            "color": "006b75"
+          },
+          {
+            "name": "python",
+            "description": "Pull requests that update Python code",
+            "color": "2b67c6"
+          },
+          {
+            "name": "rejected AI",
+            "description": "",
+            "color": "95B5D4"
+          },
+          {
+            "name": "reloader",
+            "description": "",
+            "color": "5319e7"
+          },
+          {
+            "name": "routing",
+            "description": "",
+            "color": "5319e7"
+          },
+          {
+            "name": "save-for-sprint",
+            "description": "",
+            "color": "ff6bd2"
+          },
+          {
+            "name": "security",
+            "description": "Pull requests that address a security vulnerability",
+            "color": "ee0701"
+          },
+          {
+            "name": "server",
+            "description": "",
+            "color": "5319e7"
+          },
+          {
+            "name": "standards",
+            "description": "",
+            "color": "0052cc"
+          },
+          {
+            "name": "typing",
+            "description": "",
+            "color": "744F9F"
+          },
+          {
+            "name": "user-agent",
+            "description": "",
+            "color": "80ccd6"
+          }
+        ],
+        "labels_source_id": "S2",
+        "labels_complete": true,
+        "issue_templates": [],
+        "templates_source_id": null,
+        "templates_complete": null,
+        "context_builds": [
+          {
+            "request_number": 1,
+            "budget_tokens": 12000,
+            "estimated_tokens_before": 4740,
+            "estimated_tokens": 4740,
+            "margin_tokens": 1024,
+            "repair_reserve_tokens": 256,
+            "future_reserve_tokens": 512,
+            "future_reserve_target_tokens": 512,
+            "future_reserve_minimum_tokens": 512,
+            "phase": "investigation",
+            "fits": true,
+            "sent": true,
+            "sources": [],
+            "reused_call_ids": []
+          },
+          {
+            "request_number": 2,
+            "budget_tokens": 12000,
+            "estimated_tokens_before": 5269,
+            "estimated_tokens": 5231,
+            "margin_tokens": 1024,
+            "repair_reserve_tokens": 256,
+            "future_reserve_tokens": 4960,
+            "future_reserve_target_tokens": 4960,
+            "future_reserve_minimum_tokens": 512,
+            "phase": "investigation",
+            "fits": true,
+            "sent": true,
+            "sources": [
+              {
+                "source_id": "S1",
+                "kind": "issue",
+                "action": "kept",
+                "reason": "Protected evidence is retained without further excerpt reduction.",
+                "excerpt_tokens": 142,
+                "priority": null
+              }
+            ],
+            "reused_call_ids": []
+          },
+          {
+            "request_number": 3,
+            "budget_tokens": 12000,
+            "estimated_tokens_before": 5923,
+            "estimated_tokens": 5907,
+            "margin_tokens": 1024,
+            "repair_reserve_tokens": 256,
+            "future_reserve_tokens": 3936,
+            "future_reserve_target_tokens": 3936,
+            "future_reserve_minimum_tokens": 512,
+            "phase": "investigation",
+            "fits": true,
+            "sent": true,
+            "sources": [
+              {
+                "source_id": "S2",
+                "kind": "repo_labels",
+                "action": "kept",
+                "reason": "Protected evidence is retained without further excerpt reduction.",
+                "excerpt_tokens": 248,
+                "priority": null
+              }
+            ],
+            "reused_call_ids": []
+          },
+          {
+            "request_number": 4,
+            "budget_tokens": 12000,
+            "estimated_tokens_before": 6312,
+            "estimated_tokens": 6231,
+            "margin_tokens": 1024,
+            "repair_reserve_tokens": 256,
+            "future_reserve_tokens": 3936,
+            "future_reserve_target_tokens": 3936,
+            "future_reserve_minimum_tokens": 512,
+            "phase": "investigation",
+            "fits": true,
+            "sent": true,
+            "sources": [
+              {
+                "source_id": "S3",
+                "kind": "search",
+                "action": "redundant",
+                "reason": "Exact search metadata is retained in the search object.",
+                "excerpt_tokens": 52,
+                "priority": null
+              }
+            ],
+            "reused_call_ids": []
+          },
+          {
+            "request_number": 5,
+            "budget_tokens": 12000,
+            "estimated_tokens_before": 8022,
+            "estimated_tokens": 7935,
+            "margin_tokens": 1024,
+            "repair_reserve_tokens": 256,
+            "future_reserve_tokens": 2912,
+            "future_reserve_target_tokens": 2912,
+            "future_reserve_minimum_tokens": 2400,
+            "phase": "investigation",
+            "fits": true,
+            "sent": true,
+            "sources": [
+              {
+                "source_id": "S4",
+                "kind": "search",
+                "action": "redundant",
+                "reason": "Exact search metadata is retained in the search object.",
+                "excerpt_tokens": 49,
+                "priority": null
+              }
+            ],
+            "reused_call_ids": []
+          },
+          {
+            "request_number": 6,
+            "budget_tokens": 12000,
+            "estimated_tokens_before": 8880,
+            "estimated_tokens": 8857,
+            "margin_tokens": 1024,
+            "repair_reserve_tokens": 256,
+            "future_reserve_tokens": 0,
+            "future_reserve_target_tokens": 0,
+            "future_reserve_minimum_tokens": 0,
+            "phase": "investigation",
+            "fits": true,
+            "sent": true,
+            "sources": [
+              {
+                "source_id": "S5",
+                "kind": "related_issue",
+                "action": "kept",
+                "reason": "Protected evidence is retained without further excerpt reduction.",
+                "excerpt_tokens": 461,
+                "priority": null
+              }
+            ],
+            "reused_call_ids": []
+          }
+        ],
+        "rejected_answers": [],
+        "limitations": [],
+        "usage": {
+          "model_requests": 6,
+          "tool_calls": 5,
+          "total_tokens": 25810,
+          "elapsed_seconds": 20.14
+        }
+      },
+      "events": [
+        {
+          "id": 1,
+          "kind": "status",
+          "message": "Model: gpt-5.6; reasoning effort: medium; output limit: 2400 tokens including reasoning and visible text.",
+          "created_at": "2026-11-10T05:30:52.797730Z"
+        },
+        {
+          "id": 2,
+          "kind": "status",
+          "message": "Context request 1: estimated 4740/12000 input tokens including 1024 margin; 256 tokens reserved for repair feedback; 512/512 tokens reserved for future evidence and loop growth (minimum 512); 0 excerpts omitted; 0 repeated results reused.",
+          "created_at": "2026-11-10T05:30:52.805956Z"
+        },
+        {
+          "id": 3,
+          "kind": "model",
+          "message": "Investigation step 1: choosing the next action.",
+          "created_at": "2026-11-10T05:30:52.805961Z"
+        },
+        {
+          "id": 4,
+          "kind": "tool",
+          "message": "Calling get_issue with {}.",
+          "created_at": "2026-11-10T05:30:53.910217Z"
+        },
+        {
+          "id": 5,
+          "kind": "tool",
+          "message": "Finished get_issue; 1 sources collected.",
+          "created_at": "2026-11-10T05:30:54.163767Z"
+        },
+        {
+          "id": 6,
+          "kind": "status",
+          "message": "Comment check: not_read; reported: 0; retrieved: 0; pages read: []; failed pages: []; complete: False.",
+          "created_at": "2026-11-10T05:30:54.163795Z"
+        },
+        {
+          "id": 7,
+          "kind": "status",
+          "message": "Context request 2: estimated 5231/12000 input tokens including 1024 margin; 256 tokens reserved for repair feedback; 4960/4960 tokens reserved for future evidence and loop growth (minimum 512); 0 excerpts omitted; 0 repeated results reused.",
+          "created_at": "2026-11-10T05:30:54.167503Z"
+        },
+        {
+          "id": 8,
+          "kind": "model",
+          "message": "Investigation step 2: choosing the next action.",
+          "created_at": "2026-11-10T05:30:54.167511Z"
+        },
+        {
+          "id": 9,
+          "kind": "status",
+          "message": "Required lookup before finalization: get_repo_labels.",
+          "created_at": "2026-11-10T05:30:55.397091Z"
+        },
+        {
+          "id": 10,
+          "kind": "tool",
+          "message": "Calling get_repo_labels with {}.",
+          "created_at": "2026-11-10T05:30:55.397160Z"
+        },
+        {
+          "id": 11,
+          "kind": "tool",
+          "message": "Finished get_repo_labels; 2 sources collected.",
+          "created_at": "2026-11-10T05:30:55.537324Z"
+        },
+        {
+          "id": 12,
+          "kind": "status",
+          "message": "Context request 3: estimated 5907/12000 input tokens including 1024 margin; 256 tokens reserved for repair feedback; 3936/3936 tokens reserved for future evidence and loop growth (minimum 512); 0 excerpts omitted; 0 repeated results reused.",
+          "created_at": "2026-11-10T05:30:55.542835Z"
+        },
+        {
+          "id": 13,
+          "kind": "model",
+          "message": "Investigation step 3: choosing the next action.",
+          "created_at": "2026-11-10T05:30:55.542851Z"
+        },
+        {
+          "id": 14,
+          "kind": "status",
+          "message": "Required lookup before finalization: search_issues.",
+          "created_at": "2026-11-10T05:30:57.231113Z"
+        },
+        {
+          "id": 15,
+          "kind": "tool",
+          "message": "Calling search_issues with {\"query\":\"stale-while-revalidate stale-if-error\"}.",
+          "created_at": "2026-11-10T05:30:57.231175Z"
+        },
+        {
+          "id": 16,
+          "kind": "tool",
+          "message": "Finished search_issues; 3 sources collected.",
+          "created_at": "2026-11-10T05:30:57.452962Z"
+        },
+        {
+          "id": 17,
+          "kind": "status",
+          "message": "Similar-issue check: search=partial; candidate=not_checked; read=[]; failed=[].",
+          "created_at": "2026-11-10T05:30:57.453024Z"
+        },
+        {
+          "id": 18,
+          "kind": "status",
+          "message": "Context request 4: estimated 6231/12000 input tokens including 1024 margin; 256 tokens reserved for repair feedback; 3936/3936 tokens reserved for future evidence and loop growth (minimum 512); 0 excerpts omitted; 0 repeated results reused.",
+          "created_at": "2026-11-10T05:30:57.458962Z"
+        },
+        {
+          "id": 19,
+          "kind": "model",
+          "message": "Investigation step 4: choosing the next action.",
+          "created_at": "2026-11-10T05:30:57.458973Z"
+        },
+        {
+          "id": 20,
+          "kind": "status",
+          "message": "Required lookup before finalization: search_issues.",
+          "created_at": "2026-11-10T05:30:58.788926Z"
+        },
+        {
+          "id": 21,
+          "kind": "tool",
+          "message": "Calling search_issues with {\"query\":\"Cache-Control ResponseCacheControl\"}.",
+          "created_at": "2026-11-10T05:30:58.788973Z"
+        },
+        {
+          "id": 22,
+          "kind": "tool",
+          "message": "Finished search_issues; 4 sources collected.",
+          "created_at": "2026-11-10T05:30:59.079636Z"
+        },
+        {
+          "id": 23,
+          "kind": "status",
+          "message": "Similar-issue check: search=candidates_found; candidate=not_checked; read=[]; failed=[].",
+          "created_at": "2026-11-10T05:30:59.079695Z"
+        },
+        {
+          "id": 24,
+          "kind": "status",
+          "message": "Context request 5: estimated 7935/12000 input tokens including 1024 margin; 256 tokens reserved for repair feedback; 2912/2912 tokens reserved for future evidence and loop growth (minimum 2400); 0 excerpts omitted; 0 repeated results reused.",
+          "created_at": "2026-11-10T05:30:59.086937Z"
+        },
+        {
+          "id": 25,
+          "kind": "model",
+          "message": "Investigation step 5: choosing the next action.",
+          "created_at": "2026-11-10T05:30:59.086948Z"
+        },
+        {
+          "id": 26,
+          "kind": "status",
+          "message": "Required lookup before finalization: get_related_issue.",
+          "created_at": "2026-11-10T05:31:00.108731Z"
+        },
+        {
+          "id": 27,
+          "kind": "tool",
+          "message": "Calling get_related_issue with {\"issue_number\":2364}.",
+          "created_at": "2026-11-10T05:31:00.108778Z"
+        },
+        {
+          "id": 28,
+          "kind": "tool",
+          "message": "Finished get_related_issue; 5 sources collected.",
+          "created_at": "2026-11-10T05:31:00.334968Z"
+        },
+        {
+          "id": 29,
+          "kind": "status",
+          "message": "Similar-issue check: search=candidates_found; candidate=read; read=[2364]; failed=[].",
+          "created_at": "2026-11-10T05:31:00.335028Z"
+        },
+        {
+          "id": 30,
+          "kind": "status",
+          "message": "Context request 6: estimated 8857/12000 input tokens including 1024 margin; 256 tokens reserved for repair feedback; 0/0 tokens reserved for future evidence and loop growth (minimum 0); 0 excerpts omitted; 0 repeated results reused.",
+          "created_at": "2026-11-10T05:31:00.342618Z"
+        },
+        {
+          "id": 31,
+          "kind": "model",
+          "message": "Investigation step 6: choosing the next action.",
+          "created_at": "2026-11-10T05:31:00.342626Z"
+        },
+        {
+          "id": 32,
+          "kind": "status",
+          "message": "Finalizing with existing evidence; reserving up to 2 requests for validation repair.",
+          "created_at": "2026-11-10T05:31:00.342632Z"
+        }
+      ]
+    }
+  ],
+  "cases_not_run": [],
+  "human_review_status": "pending",
+  "stop_reason": null,
+  "limitations": [
+    "Three deliberately selected historical issues are a development acceptance exercise, not a representative quality benchmark.",
+    "GitHub content can change between selection and investigation; results retain the bounded source excerpts actually retrieved.",
+    "Only URLs enter AgentRun; selection notes and review criteria remain outside model input.",
+    "Functional checks and accepted final JSON do not establish semantic correctness or completed human review.",
+    "Reported token usage may omit failed or incomplete API requests. Tool calls are not HTTP request counts."
+  ],
+  "elapsed_seconds": 64.13
+}

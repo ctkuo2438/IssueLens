@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "verification_date_local": "2026-11-10",
+  "timezone": "America/Los_Angeles",
+  "milestone": "M3 step 1: PostgreSQL analysis records",
+  "scope": "Persist job snapshots and retrieve saved results after backend restart; no Agent checkpoint recovery.",
+  "providers": {
+    "database": "real PostgreSQL 14.15",
+    "driver": "psycopg 3.3.8",
+    "model_api": "not called",
+    "github_api": "not called",
+    "analysis_data": "fictional fixtures"
+  },
+  "checks": {
+    "full_suite": {
+      "passed": 280,
+      "skipped": 0,
+      "existing_checks": 262,
+      "new_offline_checks": 12,
+      "new_real_postgresql_checks": 6,
+      "elapsed_seconds": 3.407
+    },
+    "pyright": {
+      "errors": 0,
+      "warnings": 0
+    },
+    "frontend": {
+      "changed": false,
+      "checks_rerun": false
+    },
+    "process_restart": {
+      "database": "real PostgreSQL",
+      "postgresql_server_version": 140015,
+      "model_api": "not called",
+      "github_api": "not called",
+      "analysis_data": "fictional fixture",
+      "backend_process_ids": [
+        12891,
+        12893,
+        12907
+      ],
+      "graceful_restart_result_preserved": true,
+      "abrupt_restart_completed_result_preserved": true,
+      "sources_and_events_preserved": true,
+      "sse_replay_after_restart": true,
+      "interrupted_job_status": "cancelled",
+      "interrupted_job_not_resumed": true,
+      "snapshot_sha256": "e311dda17b544e571396d17ef70f2dacf50448d319f79a8818d288d6b5f7c92d",
+      "fixture_job_ids": [
+        "eab0d7dedb8b4a39a61f57095bb6eff5",
+        "9148281a22df4626b89adbd60b7b894f"
+      ],
+      "test_rows_removed": true
+    },
+    "application_database": {
+      "initialized": true,
+      "storage": "postgresql",
+      "existing_analyses": 0
+    }
+  },
+  "behavior": {
+    "queued_saved_before_scheduling": true,
+    "running_saved_before_agent_call": true,
+    "terminal_saved_before_publication": true,
+    "read_and_sse_after_restart": true,
+    "cache_eviction_does_not_delete_records": true,
+    "configured_database_failure_does_not_fall_back": true,
+    "read_failure_http_status": 503,
+    "missing_record_http_status": 404,
+    "interrupted_records": "cancelled with explicit non-resumption warning",
+    "single_backend_session_lock": true
+  },
+  "settings": {
+    "model": "gpt-5.6",
+    "reasoning_effort": "medium",
+    "max_iterations": 8,
+    "max_tool_calls": 15,
+    "runtime_seconds": 90,
+    "context_tokens": 12000,
+    "max_output_tokens": 2400,
+    "max_candidates": 20,
+    "max_candidate_reads": 5,
+    "database_url_added": true,
+    "previous_environment_content_preserved": true,
+    "credentials_recorded": false
+  },
+  "preservation": {
+    "m2_core_and_fixed_cases_unchanged": true,
+    "protected_file_sha256": {
+      "backend/app/agent.py": "76976ecde5e7fb28cb5b2ca37847e4115ef0aea43d28754177a5a6b55fe99515",
+      "backend/app/context.py": "2c3435d3c2e74ba8f63e257518f4953d639115408cb602e633eb206806ce8216",
+      "backend/app/github.py": "77a1104744ba072d988052c4c0cbb27d60ecce9b4185eedf7015fdfe030f0ee4",
+      "backend/app/quality.py": "647e983af7cf7d4837a27d4196143f73f1ad6572ca89a962cc6563ea0afd1e49",
+      "backend/app/templates.py": "93ed623e8c5b020171e94a1923e764364356d86dee9c201568c558d6bf24fd74",
+      "evaluation/cases.json": "e488909338cf330d27a6f2a27bc7f323fccf8af40f2c7283c1839e29fd97585b"
+    },
+    "previous_raw_evidence_files": 111,
+    "previous_evidence_manifest_unchanged": true,
+    "evaluation_manifests_unchanged": true,
+    "prior_artifact_hashes_checked": 118,
+    "prior_artifacts_unchanged": true,
+    "evidence_index_updated": true
+  },
+  "current_file_sha256": {
+    "backend/app/config.py": "99aee5dabe747b357eaa0ff9e6a7911c840ed964ffd288e07a0b76bf711c0b55",
+    "backend/app/storage.py": "7e3167706b24219c0277195fa74a82888ecddef5d0a157862991b466525f1548",
+    "backend/app/jobs.py": "5ca607a5f0a2d8050de4c11c9854fcba0e5a259fb0580ce49a4fd7caf8d57296",
+    "backend/app/main.py": "021dd42454ffe98382d94d1d0935be1cca49244c7ce9a20dddec8482f0ca4510",
+    "tests/test_persistence.py": "39be144bcd1912580c7c2f54ab6d14bd0b4dce003aee6855c318d4bddf70caa2",
+    "pyproject.toml": "33d50969e35e39dc1db433180145464460984568d2595a5170cf03529aef57c3",
+    "uv.lock": "b078a7f91c5385846f95859b2b7bafdbf10d2f7d168e39d49ffb914295c8162d",
+    ".env.example": "e462ecb7d0727e2971cc64da9380102f2be324ee9fc2a36af93e858edd1f790e"
+  },
+  "limitations": [
+    "Only snapshots committed to PostgreSQL survive a process crash. In-flight tool evidence remains in memory until terminal save.",
+    "An interrupted Agent is marked cancelled rather than resumed. Redis, independent workers, per-tool checkpoints and automatic retries are later work.",
+    "Frontend draft edits are not persisted. Old lost in-memory jobs cannot be recovered retroactively.",
+    "One local backend owns the database session; no connection pool, automatic reconnection, authentication, backup, retention policy or schema migration system was added.",
+    "This PostgreSQL cluster is local development infrastructure, not a production deployment."
+  ],
+  "recommended_next_step": "Separate analysis execution from the API with an independent background worker; then add durable checkpoints and bounded retries."
+}

@@ -1,0 +1,149 @@
+{
+  "milestone": "M2 step 5 - Repository issue templates",
+  "date": "2026-11-09",
+  "architecture": "single agent",
+  "read_only_github_tools": 7,
+  "offline_checks": {
+    "passed": 91,
+    "template_specific_tests": 16,
+    "command": "uv run --locked python -W error::RuntimeWarning -m unittest discover -s tests -v",
+    "github_and_model_responses": "simulated"
+  },
+  "type_checks": {
+    "python_pyright": "passed - zero errors and warnings",
+    "frontend_typescript": "passed",
+    "next_production_build": "passed"
+  },
+  "new_dependency": "PyYAML, managed by uv and uv.lock",
+  "preserved_dataset_sha256": "e488909338cf330d27a6f2a27bc7f323fccf8af40f2c7283c1839e29fd97585b",
+  "retained_prior_report_sha256": {
+    "evidence/evaluations/20261109T051034_358768Z/report.json": "8718716c54fd3f013a0d93a9975d2df95ac176f0d5394d714771cc1d7df119ac",
+    "evidence/evaluations/20261109T053353_585136Z/report.json": "5407d886796a093cf3bef57c9a684b739bf653f2334558ec77bf53ede3f82843",
+    "evidence/evaluations/20261109T055654_100989Z/report.json": "41ac9f801945a45b4bdb3c91cffa72a8d57ffcceaffc903b669bde8504b59cdb",
+    "evidence/evaluations/20261109T071019_500148Z/report.json": "e797bf3f0bf3dbf3679bd9198f98641a216e83eaae046d41b7f0f8f63eb10b79"
+  },
+  "live_five_case_regression": {
+    "report": "evidence/evaluations/20261109T083809_862702Z/report.json",
+    "model_api": "real",
+    "github_data": "fixed fictional snapshots",
+    "model": "gpt-5.4-mini",
+    "summary": {
+      "cases_attempted": 5,
+      "cases_meeting_automated_expectations": 5,
+      "check_counts": {
+        "passed": 49,
+        "failed": 0,
+        "not_scored": 0
+      },
+      "human_review_status": "pending",
+      "interpretation": "A development checklist on five fictional cases, not a production accuracy estimate.",
+      "cases_with_accepted_answers": 5
+    },
+    "usage": {
+      "model_requests": 28,
+      "tool_calls": 23,
+      "reported_total_tokens": 78189
+    },
+    "elapsed_seconds": 41.83,
+    "templates_in_fixed_cases": "None; scoped directory lookups return 404. This regression does not measure real template quality."
+  },
+  "live_browser_smoke_test": {
+    "github_api": "real",
+    "model_api": "real",
+    "model": "gpt-5.4-mini",
+    "issue_url": "https://github.com/pallets/flask/issues/6146",
+    "status": "completed",
+    "template_lookup_source_id": "S3",
+    "templates": [
+      {
+        "path": ".github/ISSUE_TEMPLATE/bug-report.md",
+        "name": "Bug report",
+        "description": "Report a bug in Flask (not other projects which depend on Flask)",
+        "format": "markdown",
+        "source_id": "S4",
+        "fields": [],
+        "requirements_known": false,
+        "notes": []
+      },
+      {
+        "path": ".github/ISSUE_TEMPLATE/feature-request.md",
+        "name": "Feature request",
+        "description": "Suggest a new feature for Flask",
+        "format": "markdown",
+        "source_id": "S5",
+        "fields": [],
+        "requirements_known": false,
+        "notes": []
+      }
+    ],
+    "complete_within_supported_scope": true,
+    "source_count": 11,
+    "usage": {
+      "model_requests": 7,
+      "tool_calls": 6,
+      "total_tokens": 24226,
+      "elapsed_seconds": 12.94
+    },
+    "template_grounded_facts": [
+      {
+        "text": "The feature-request template is the relevant issue template for this request; it asks for a description of the feature and an example of the problem it would solve, but the template text does not establish a firm missing-data requirement from the reporter\u2019s submission.",
+        "source_ids": [
+          "S3",
+          "S5"
+        ]
+      }
+    ],
+    "interpretation": "Two Markdown templates were retrieved; the agent cited the applicable feature template and kept required flags unknown.",
+    "screenshot": "evidence/m2-live-templates.jpg"
+  },
+  "browser_checks": {
+    "same_job_restored_after_refresh": true,
+    "no_additional_analysis_post_after_refresh": true,
+    "missing_information_link_opens_templates": true,
+    "raw_template_excerpt_expands": true,
+    "template_source_links_visible": true,
+    "real_result_mobile": {
+      "viewport_override": {
+        "width": 390,
+        "height": 844
+      },
+      "client_width": 375,
+      "document_width": 375,
+      "columns": "337px",
+      "horizontal_overflow": false
+    },
+    "viewport_override_reset": true
+  },
+  "offline_browser_fixture": {
+    "github_data": "fictional",
+    "model_response": "none",
+    "component": "The real IssueTemplates React component rendered with the offline form fixture",
+    "required_fields_visible": [
+      "Application version",
+      "Reproduction steps"
+    ],
+    "optional_fields_visible": [
+      "Additional logs",
+      "Contact details"
+    ],
+    "required_checkbox_options_visible": true,
+    "mobile_client_width": 375,
+    "mobile_document_width": 375,
+    "mobile_columns": "327px",
+    "screenshot": "evidence/m2-template-yaml-offline.jpg"
+  },
+  "known_quality_issue": {
+    "status": "open",
+    "reference_report": "evidence/evaluations/20261109T071019_500148Z/report.json",
+    "description": "A detailed PNG report can still receive needs-info based on optional diagnostic questions. A single passing regression does not establish stability."
+  },
+  "limitations": [
+    "Only the current repository's .github/ISSUE_TEMPLATE directory is read; inherited, legacy and nested templates are not searched.",
+    "At most two files are attempted. File size, field count, excerpt and shared context limits can yield partial coverage.",
+    "YAML extraction is not full GitHub schema validation. Markdown headings do not establish required fields.",
+    "Matching a template and deciding whether information is absent remain model judgments requiring human review.",
+    "The fixed five-case regression and one live browser example do not establish production quality."
+  ],
+  "human_review_status": "pending",
+  "owned_test_servers_stopped": true
+}

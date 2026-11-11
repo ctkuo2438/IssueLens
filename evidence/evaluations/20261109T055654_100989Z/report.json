@@ -1,0 +1,1969 @@
+{
+  "started_at": "2026-11-09T05:56:54.100989+00:00",
+  "finished_at": "2026-11-09T05:57:34.848406+00:00",
+  "model_api": "real",
+  "github_data": "fixed_fictional_snapshots",
+  "model": "gpt-5.4-mini",
+  "dataset_id": "issuelens-small-evaluation",
+  "dataset_version": 1,
+  "annotation_status": "assistant_authored_reference_pending_human_review",
+  "dataset_sha256": "e488909338cf330d27a6f2a27bc7f323fccf8af40f2c7283c1839e29fd97585b",
+  "agent_code_sha256": "4e29ebb89ba612cb2cd33c1b6f1489e4dc2b4df6004ccc483a185fe0ff0155f1",
+  "evaluation_code_sha256": "d637436b2f311f7da0c5a02460d28976c5afe45fa7bdfe8232e1d5fcb59e188d",
+  "search_behavior": "Case-insensitive AND-substring matching on snapshot titles and bodies; not GitHub search or ranking.",
+  "limits_per_case": {
+    "model_requests": 8,
+    "tool_calls": 15,
+    "runtime_seconds": 90.0,
+    "context_tokens": 12000,
+    "candidates": 20,
+    "candidate_reads": 5
+  },
+  "cases_expected": 5,
+  "cases": [
+    {
+      "case_id": "possible_duplicate",
+      "description": "Two CSV export reports share a distinctive path condition and error.",
+      "target_url": "https://github.com/example/eval-export/issues/101",
+      "outcome": "completed",
+      "error_type": null,
+      "final_answer_accepted": true,
+      "expected": {
+        "comparisons": [
+          {
+            "issue_number": 91,
+            "relationship": "possible_duplicate"
+          }
+        ],
+        "required_labels": [
+          "bug"
+        ],
+        "allowed_labels": [
+          "bug"
+        ],
+        "missing_information_required": false,
+        "no_candidates_expected": false
+      },
+      "reference_notes": "Shared CSV format, Windows version, non-ASCII output path and exact error support a possible duplicate. Closure does not establish a fix or a confirmed shared root cause.",
+      "checks": [
+        {
+          "name": "final_answer_accepted",
+          "status": "passed",
+          "detail": "A missing final answer is not a correct abstention."
+        },
+        {
+          "name": "no_first_person_reproduction_claim",
+          "status": "passed",
+          "detail": "Known English first-person reproduction forms found in: []. This is a narrow pattern check, not semantic verification."
+        },
+        {
+          "name": "similar_search_completed",
+          "status": "passed",
+          "detail": "At least one successful keyword search is required."
+        },
+        {
+          "name": "label_catalog_loaded",
+          "status": "passed",
+          "detail": "A skipped catalog is not an empty recommendation decision."
+        },
+        {
+          "name": "candidate_91_found",
+          "status": "passed",
+          "detail": "The reference candidate must be discovered by a model-selected query."
+        },
+        {
+          "name": "candidate_91_read",
+          "status": "passed",
+          "detail": "A search hit alone cannot establish the comparison."
+        },
+        {
+          "name": "candidate_91_relationship",
+          "status": "passed",
+          "detail": "Expected possible_duplicate; observed possible_duplicate. Reason quality still needs review."
+        },
+        {
+          "name": "required_labels_present",
+          "status": "passed",
+          "detail": "Required additional labels: ['bug']; observed: ['bug']."
+        },
+        {
+          "name": "labels_within_reference",
+          "status": "passed",
+          "detail": "Allowed additional labels: ['bug']. This reference is pending human review."
+        },
+        {
+          "name": "retrieved_citation_ids",
+          "status": "passed",
+          "detail": "Retrieved source IDs do not prove that the cited text supports a claim."
+        }
+      ],
+      "human_review": {
+        "status": "pending",
+        "questions": [
+          "Does the comparison cite the shared path condition and exact error rather than only the word export?",
+          "Does the answer avoid saying that closure proves a fix or a confirmed duplicate?",
+          "Are the summary and draft supported by the retrieved excerpts?"
+        ],
+        "notes": ""
+      },
+      "result": {
+        "issue": {
+          "title": "CSV export fails on Windows when the output folder contains non-ASCII characters",
+          "url": "https://github.com/example/eval-export/issues/101",
+          "number": 101,
+          "state": "open",
+          "author": "fixture-reporter",
+          "labels": [],
+          "comment_count": 0
+        },
+        "content": {
+          "summary": {
+            "text": "The report describes a CSV export failure on Windows 11 in version 1.4.0 when the chosen output folder contains a non-ASCII character; exporting to an ASCII-only path works, and the observed error is UnicodeEncodeError: 'ascii' codec can't encode character.",
+            "source_ids": [
+              "S1"
+            ]
+          },
+          "known_facts": [
+            {
+              "text": "The issue is open and has no existing labels.",
+              "source_ids": [
+                "S1"
+              ]
+            },
+            {
+              "text": "The reporter says CSV export fails on Windows 11 in version 1.4.0 when saving to an output directory named with an accented character (for example, caf\u00e9).",
+              "source_ids": [
+                "S1"
+              ]
+            },
+            {
+              "text": "The reporter says the same export succeeds when saved to an ASCII-only directory such as C:/Temp.",
+              "source_ids": [
+                "S1"
+              ]
+            },
+            {
+              "text": "The observed error mentioned in the report is UnicodeEncodeError: 'ascii' codec can't encode character.",
+              "source_ids": [
+                "S1"
+              ]
+            },
+            {
+              "text": "A previously filed issue in the same repository, #91, reports the same Windows CSV export UnicodeEncodeError with an accented output directory and the same C:/Temp success condition.",
+              "source_ids": [
+                "S4"
+              ]
+            }
+          ],
+          "missing_information": [],
+          "draft_reply": "Thanks for the report. This looks consistent with the previously reported Windows CSV export UnicodeEncodeError when the output path contains non-ASCII characters. If you can confirm whether this still happens in the latest release and whether the path is being passed as a local filesystem path or a network/UNC path, that may help narrow the investigation. Otherwise, we\u2019ll treat this as a likely duplicate of the earlier Windows accented-path export issue.",
+          "limitations": [
+            "I only reviewed the issue text, repository label catalog, and one closely matching historical issue; I did not inspect source code or linked fixes.",
+            "The earlier matching issue was closed, but I could not verify whether it was resolved by a patch or whether the same root cause remains in the current version."
+          ],
+          "comparisons": [
+            {
+              "issue_number": 91,
+              "relationship": "possible_duplicate",
+              "reason": "Both reports describe the same concrete failure pattern: CSV export on Windows 11 in version 1.4.0 fails when the output directory contains a non-ASCII/accented character, producing a UnicodeEncodeError, while saving to C:/Temp succeeds. The evidence strongly suggests the same issue, but I cannot confirm the resolution or root cause from the retrieved text alone.",
+              "similarities": [
+                "Windows 11 / Windows platform",
+                "CSV export fails during save to a path with a non-ASCII or accented character",
+                "Same UnicodeEncodeError involving the ASCII codec",
+                "Export to C:/Temp succeeds in both reports"
+              ],
+              "differences": [
+                "Issue #101 is open while #91 is closed.",
+                "The target issue names a specific folder example (caf\u00e9) while #91 uses a more generic accented directory description."
+              ],
+              "source_ids": [
+                "S1",
+                "S4"
+              ]
+            }
+          ],
+          "label_recommendations": [
+            {
+              "name": "bug",
+              "reason": "The report describes a malfunction of existing behavior: CSV export fails on Windows when saving to a path with non-ASCII characters.",
+              "source_ids": [
+                "S1",
+                "S2"
+              ]
+            }
+          ]
+        },
+        "sources": [
+          {
+            "id": "S1",
+            "kind": "issue",
+            "title": "CSV export fails on Windows when the output folder contains non-ASCII characters",
+            "url": "https://github.com/example/eval-export/issues/101",
+            "excerpt": "Version 1.4.0 on Windows 11. Steps: open the sample table, choose Export CSV, and save to C:/Users/tester/Desktop/caf\u00e9. Expected: a CSV file. Actual: export stops with UnicodeEncodeError: 'ascii' codec can't encode character. Saving the same table to C:/Temp works. No cause or fix has been confirmed."
+          },
+          {
+            "id": "S2",
+            "kind": "repo_labels",
+            "title": "Repository label catalog",
+            "url": "https://github.com/example/eval-export/labels",
+            "excerpt": "{\"labels\": [{\"name\": \"bug\", \"description\": \"Reports a malfunction of existing behavior.\"}, {\"name\": \"docs\", \"description\": \"Requests a change to project documentation.\"}, {\"name\": \"enhancement\", \"description\": \"Requests new product behavior or a new capability.\"}, {\"name\": \"needs-info\", \"description\": \"Essential details needed to investigate the report are missing.\"}, {\"name\": \"question\", \"description\": \"Asks how existing product behavior works.\"}, {\"name\": \"security\", \"description\": \"Reports a concrete security vulnerability with supporting evidence.\"}], \"complete\": true}"
+          },
+          {
+            "id": "S3",
+            "kind": "search",
+            "title": "Issue search: Windows UnicodeEncodeError",
+            "url": "https://github.com/search?q=repo%3Aexample%2Feval-export+is%3Aissue+in%3Atitle%2Cbody+%22Windows%22+%22UnicodeEncodeError%22&type=issues",
+            "excerpt": "{\"query\": \"repo:example/eval-export is:issue in:title,body \\\"Windows\\\" \\\"UnicodeEncodeError\\\"\", \"total_count\": 2, \"incomplete_results\": false, \"candidate_numbers\": [91]}"
+          },
+          {
+            "id": "S4",
+            "kind": "related_issue",
+            "title": "CSV export UnicodeEncodeError on Windows with an accented output directory",
+            "url": "https://github.com/example/eval-export/issues/91",
+            "excerpt": "Title: CSV export UnicodeEncodeError on Windows with an accented output directory\nState: closed\n\nVersion 1.4.0 on Windows 11. CSV export fails when a non-ASCII character is present in the output folder path. The error is UnicodeEncodeError: 'ascii' codec can't encode character. Export to C:/Temp succeeds. This issue was closed without a linked patch or a documented resolution."
+          }
+        ],
+        "candidates": [
+          {
+            "number": 91,
+            "title": "CSV export UnicodeEncodeError on Windows with an accented output directory",
+            "url": "https://github.com/example/eval-export/issues/91",
+            "state": "closed",
+            "source_id": "S4"
+          }
+        ],
+        "searches": [
+          {
+            "query": "repo:example/eval-export is:issue in:title,body \"Windows\" \"UnicodeEncodeError\"",
+            "total_count": 2,
+            "incomplete_results": false,
+            "candidate_numbers": [
+              91
+            ],
+            "source_id": "S3"
+          }
+        ],
+        "repo_labels": [
+          {
+            "name": "bug",
+            "description": "Reports a malfunction of existing behavior.",
+            "color": "d73a4a"
+          },
+          {
+            "name": "docs",
+            "description": "Requests a change to project documentation.",
+            "color": "0075ca"
+          },
+          {
+            "name": "enhancement",
+            "description": "Requests new product behavior or a new capability.",
+            "color": "a2eeef"
+          },
+          {
+            "name": "needs-info",
+            "description": "Essential details needed to investigate the report are missing.",
+            "color": "d876e3"
+          },
+          {
+            "name": "question",
+            "description": "Asks how existing product behavior works.",
+            "color": "d876e3"
+          },
+          {
+            "name": "security",
+            "description": "Reports a concrete security vulnerability with supporting evidence.",
+            "color": "ee0701"
+          }
+        ],
+        "labels_source_id": "S2",
+        "labels_complete": true,
+        "limitations": [],
+        "usage": {
+          "model_requests": 5,
+          "tool_calls": 4,
+          "total_tokens": 12725,
+          "elapsed_seconds": 8.68
+        }
+      },
+      "events": [
+        {
+          "id": 1,
+          "kind": "model",
+          "message": "Investigation step 1: choosing the next action.",
+          "created_at": "2026-11-09T05:56:54.256847Z"
+        },
+        {
+          "id": 2,
+          "kind": "tool",
+          "message": "Calling get_issue with {}.",
+          "created_at": "2026-11-09T05:56:55.762053Z"
+        },
+        {
+          "id": 3,
+          "kind": "tool",
+          "message": "Finished get_issue; 1 sources collected.",
+          "created_at": "2026-11-09T05:56:55.762661Z"
+        },
+        {
+          "id": 4,
+          "kind": "model",
+          "message": "Investigation step 2: choosing the next action.",
+          "created_at": "2026-11-09T05:56:55.763404Z"
+        },
+        {
+          "id": 5,
+          "kind": "tool",
+          "message": "Calling get_repo_labels with {}.",
+          "created_at": "2026-11-09T05:56:56.449816Z"
+        },
+        {
+          "id": 6,
+          "kind": "tool",
+          "message": "Finished get_repo_labels; 2 sources collected.",
+          "created_at": "2026-11-09T05:56:56.450822Z"
+        },
+        {
+          "id": 7,
+          "kind": "model",
+          "message": "Investigation step 3: choosing the next action.",
+          "created_at": "2026-11-09T05:56:56.452138Z"
+        },
+        {
+          "id": 8,
+          "kind": "tool",
+          "message": "Calling search_issues with {\"query\":\"Windows UnicodeEncodeError\"}.",
+          "created_at": "2026-11-09T05:56:57.826419Z"
+        },
+        {
+          "id": 9,
+          "kind": "tool",
+          "message": "Finished search_issues; 3 sources collected.",
+          "created_at": "2026-11-09T05:56:57.828114Z"
+        },
+        {
+          "id": 10,
+          "kind": "model",
+          "message": "Investigation step 4: choosing the next action.",
+          "created_at": "2026-11-09T05:56:57.832295Z"
+        },
+        {
+          "id": 11,
+          "kind": "tool",
+          "message": "Calling get_related_issue with {\"issue_number\":91}.",
+          "created_at": "2026-11-09T05:56:58.732100Z"
+        },
+        {
+          "id": 12,
+          "kind": "tool",
+          "message": "Finished get_related_issue; 4 sources collected.",
+          "created_at": "2026-11-09T05:56:58.733348Z"
+        },
+        {
+          "id": 13,
+          "kind": "model",
+          "message": "Investigation step 5: choosing the next action.",
+          "created_at": "2026-11-09T05:56:58.735777Z"
+        }
+      ],
+      "snapshot_requests": [
+        {
+          "method": "GET",
+          "path": "/repos/example/eval-export/issues/101",
+          "query": {}
+        },
+        {
+          "method": "GET",
+          "path": "/repos/example/eval-export/labels",
+          "query": {
+            "per_page": "100"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/search/issues",
+          "query": {
+            "q": "repo:example/eval-export is:issue in:title,body \"Windows\" \"UnicodeEncodeError\"",
+            "per_page": "20"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/repos/example/eval-export/issues/91",
+          "query": {}
+        }
+      ]
+    },
+    {
+      "case_id": "related_but_different",
+      "description": "A hosting documentation request and a hosting runtime defect share provider keywords.",
+      "target_url": "https://github.com/example/eval-hosting/issues/102",
+      "outcome": "completed",
+      "error_type": null,
+      "final_answer_accepted": true,
+      "expected": {
+        "comparisons": [
+          {
+            "issue_number": 82,
+            "relationship": "related_but_different"
+          }
+        ],
+        "required_labels": [
+          "docs"
+        ],
+        "allowed_labels": [
+          "docs"
+        ],
+        "missing_information_required": false,
+        "no_candidates_expected": false
+      },
+      "reference_notes": "The provider and deployment context overlap, but the target requests a docs entry and the candidate reports session loss. The target does not support bug or security labels.",
+      "checks": [
+        {
+          "name": "final_answer_accepted",
+          "status": "passed",
+          "detail": "A missing final answer is not a correct abstention."
+        },
+        {
+          "name": "no_first_person_reproduction_claim",
+          "status": "passed",
+          "detail": "Known English first-person reproduction forms found in: []. This is a narrow pattern check, not semantic verification."
+        },
+        {
+          "name": "similar_search_completed",
+          "status": "passed",
+          "detail": "At least one successful keyword search is required."
+        },
+        {
+          "name": "label_catalog_loaded",
+          "status": "passed",
+          "detail": "A skipped catalog is not an empty recommendation decision."
+        },
+        {
+          "name": "candidate_82_found",
+          "status": "passed",
+          "detail": "The reference candidate must be discovered by a model-selected query."
+        },
+        {
+          "name": "candidate_82_read",
+          "status": "passed",
+          "detail": "A search hit alone cannot establish the comparison."
+        },
+        {
+          "name": "candidate_82_relationship",
+          "status": "passed",
+          "detail": "Expected related_but_different; observed related_but_different. Reason quality still needs review."
+        },
+        {
+          "name": "required_labels_present",
+          "status": "passed",
+          "detail": "Required additional labels: ['docs']; observed: ['docs']."
+        },
+        {
+          "name": "labels_within_reference",
+          "status": "passed",
+          "detail": "Allowed additional labels: ['docs']. This reference is pending human review."
+        },
+        {
+          "name": "retrieved_citation_ids",
+          "status": "passed",
+          "detail": "Retrieved source IDs do not prove that the cited text supports a claim."
+        }
+      ],
+      "human_review": {
+        "status": "pending",
+        "questions": [
+          "Does the answer distinguish a documentation inclusion decision from a runtime session defect?",
+          "Does the reply avoid claiming that maintainers have already approved the provider?",
+          "Does the docs recommendation follow the catalog description?"
+        ],
+        "notes": ""
+      },
+      "result": {
+        "issue": {
+          "title": "Add FreeHost deployment guide to the hosting documentation",
+          "url": "https://github.com/example/eval-hosting/issues/102",
+          "number": 102,
+          "state": "open",
+          "author": "fixture-reporter",
+          "labels": [],
+          "comment_count": 1
+        },
+        "content": {
+          "summary": {
+            "text": "The issue is a documentation listing request asking maintainers to add a FreeHost link to the Hosting Platforms documentation; it explicitly says it is not reporting an application error or broken deployment. A maintainer comment says the provider has not been decided for inclusion yet and asks that any proposed entry stay factual and neutral.",
+            "source_ids": [
+              "S1",
+              "S6"
+            ]
+          },
+          "known_facts": [
+            {
+              "text": "The issue titled 'Add FreeHost deployment guide to the hosting documentation' is open, has no labels, and asks for a link to the FreeHost deployment guide in the Hosting Platforms documentation.",
+              "source_ids": [
+                "S1"
+              ]
+            },
+            {
+              "text": "The reporter explicitly states this is a documentation listing request and not an application error, session bug, or broken deployment.",
+              "source_ids": [
+                "S1"
+              ]
+            },
+            {
+              "text": "A maintainer comment says the team has not decided whether to include the provider and asks that any proposed documentation entry remain factual and neutral.",
+              "source_ids": [
+                "S6"
+              ]
+            },
+            {
+              "text": "The repository label catalog includes 'docs' for documentation changes, 'enhancement' for new capabilities, 'needs-info' for missing essential details, 'question', 'bug', and 'security'.",
+              "source_ids": [
+                "S2"
+              ]
+            },
+            {
+              "text": "Searches for 'FreeHost deployment' and 'hosting documentation' returned issue #82, which is about session loss on FreeHost after worker restarts, not a documentation listing request.",
+              "source_ids": [
+                "S3",
+                "S5"
+              ]
+            }
+          ],
+          "missing_information": [],
+          "draft_reply": "Thanks for the suggestion. We\u2019ve noted the request to add FreeHost to the Hosting Platforms documentation. At the moment, the team hasn\u2019t decided whether to include this provider, so we\u2019ll treat this as a documentation/content suggestion rather than a bug report. If you have a neutral, factual description or a specific placement/link for the guide, that would help us review it for inclusion.",
+          "limitations": [
+            "I checked the issue, one comment, the repository label catalog, and a couple of keyword-based issue searches. No source code or README context was needed for this documentation-only request.",
+            "The search found a superficially related FreeHost issue (#82), but it describes session loss behavior and does not appear to be the same request.",
+            "The label catalog is complete for the included labels, but only one label recommendation is justified from the retrieved evidence."
+          ],
+          "comparisons": [
+            {
+              "issue_number": 82,
+              "relationship": "related_but_different",
+              "reason": "Both issues mention FreeHost, but the target asks to add FreeHost to hosting documentation, while issue #82 reports a runtime/session-loss problem on a FreeHost deployment. The purpose and failure mode are different.",
+              "similarities": [
+                "Both concern the FreeHost provider.",
+                "Both are about the repository's hosting/deployment ecosystem."
+              ],
+              "differences": [
+                "The target is a documentation listing request.",
+                "Issue #82 is a technical bug report about session loss after worker restarts.",
+                "The target explicitly says it is not an application error or broken deployment; issue #82 asserts a deployment behavior problem."
+              ],
+              "source_ids": [
+                "S1",
+                "S5"
+              ]
+            }
+          ],
+          "label_recommendations": [
+            {
+              "name": "docs",
+              "reason": "The issue requests a change to project documentation by asking for FreeHost to be added to the Hosting Platforms docs.",
+              "source_ids": [
+                "S1",
+                "S2"
+              ]
+            }
+          ]
+        },
+        "sources": [
+          {
+            "id": "S1",
+            "kind": "issue",
+            "title": "Add FreeHost deployment guide to the hosting documentation",
+            "url": "https://github.com/example/eval-hosting/issues/102",
+            "excerpt": "Please add a link to the FreeHost deployment guide in the Hosting Platforms documentation. This is a documentation listing request. I am not reporting an application error, session bug, or broken deployment. I would like maintainers to decide whether the provider belongs in that list."
+          },
+          {
+            "id": "S2",
+            "kind": "repo_labels",
+            "title": "Repository label catalog",
+            "url": "https://github.com/example/eval-hosting/labels",
+            "excerpt": "{\"labels\": [{\"name\": \"bug\", \"description\": \"Reports a malfunction of existing behavior.\"}, {\"name\": \"docs\", \"description\": \"Requests a change to project documentation.\"}, {\"name\": \"enhancement\", \"description\": \"Requests new product behavior or a new capability.\"}, {\"name\": \"needs-info\", \"description\": \"Essential details needed to investigate the report are missing.\"}, {\"name\": \"question\", \"description\": \"Asks how existing product behavior works.\"}, {\"name\": \"security\", \"description\": \"Reports a concrete security vulnerability with supporting evidence.\"}], \"complete\": true}"
+          },
+          {
+            "id": "S3",
+            "kind": "search",
+            "title": "Issue search: FreeHost deployment",
+            "url": "https://github.com/search?q=repo%3Aexample%2Feval-hosting+is%3Aissue+in%3Atitle%2Cbody+%22FreeHost%22+%22deployment%22&type=issues",
+            "excerpt": "{\"query\": \"repo:example/eval-hosting is:issue in:title,body \\\"FreeHost\\\" \\\"deployment\\\"\", \"total_count\": 2, \"incomplete_results\": false, \"candidate_numbers\": [82]}"
+          },
+          {
+            "id": "S4",
+            "kind": "search",
+            "title": "Issue search: hosting documentation",
+            "url": "https://github.com/search?q=repo%3Aexample%2Feval-hosting+is%3Aissue+in%3Atitle%2Cbody+%22hosting%22+%22documentation%22&type=issues",
+            "excerpt": "{\"query\": \"repo:example/eval-hosting is:issue in:title,body \\\"hosting\\\" \\\"documentation\\\"\", \"total_count\": 2, \"incomplete_results\": false, \"candidate_numbers\": [82]}"
+          },
+          {
+            "id": "S5",
+            "kind": "related_issue",
+            "title": "FreeHost deployment loses sessions after worker restarts",
+            "url": "https://github.com/example/eval-hosting/issues/82",
+            "excerpt": "Title: FreeHost deployment loses sessions after worker restarts\nState: open\n\nVersion 2.0 on Linux. A deployed application on FreeHost loses its session after a worker restarts because each worker is configured with a different signing key. Steps and logs demonstrate the session loss. This report asks about session configuration, not adding a provider to the hosting documentation."
+          },
+          {
+            "id": "S6",
+            "kind": "comment",
+            "title": "Comment by maintainer",
+            "url": "https://github.com/example/eval-hosting/issues/102#issuecomment-201",
+            "excerpt": "Author association: NONE\nCreated: 2026-11-08T00:00:00Z\n\nWe have not decided whether to include this provider. Keep any proposed documentation entry factual and neutral."
+          }
+        ],
+        "candidates": [
+          {
+            "number": 82,
+            "title": "FreeHost deployment loses sessions after worker restarts",
+            "url": "https://github.com/example/eval-hosting/issues/82",
+            "state": "open",
+            "source_id": "S5"
+          }
+        ],
+        "searches": [
+          {
+            "query": "repo:example/eval-hosting is:issue in:title,body \"FreeHost\" \"deployment\"",
+            "total_count": 2,
+            "incomplete_results": false,
+            "candidate_numbers": [
+              82
+            ],
+            "source_id": "S3"
+          },
+          {
+            "query": "repo:example/eval-hosting is:issue in:title,body \"hosting\" \"documentation\"",
+            "total_count": 2,
+            "incomplete_results": false,
+            "candidate_numbers": [
+              82
+            ],
+            "source_id": "S4"
+          }
+        ],
+        "repo_labels": [
+          {
+            "name": "bug",
+            "description": "Reports a malfunction of existing behavior.",
+            "color": "d73a4a"
+          },
+          {
+            "name": "docs",
+            "description": "Requests a change to project documentation.",
+            "color": "0075ca"
+          },
+          {
+            "name": "enhancement",
+            "description": "Requests new product behavior or a new capability.",
+            "color": "a2eeef"
+          },
+          {
+            "name": "needs-info",
+            "description": "Essential details needed to investigate the report are missing.",
+            "color": "d876e3"
+          },
+          {
+            "name": "question",
+            "description": "Asks how existing product behavior works.",
+            "color": "d876e3"
+          },
+          {
+            "name": "security",
+            "description": "Reports a concrete security vulnerability with supporting evidence.",
+            "color": "ee0701"
+          }
+        ],
+        "labels_source_id": "S2",
+        "labels_complete": true,
+        "limitations": [],
+        "usage": {
+          "model_requests": 7,
+          "tool_calls": 6,
+          "total_tokens": 19198,
+          "elapsed_seconds": 10.57
+        }
+      },
+      "events": [
+        {
+          "id": 1,
+          "kind": "model",
+          "message": "Investigation step 1: choosing the next action.",
+          "created_at": "2026-11-09T05:57:02.785963Z"
+        },
+        {
+          "id": 2,
+          "kind": "tool",
+          "message": "Calling get_issue with {}.",
+          "created_at": "2026-11-09T05:57:04.248602Z"
+        },
+        {
+          "id": 3,
+          "kind": "tool",
+          "message": "Finished get_issue; 1 sources collected.",
+          "created_at": "2026-11-09T05:57:04.249789Z"
+        },
+        {
+          "id": 4,
+          "kind": "model",
+          "message": "Investigation step 2: choosing the next action.",
+          "created_at": "2026-11-09T05:57:04.251653Z"
+        },
+        {
+          "id": 5,
+          "kind": "tool",
+          "message": "Calling get_repo_labels with {}.",
+          "created_at": "2026-11-09T05:57:05.151825Z"
+        },
+        {
+          "id": 6,
+          "kind": "tool",
+          "message": "Finished get_repo_labels; 2 sources collected.",
+          "created_at": "2026-11-09T05:57:05.153212Z"
+        },
+        {
+          "id": 7,
+          "kind": "model",
+          "message": "Investigation step 3: choosing the next action.",
+          "created_at": "2026-11-09T05:57:05.155276Z"
+        },
+        {
+          "id": 8,
+          "kind": "tool",
+          "message": "Calling search_issues with {\"query\":\"FreeHost deployment\"}.",
+          "created_at": "2026-11-09T05:57:05.946176Z"
+        },
+        {
+          "id": 9,
+          "kind": "tool",
+          "message": "Finished search_issues; 3 sources collected.",
+          "created_at": "2026-11-09T05:57:05.947296Z"
+        },
+        {
+          "id": 10,
+          "kind": "model",
+          "message": "Investigation step 4: choosing the next action.",
+          "created_at": "2026-11-09T05:57:05.948670Z"
+        },
+        {
+          "id": 11,
+          "kind": "tool",
+          "message": "Calling search_issues with {\"query\":\"hosting documentation\"}.",
+          "created_at": "2026-11-09T05:57:07.710097Z"
+        },
+        {
+          "id": 12,
+          "kind": "tool",
+          "message": "Finished search_issues; 4 sources collected.",
+          "created_at": "2026-11-09T05:57:07.711126Z"
+        },
+        {
+          "id": 13,
+          "kind": "model",
+          "message": "Investigation step 5: choosing the next action.",
+          "created_at": "2026-11-09T05:57:07.712975Z"
+        },
+        {
+          "id": 14,
+          "kind": "tool",
+          "message": "Calling get_related_issue with {\"issue_number\":82}.",
+          "created_at": "2026-11-09T05:57:08.683915Z"
+        },
+        {
+          "id": 15,
+          "kind": "tool",
+          "message": "Finished get_related_issue; 5 sources collected.",
+          "created_at": "2026-11-09T05:57:08.684809Z"
+        },
+        {
+          "id": 16,
+          "kind": "model",
+          "message": "Investigation step 6: choosing the next action.",
+          "created_at": "2026-11-09T05:57:08.686971Z"
+        },
+        {
+          "id": 17,
+          "kind": "tool",
+          "message": "Calling get_issue_comments with {\"page\":1}.",
+          "created_at": "2026-11-09T05:57:09.564918Z"
+        },
+        {
+          "id": 18,
+          "kind": "tool",
+          "message": "Finished get_issue_comments; 6 sources collected.",
+          "created_at": "2026-11-09T05:57:09.565766Z"
+        },
+        {
+          "id": 19,
+          "kind": "model",
+          "message": "Investigation step 7: choosing the next action.",
+          "created_at": "2026-11-09T05:57:09.567926Z"
+        }
+      ],
+      "snapshot_requests": [
+        {
+          "method": "GET",
+          "path": "/repos/example/eval-hosting/issues/102",
+          "query": {}
+        },
+        {
+          "method": "GET",
+          "path": "/repos/example/eval-hosting/labels",
+          "query": {
+            "per_page": "100"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/search/issues",
+          "query": {
+            "q": "repo:example/eval-hosting is:issue in:title,body \"FreeHost\" \"deployment\"",
+            "per_page": "20"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/search/issues",
+          "query": {
+            "q": "repo:example/eval-hosting is:issue in:title,body \"hosting\" \"documentation\"",
+            "per_page": "20"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/repos/example/eval-hosting/issues/82",
+          "query": {}
+        },
+        {
+          "method": "GET",
+          "path": "/repos/example/eval-hosting/issues/102/comments",
+          "query": {
+            "per_page": "10",
+            "page": "1"
+          }
+        }
+      ]
+    },
+    {
+      "case_id": "insufficient_evidence",
+      "description": "A vague export report cannot establish whether a detailed prior report is the same failure.",
+      "target_url": "https://github.com/example/eval-incomplete/issues/103",
+      "outcome": "completed",
+      "error_type": null,
+      "final_answer_accepted": true,
+      "expected": {
+        "comparisons": [
+          {
+            "issue_number": 73,
+            "relationship": "insufficient_evidence"
+          }
+        ],
+        "required_labels": [
+          "needs-info"
+        ],
+        "allowed_labels": [
+          "bug",
+          "needs-info"
+        ],
+        "missing_information_required": true,
+        "no_candidates_expected": false
+      },
+      "reference_notes": "Only a generic export symptom overlaps. The target lacks the details needed to compare conditions. Ask useful investigation questions without treating the candidate's Linux permission error as the target's confirmed cause.",
+      "checks": [
+        {
+          "name": "final_answer_accepted",
+          "status": "passed",
+          "detail": "A missing final answer is not a correct abstention."
+        },
+        {
+          "name": "no_first_person_reproduction_claim",
+          "status": "passed",
+          "detail": "Known English first-person reproduction forms found in: []. This is a narrow pattern check, not semantic verification."
+        },
+        {
+          "name": "similar_search_completed",
+          "status": "passed",
+          "detail": "At least one successful keyword search is required."
+        },
+        {
+          "name": "label_catalog_loaded",
+          "status": "passed",
+          "detail": "A skipped catalog is not an empty recommendation decision."
+        },
+        {
+          "name": "candidate_73_found",
+          "status": "passed",
+          "detail": "The reference candidate must be discovered by a model-selected query."
+        },
+        {
+          "name": "candidate_73_read",
+          "status": "passed",
+          "detail": "A search hit alone cannot establish the comparison."
+        },
+        {
+          "name": "candidate_73_relationship",
+          "status": "passed",
+          "detail": "Expected insufficient_evidence; observed insufficient_evidence. Reason quality still needs review."
+        },
+        {
+          "name": "required_labels_present",
+          "status": "passed",
+          "detail": "Required additional labels: ['needs-info']; observed: ['needs-info']."
+        },
+        {
+          "name": "labels_within_reference",
+          "status": "passed",
+          "detail": "Allowed additional labels: ['bug', 'needs-info']. This reference is pending human review."
+        },
+        {
+          "name": "missing_questions_present",
+          "status": "passed",
+          "detail": "Question relevance and whether the details were already supplied need human review."
+        },
+        {
+          "name": "retrieved_citation_ids",
+          "status": "passed",
+          "detail": "Retrieved source IDs do not prove that the cited text supports a claim."
+        }
+      ],
+      "human_review": {
+        "status": "pending",
+        "questions": [
+          "Does the answer preserve uncertainty about the operating system and error?",
+          "Do the questions request useful missing details, such as version, platform, steps or exact error?",
+          "Does the reply avoid asserting that the target has a Linux permissions problem?"
+        ],
+        "notes": ""
+      },
+      "result": {
+        "issue": {
+          "title": "Export fails",
+          "url": "https://github.com/example/eval-incomplete/issues/103",
+          "number": 103,
+          "state": "open",
+          "author": "fixture-reporter",
+          "labels": [],
+          "comment_count": 0
+        },
+        "content": {
+          "summary": {
+            "text": "The issue report says export does not work, but provides no error, platform, file type, or steps to narrow the failure. A similar prior issue exists about export failing with permission denied on an encrypted Linux folder, but the current report is too vague to determine whether it is the same problem.",
+            "source_ids": [
+              "S1",
+              "S4"
+            ]
+          },
+          "known_facts": [
+            {
+              "text": "The target issue is open, titled \"Export fails\", and has no labels or comments.",
+              "source_ids": [
+                "S1"
+              ]
+            },
+            {
+              "text": "The reporter says export does not work and adds that they have no further details to share yet.",
+              "source_ids": [
+                "S1"
+              ]
+            },
+            {
+              "text": "The repository label catalog includes an active \"needs-info\" label for essential details missing from a report.",
+              "source_ids": [
+                "S2"
+              ]
+            },
+            {
+              "text": "A similar issue (#73) reports CSV export failing with PermissionError on an encrypted read-only Linux folder, while export to a writable folder works.",
+              "source_ids": [
+                "S4"
+              ]
+            }
+          ],
+          "missing_information": [
+            "What exact export action is failing (format, destination, and any error message)?",
+            "What platform/environment is affected (OS, app version, and file/folder permissions)?",
+            "Are there steps to reproduce the failure consistently, or does it only occur in a specific location or on a specific file?"
+          ],
+          "draft_reply": "Thanks for the report. At the moment we only know that export fails, but there aren\u2019t enough details to identify the cause or compare it with similar export issues. Could you share the export format, destination path, platform/version, and the exact error message or steps to reproduce?",
+          "limitations": [
+            "The issue body contains only a brief symptom statement, so no root cause can be confirmed.",
+            "Comments were not available, so there may be no extra context beyond the issue body.",
+            "The label catalog was read and is complete, but recommendations are limited to labels justified by the currently available evidence."
+          ],
+          "comparisons": [
+            {
+              "issue_number": 73,
+              "relationship": "insufficient_evidence",
+              "reason": "Both issues concern export failure, but the target report lacks the platform, destination, file type, and error details needed to determine whether it matches the Linux permission-denied case or a different export problem.",
+              "similarities": [
+                "Both reports describe export failing.",
+                "Both concern existing export behavior rather than a requested new feature."
+              ],
+              "differences": [
+                "Issue #73 explicitly mentions CSV export, a PermissionError, encrypted read-only folders, and Linux version details.",
+                "The target issue provides no error message, platform, export format, or reproduction details."
+              ],
+              "source_ids": [
+                "S1",
+                "S4"
+              ]
+            }
+          ],
+          "label_recommendations": [
+            {
+              "name": "needs-info",
+              "reason": "The report lacks essential investigation details such as the export format, error message, platform/version, and reproduction steps, which blocks initial triage.",
+              "source_ids": [
+                "S1",
+                "S2"
+              ]
+            }
+          ]
+        },
+        "sources": [
+          {
+            "id": "S1",
+            "kind": "issue",
+            "title": "Export fails",
+            "url": "https://github.com/example/eval-incomplete/issues/103",
+            "excerpt": "Export does not work. I have no further details to share yet."
+          },
+          {
+            "id": "S2",
+            "kind": "repo_labels",
+            "title": "Repository label catalog",
+            "url": "https://github.com/example/eval-incomplete/labels",
+            "excerpt": "{\"labels\": [{\"name\": \"bug\", \"description\": \"Reports a malfunction of existing behavior.\"}, {\"name\": \"docs\", \"description\": \"Requests a change to project documentation.\"}, {\"name\": \"enhancement\", \"description\": \"Requests new product behavior or a new capability.\"}, {\"name\": \"needs-info\", \"description\": \"Essential details needed to investigate the report are missing.\"}, {\"name\": \"question\", \"description\": \"Asks how existing product behavior works.\"}, {\"name\": \"security\", \"description\": \"Reports a concrete security vulnerability with supporting evidence.\"}], \"complete\": true}"
+          },
+          {
+            "id": "S3",
+            "kind": "search",
+            "title": "Issue search: export fails",
+            "url": "https://github.com/search?q=repo%3Aexample%2Feval-incomplete+is%3Aissue+in%3Atitle%2Cbody+%22export%22+%22fails%22&type=issues",
+            "excerpt": "{\"query\": \"repo:example/eval-incomplete is:issue in:title,body \\\"export\\\" \\\"fails\\\"\", \"total_count\": 2, \"incomplete_results\": false, \"candidate_numbers\": [73]}"
+          },
+          {
+            "id": "S4",
+            "kind": "related_issue",
+            "title": "Export fails with permission denied on an encrypted Linux folder",
+            "url": "https://github.com/example/eval-incomplete/issues/73",
+            "excerpt": "Title: Export fails with permission denied on an encrypted Linux folder\nState: open\n\nVersion 2.0 on Linux. CSV export fails with PermissionError when the destination is an encrypted read-only folder. Export to a writable folder works."
+          }
+        ],
+        "candidates": [
+          {
+            "number": 73,
+            "title": "Export fails with permission denied on an encrypted Linux folder",
+            "url": "https://github.com/example/eval-incomplete/issues/73",
+            "state": "open",
+            "source_id": "S4"
+          }
+        ],
+        "searches": [
+          {
+            "query": "repo:example/eval-incomplete is:issue in:title,body \"export\" \"fails\"",
+            "total_count": 2,
+            "incomplete_results": false,
+            "candidate_numbers": [
+              73
+            ],
+            "source_id": "S3"
+          }
+        ],
+        "repo_labels": [
+          {
+            "name": "bug",
+            "description": "Reports a malfunction of existing behavior.",
+            "color": "d73a4a"
+          },
+          {
+            "name": "docs",
+            "description": "Requests a change to project documentation.",
+            "color": "0075ca"
+          },
+          {
+            "name": "enhancement",
+            "description": "Requests new product behavior or a new capability.",
+            "color": "a2eeef"
+          },
+          {
+            "name": "needs-info",
+            "description": "Essential details needed to investigate the report are missing.",
+            "color": "d876e3"
+          },
+          {
+            "name": "question",
+            "description": "Asks how existing product behavior works.",
+            "color": "d876e3"
+          },
+          {
+            "name": "security",
+            "description": "Reports a concrete security vulnerability with supporting evidence.",
+            "color": "ee0701"
+          }
+        ],
+        "labels_source_id": "S2",
+        "labels_complete": true,
+        "limitations": [],
+        "usage": {
+          "model_requests": 5,
+          "tool_calls": 4,
+          "total_tokens": 12268,
+          "elapsed_seconds": 6.91
+        }
+      },
+      "events": [
+        {
+          "id": 1,
+          "kind": "model",
+          "message": "Investigation step 1: choosing the next action.",
+          "created_at": "2026-11-09T05:57:13.365235Z"
+        },
+        {
+          "id": 2,
+          "kind": "tool",
+          "message": "Calling get_issue with {}.",
+          "created_at": "2026-11-09T05:57:14.171956Z"
+        },
+        {
+          "id": 3,
+          "kind": "tool",
+          "message": "Finished get_issue; 1 sources collected.",
+          "created_at": "2026-11-09T05:57:14.172670Z"
+        },
+        {
+          "id": 4,
+          "kind": "model",
+          "message": "Investigation step 2: choosing the next action.",
+          "created_at": "2026-11-09T05:57:14.174213Z"
+        },
+        {
+          "id": 5,
+          "kind": "tool",
+          "message": "Calling get_repo_labels with {}.",
+          "created_at": "2026-11-09T05:57:14.786547Z"
+        },
+        {
+          "id": 6,
+          "kind": "tool",
+          "message": "Finished get_repo_labels; 2 sources collected.",
+          "created_at": "2026-11-09T05:57:14.787914Z"
+        },
+        {
+          "id": 7,
+          "kind": "model",
+          "message": "Investigation step 3: choosing the next action.",
+          "created_at": "2026-11-09T05:57:14.789566Z"
+        },
+        {
+          "id": 8,
+          "kind": "tool",
+          "message": "Calling search_issues with {\"query\":\"export fails\"}.",
+          "created_at": "2026-11-09T05:57:15.661293Z"
+        },
+        {
+          "id": 9,
+          "kind": "tool",
+          "message": "Finished search_issues; 3 sources collected.",
+          "created_at": "2026-11-09T05:57:15.662354Z"
+        },
+        {
+          "id": 10,
+          "kind": "model",
+          "message": "Investigation step 4: choosing the next action.",
+          "created_at": "2026-11-09T05:57:15.664004Z"
+        },
+        {
+          "id": 11,
+          "kind": "tool",
+          "message": "Calling get_related_issue with {\"issue_number\":73}.",
+          "created_at": "2026-11-09T05:57:16.528728Z"
+        },
+        {
+          "id": 12,
+          "kind": "tool",
+          "message": "Finished get_related_issue; 4 sources collected.",
+          "created_at": "2026-11-09T05:57:16.529477Z"
+        },
+        {
+          "id": 13,
+          "kind": "model",
+          "message": "Investigation step 5: choosing the next action.",
+          "created_at": "2026-11-09T05:57:16.531404Z"
+        }
+      ],
+      "snapshot_requests": [
+        {
+          "method": "GET",
+          "path": "/repos/example/eval-incomplete/issues/103",
+          "query": {}
+        },
+        {
+          "method": "GET",
+          "path": "/repos/example/eval-incomplete/labels",
+          "query": {
+            "per_page": "100"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/search/issues",
+          "query": {
+            "q": "repo:example/eval-incomplete is:issue in:title,body \"export\" \"fails\"",
+            "per_page": "20"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/repos/example/eval-incomplete/issues/73",
+          "query": {}
+        }
+      ]
+    },
+    {
+      "case_id": "no_candidate_feature_request",
+      "description": "A concrete feature request has no eligible keyword matches in the fixed snapshot.",
+      "target_url": "https://github.com/example/eval-shortcuts/issues/104",
+      "outcome": "completed",
+      "error_type": null,
+      "final_answer_accepted": true,
+      "expected": {
+        "comparisons": [],
+        "required_labels": [
+          "enhancement"
+        ],
+        "allowed_labels": [
+          "enhancement"
+        ],
+        "missing_information_required": false,
+        "no_candidates_expected": true
+      },
+      "reference_notes": "The snapshot contains no related shortcut issue. A successful empty search only establishes no eligible matches for the recorded queries. The existing shortcut is working; the requested setting is new behavior.",
+      "checks": [
+        {
+          "name": "final_answer_accepted",
+          "status": "passed",
+          "detail": "A missing final answer is not a correct abstention."
+        },
+        {
+          "name": "no_first_person_reproduction_claim",
+          "status": "passed",
+          "detail": "Known English first-person reproduction forms found in: []. This is a narrow pattern check, not semantic verification."
+        },
+        {
+          "name": "similar_search_completed",
+          "status": "passed",
+          "detail": "At least one successful keyword search is required."
+        },
+        {
+          "name": "label_catalog_loaded",
+          "status": "passed",
+          "detail": "A skipped catalog is not an empty recommendation decision."
+        },
+        {
+          "name": "no_eligible_candidates",
+          "status": "passed",
+          "detail": "This applies only to the fixed snapshot and recorded keyword queries."
+        },
+        {
+          "name": "no_comparisons",
+          "status": "passed",
+          "detail": "The empty-search case should not invent a comparison."
+        },
+        {
+          "name": "required_labels_present",
+          "status": "passed",
+          "detail": "Required additional labels: ['enhancement']; observed: ['enhancement']."
+        },
+        {
+          "name": "labels_within_reference",
+          "status": "passed",
+          "detail": "Allowed additional labels: ['enhancement']. This reference is pending human review."
+        },
+        {
+          "name": "retrieved_citation_ids",
+          "status": "passed",
+          "detail": "Retrieved source IDs do not prove that the cited text supports a claim."
+        }
+      ],
+      "human_review": {
+        "status": "pending",
+        "questions": [
+          "Does the answer describe this as a new capability rather than a malfunction?",
+          "Does it limit the no-match statement to the recorded searches?",
+          "Does it avoid inventing an existing customization option or promising an implementation?"
+        ],
+        "notes": ""
+      },
+      "result": {
+        "issue": {
+          "title": "Allow a custom keyboard shortcut for saving a document",
+          "url": "https://github.com/example/eval-shortcuts/issues/104",
+          "number": 104,
+          "state": "open",
+          "author": "fixture-reporter",
+          "labels": [],
+          "comment_count": 0
+        },
+        "content": {
+          "summary": {
+            "text": "The issue requests a new capability: configurable keyboard shortcut for the Save action, specifically changing from Ctrl+S to Ctrl+Shift+S due to a conflict. The reporter explicitly says the existing Ctrl+S shortcut works correctly, so this is not described as a malfunction of current behavior.",
+            "source_ids": [
+              "S1"
+            ]
+          },
+          "known_facts": [
+            {
+              "text": "The issue is open and has no labels or comments.",
+              "source_ids": [
+                "S1"
+              ]
+            },
+            {
+              "text": "The reporter asks for a setting to choose a custom Save shortcut, with Ctrl+Shift+S as the example.",
+              "source_ids": [
+                "S1"
+              ]
+            },
+            {
+              "text": "The reporter states the current Ctrl+S shortcut works correctly and this is not a request to fix a broken shortcut.",
+              "source_ids": [
+                "S1"
+              ]
+            },
+            {
+              "text": "The repository label catalog includes an 'enhancement' label for requests for new product behavior or a new capability.",
+              "source_ids": [
+                "S2"
+              ]
+            },
+            {
+              "text": "The repository label catalog includes a 'needs-info' label for reports missing essential details needed to investigate.",
+              "source_ids": [
+                "S2"
+              ]
+            }
+          ],
+          "missing_information": [],
+          "draft_reply": "Thanks for the report. This looks like a feature request rather than a bug: the current Save shortcut is working, and you\u2019d like an option to remap it to a different key combination. We\u2019ll review whether configurable shortcuts are something we want to support. If we move forward, we may need to consider how shortcut customization should apply across platforms and whether it should be per-action or globally configurable.",
+          "limitations": [
+            "I checked the issue text, label catalog, and keyword searches, but found no related candidate issues to compare.",
+            "No source code or implementation details were inspected, so feasibility and design constraints are not confirmed.",
+            "The label catalog was available and complete, but I did not find evidence strong enough to justify additional labels beyond the issue\u2019s current state in this review."
+          ],
+          "comparisons": [],
+          "label_recommendations": [
+            {
+              "name": "enhancement",
+              "reason": "The issue requests a new capability: a configurable shortcut for the Save action, which fits the catalog description of a request for new product behavior or a new capability.",
+              "source_ids": [
+                "S1",
+                "S2"
+              ]
+            }
+          ]
+        },
+        "sources": [
+          {
+            "id": "S1",
+            "kind": "issue",
+            "title": "Allow a custom keyboard shortcut for saving a document",
+            "url": "https://github.com/example/eval-shortcuts/issues/104",
+            "excerpt": "Please add a keyboard shortcut setting for the Save action. The current Ctrl+S shortcut works correctly. I want to choose Ctrl+Shift+S instead because of a conflict with another application. This requests a new setting, not a fix for a broken existing shortcut."
+          },
+          {
+            "id": "S2",
+            "kind": "repo_labels",
+            "title": "Repository label catalog",
+            "url": "https://github.com/example/eval-shortcuts/labels",
+            "excerpt": "{\"labels\": [{\"name\": \"bug\", \"description\": \"Reports a malfunction of existing behavior.\"}, {\"name\": \"docs\", \"description\": \"Requests a change to project documentation.\"}, {\"name\": \"enhancement\", \"description\": \"Requests new product behavior or a new capability.\"}, {\"name\": \"needs-info\", \"description\": \"Essential details needed to investigate the report are missing.\"}, {\"name\": \"question\", \"description\": \"Asks how existing product behavior works.\"}, {\"name\": \"security\", \"description\": \"Reports a concrete security vulnerability with supporting evidence.\"}], \"complete\": true}"
+          },
+          {
+            "id": "S3",
+            "kind": "search",
+            "title": "Issue search: custom shortcut save",
+            "url": "https://github.com/search?q=repo%3Aexample%2Feval-shortcuts+is%3Aissue+in%3Atitle%2Cbody+%22custom%22+%22shortcut%22+%22save%22&type=issues",
+            "excerpt": "{\"query\": \"repo:example/eval-shortcuts is:issue in:title,body \\\"custom\\\" \\\"shortcut\\\" \\\"save\\\"\", \"total_count\": 1, \"incomplete_results\": false, \"candidate_numbers\": []}"
+          },
+          {
+            "id": "S4",
+            "kind": "search",
+            "title": "Issue search: keyboard shortcut save",
+            "url": "https://github.com/search?q=repo%3Aexample%2Feval-shortcuts+is%3Aissue+in%3Atitle%2Cbody+%22keyboard%22+%22shortcut%22+%22save%22&type=issues",
+            "excerpt": "{\"query\": \"repo:example/eval-shortcuts is:issue in:title,body \\\"keyboard\\\" \\\"shortcut\\\" \\\"save\\\"\", \"total_count\": 1, \"incomplete_results\": false, \"candidate_numbers\": []}"
+          },
+          {
+            "id": "S5",
+            "kind": "search",
+            "title": "Issue search: shortcut setting",
+            "url": "https://github.com/search?q=repo%3Aexample%2Feval-shortcuts+is%3Aissue+in%3Atitle%2Cbody+%22shortcut%22+%22setting%22&type=issues",
+            "excerpt": "{\"query\": \"repo:example/eval-shortcuts is:issue in:title,body \\\"shortcut\\\" \\\"setting\\\"\", \"total_count\": 1, \"incomplete_results\": false, \"candidate_numbers\": []}"
+          }
+        ],
+        "candidates": [],
+        "searches": [
+          {
+            "query": "repo:example/eval-shortcuts is:issue in:title,body \"custom\" \"shortcut\" \"save\"",
+            "total_count": 1,
+            "incomplete_results": false,
+            "candidate_numbers": [],
+            "source_id": "S3"
+          },
+          {
+            "query": "repo:example/eval-shortcuts is:issue in:title,body \"keyboard\" \"shortcut\" \"save\"",
+            "total_count": 1,
+            "incomplete_results": false,
+            "candidate_numbers": [],
+            "source_id": "S4"
+          },
+          {
+            "query": "repo:example/eval-shortcuts is:issue in:title,body \"shortcut\" \"setting\"",
+            "total_count": 1,
+            "incomplete_results": false,
+            "candidate_numbers": [],
+            "source_id": "S5"
+          }
+        ],
+        "repo_labels": [
+          {
+            "name": "bug",
+            "description": "Reports a malfunction of existing behavior.",
+            "color": "d73a4a"
+          },
+          {
+            "name": "docs",
+            "description": "Requests a change to project documentation.",
+            "color": "0075ca"
+          },
+          {
+            "name": "enhancement",
+            "description": "Requests new product behavior or a new capability.",
+            "color": "a2eeef"
+          },
+          {
+            "name": "needs-info",
+            "description": "Essential details needed to investigate the report are missing.",
+            "color": "d876e3"
+          },
+          {
+            "name": "question",
+            "description": "Asks how existing product behavior works.",
+            "color": "d876e3"
+          },
+          {
+            "name": "security",
+            "description": "Reports a concrete security vulnerability with supporting evidence.",
+            "color": "ee0701"
+          }
+        ],
+        "labels_source_id": "S2",
+        "labels_complete": true,
+        "limitations": [],
+        "usage": {
+          "model_requests": 6,
+          "tool_calls": 5,
+          "total_tokens": 15463,
+          "elapsed_seconds": 6.94
+        }
+      },
+      "events": [
+        {
+          "id": 1,
+          "kind": "model",
+          "message": "Investigation step 1: choosing the next action.",
+          "created_at": "2026-11-09T05:57:20.272514Z"
+        },
+        {
+          "id": 2,
+          "kind": "tool",
+          "message": "Calling get_issue with {}.",
+          "created_at": "2026-11-09T05:57:20.932738Z"
+        },
+        {
+          "id": 3,
+          "kind": "tool",
+          "message": "Finished get_issue; 1 sources collected.",
+          "created_at": "2026-11-09T05:57:20.933690Z"
+        },
+        {
+          "id": 4,
+          "kind": "model",
+          "message": "Investigation step 2: choosing the next action.",
+          "created_at": "2026-11-09T05:57:20.935501Z"
+        },
+        {
+          "id": 5,
+          "kind": "tool",
+          "message": "Calling get_repo_labels with {}.",
+          "created_at": "2026-11-09T05:57:21.567491Z"
+        },
+        {
+          "id": 6,
+          "kind": "tool",
+          "message": "Finished get_repo_labels; 2 sources collected.",
+          "created_at": "2026-11-09T05:57:21.568076Z"
+        },
+        {
+          "id": 7,
+          "kind": "model",
+          "message": "Investigation step 3: choosing the next action.",
+          "created_at": "2026-11-09T05:57:21.568955Z"
+        },
+        {
+          "id": 8,
+          "kind": "tool",
+          "message": "Calling search_issues with {\"query\":\"custom shortcut save\"}.",
+          "created_at": "2026-11-09T05:57:22.376207Z"
+        },
+        {
+          "id": 9,
+          "kind": "tool",
+          "message": "Finished search_issues; 3 sources collected.",
+          "created_at": "2026-11-09T05:57:22.377498Z"
+        },
+        {
+          "id": 10,
+          "kind": "model",
+          "message": "Investigation step 4: choosing the next action.",
+          "created_at": "2026-11-09T05:57:22.379840Z"
+        },
+        {
+          "id": 11,
+          "kind": "tool",
+          "message": "Calling search_issues with {\"query\":\"keyboard shortcut save\"}.",
+          "created_at": "2026-11-09T05:57:23.189991Z"
+        },
+        {
+          "id": 12,
+          "kind": "tool",
+          "message": "Finished search_issues; 4 sources collected.",
+          "created_at": "2026-11-09T05:57:23.190982Z"
+        },
+        {
+          "id": 13,
+          "kind": "model",
+          "message": "Investigation step 5: choosing the next action.",
+          "created_at": "2026-11-09T05:57:23.192763Z"
+        },
+        {
+          "id": 14,
+          "kind": "tool",
+          "message": "Calling search_issues with {\"query\":\"shortcut setting\"}.",
+          "created_at": "2026-11-09T05:57:24.311036Z"
+        },
+        {
+          "id": 15,
+          "kind": "tool",
+          "message": "Finished search_issues; 5 sources collected.",
+          "created_at": "2026-11-09T05:57:24.312281Z"
+        },
+        {
+          "id": 16,
+          "kind": "model",
+          "message": "Investigation step 6: choosing the next action.",
+          "created_at": "2026-11-09T05:57:24.314791Z"
+        }
+      ],
+      "snapshot_requests": [
+        {
+          "method": "GET",
+          "path": "/repos/example/eval-shortcuts/issues/104",
+          "query": {}
+        },
+        {
+          "method": "GET",
+          "path": "/repos/example/eval-shortcuts/labels",
+          "query": {
+            "per_page": "100"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/search/issues",
+          "query": {
+            "q": "repo:example/eval-shortcuts is:issue in:title,body \"custom\" \"shortcut\" \"save\"",
+            "per_page": "20"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/search/issues",
+          "query": {
+            "q": "repo:example/eval-shortcuts is:issue in:title,body \"keyboard\" \"shortcut\" \"save\"",
+            "per_page": "20"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/search/issues",
+          "query": {
+            "q": "repo:example/eval-shortcuts is:issue in:title,body \"shortcut\" \"setting\"",
+            "per_page": "20"
+          }
+        }
+      ]
+    },
+    {
+      "case_id": "no_additional_label",
+      "description": "A detailed defect report already has its supported classification label.",
+      "target_url": "https://github.com/example/eval-png/issues/105",
+      "outcome": "completed",
+      "error_type": null,
+      "final_answer_accepted": true,
+      "expected": {
+        "comparisons": [],
+        "required_labels": [],
+        "allowed_labels": [],
+        "missing_information_required": false,
+        "no_candidates_expected": true
+      },
+      "reference_notes": "Bug already describes the report. The other catalog labels are not supported by the provided details. An accepted empty recommendation is correct here, but a skipped catalog or missing final answer is not equivalent to abstention.",
+      "checks": [
+        {
+          "name": "final_answer_accepted",
+          "status": "passed",
+          "detail": "A missing final answer is not a correct abstention."
+        },
+        {
+          "name": "no_first_person_reproduction_claim",
+          "status": "passed",
+          "detail": "Known English first-person reproduction forms found in: []. This is a narrow pattern check, not semantic verification."
+        },
+        {
+          "name": "similar_search_completed",
+          "status": "passed",
+          "detail": "At least one successful keyword search is required."
+        },
+        {
+          "name": "label_catalog_loaded",
+          "status": "passed",
+          "detail": "A skipped catalog is not an empty recommendation decision."
+        },
+        {
+          "name": "no_eligible_candidates",
+          "status": "passed",
+          "detail": "This applies only to the fixed snapshot and recorded keyword queries."
+        },
+        {
+          "name": "no_comparisons",
+          "status": "passed",
+          "detail": "The empty-search case should not invent a comparison."
+        },
+        {
+          "name": "required_labels_present",
+          "status": "passed",
+          "detail": "Required additional labels: []; observed: []."
+        },
+        {
+          "name": "labels_within_reference",
+          "status": "passed",
+          "detail": "Allowed additional labels: []. This reference is pending human review."
+        },
+        {
+          "name": "retrieved_citation_ids",
+          "status": "passed",
+          "detail": "Retrieved source IDs do not prove that the cited text supports a claim."
+        }
+      ],
+      "human_review": {
+        "status": "pending",
+        "questions": [
+          "Does the answer avoid repeating bug as a new suggestion?",
+          "Does it avoid inventing a security issue or a confirmed encoder root cause?",
+          "Does it use the version, platform and steps already present rather than asking for them again?"
+        ],
+        "notes": ""
+      },
+      "result": {
+        "issue": {
+          "title": "PNG export writes a zero-byte image",
+          "url": "https://github.com/example/eval-png/issues/105",
+          "number": 105,
+          "state": "open",
+          "author": "fixture-reporter",
+          "labels": [
+            "bug"
+          ],
+          "comment_count": 0
+        },
+        "content": {
+          "summary": {
+            "text": "The issue reports that PNG export on version 2.1.0 under Ubuntu 24.04 creates a zero-byte file instead of an image, with the log message \"PNG encoder returned no bytes\"; SVG export still works. No cause or fix is confirmed in the report.",
+            "source_ids": [
+              "S1"
+            ]
+          },
+          "known_facts": [
+            {
+              "text": "The issue is open, labeled bug, and filed by fixture-reporter as issue #105.",
+              "source_ids": [
+                "S1"
+              ]
+            },
+            {
+              "text": "The reporter says that on version 2.1.0 under Ubuntu 24.04, exporting a blank document with a rectangle to PNG in a writable local directory produces a zero-byte file.",
+              "source_ids": [
+                "S1"
+              ]
+            },
+            {
+              "text": "The reporter also says the log shows \"PNG encoder returned no bytes\" and that the result repeats with the bundled sample document.",
+              "source_ids": [
+                "S1"
+              ]
+            },
+            {
+              "text": "The reporter says SVG output works, suggesting the failure is specific to PNG export rather than all export formats.",
+              "source_ids": [
+                "S1"
+              ]
+            },
+            {
+              "text": "The repository label catalog includes bug, docs, enhancement, needs-info, question, and security; the issue already has bug applied.",
+              "source_ids": [
+                "S2",
+                "S1"
+              ]
+            }
+          ],
+          "missing_information": [
+            "Whether the problem occurs on other operating systems or only Ubuntu 24.04, and whether it depends on the specific 2.1.0 build.",
+            "Whether other PNG export paths or settings behave differently, which could help narrow the failure mode.",
+            "Whether any recent changes, plugins, or environment-specific dependencies are involved in the encoder returning no bytes."
+          ],
+          "draft_reply": "Thanks for the report. The issue is clear enough to confirm that PNG export is producing an empty file on 2.1.0, while SVG export still works, and the log message points to the PNG encoder returning no bytes. Could you also confirm whether this happens with other PNG export settings or on another platform/build? That would help narrow whether this is specific to Ubuntu 24.04 or to a broader PNG export path.",
+          "limitations": [
+            "I read the issue and the repository label catalog, but did not find any candidate issues with the available searches.",
+            "No source code, logs beyond the reporter\u2019s excerpt, or reproduction environment were available to verify a root cause.",
+            "The label catalog is complete for the included active labels, and no additional label beyond the existing bug label was justified from the available evidence."
+          ],
+          "comparisons": [],
+          "label_recommendations": []
+        },
+        "sources": [
+          {
+            "id": "S1",
+            "kind": "issue",
+            "title": "PNG export writes a zero-byte image",
+            "url": "https://github.com/example/eval-png/issues/105",
+            "excerpt": "Version 2.1.0 on Ubuntu 24.04. Steps: create a blank document, draw a rectangle, choose Export PNG, and save to a writable local directory. Expected: an image of the rectangle. Actual: a zero-byte file and the log message PNG encoder returned no bytes. The result repeats with the bundled sample document. SVG output works. No fix or cause has been confirmed."
+          },
+          {
+            "id": "S2",
+            "kind": "repo_labels",
+            "title": "Repository label catalog",
+            "url": "https://github.com/example/eval-png/labels",
+            "excerpt": "{\"labels\": [{\"name\": \"bug\", \"description\": \"Reports a malfunction of existing behavior.\"}, {\"name\": \"docs\", \"description\": \"Requests a change to project documentation.\"}, {\"name\": \"enhancement\", \"description\": \"Requests new product behavior or a new capability.\"}, {\"name\": \"needs-info\", \"description\": \"Essential details needed to investigate the report are missing.\"}, {\"name\": \"question\", \"description\": \"Asks how existing product behavior works.\"}, {\"name\": \"security\", \"description\": \"Reports a concrete security vulnerability with supporting evidence.\"}], \"complete\": true}"
+          },
+          {
+            "id": "S3",
+            "kind": "search",
+            "title": "Issue search: zero-byte PNG",
+            "url": "https://github.com/search?q=repo%3Aexample%2Feval-png+is%3Aissue+in%3Atitle%2Cbody+%22zero-byte%22+%22PNG%22&type=issues",
+            "excerpt": "{\"query\": \"repo:example/eval-png is:issue in:title,body \\\"zero-byte\\\" \\\"PNG\\\"\", \"total_count\": 1, \"incomplete_results\": false, \"candidate_numbers\": []}"
+          },
+          {
+            "id": "S4",
+            "kind": "search",
+            "title": "Issue search: export bytes",
+            "url": "https://github.com/search?q=repo%3Aexample%2Feval-png+is%3Aissue+in%3Atitle%2Cbody+%22export%22+%22bytes%22&type=issues",
+            "excerpt": "{\"query\": \"repo:example/eval-png is:issue in:title,body \\\"export\\\" \\\"bytes\\\"\", \"total_count\": 1, \"incomplete_results\": false, \"candidate_numbers\": []}"
+          }
+        ],
+        "candidates": [],
+        "searches": [
+          {
+            "query": "repo:example/eval-png is:issue in:title,body \"zero-byte\" \"PNG\"",
+            "total_count": 1,
+            "incomplete_results": false,
+            "candidate_numbers": [],
+            "source_id": "S3"
+          },
+          {
+            "query": "repo:example/eval-png is:issue in:title,body \"export\" \"bytes\"",
+            "total_count": 1,
+            "incomplete_results": false,
+            "candidate_numbers": [],
+            "source_id": "S4"
+          }
+        ],
+        "repo_labels": [
+          {
+            "name": "bug",
+            "description": "Reports a malfunction of existing behavior.",
+            "color": "d73a4a"
+          },
+          {
+            "name": "docs",
+            "description": "Requests a change to project documentation.",
+            "color": "0075ca"
+          },
+          {
+            "name": "enhancement",
+            "description": "Requests new product behavior or a new capability.",
+            "color": "a2eeef"
+          },
+          {
+            "name": "needs-info",
+            "description": "Essential details needed to investigate the report are missing.",
+            "color": "d876e3"
+          },
+          {
+            "name": "question",
+            "description": "Asks how existing product behavior works.",
+            "color": "d876e3"
+          },
+          {
+            "name": "security",
+            "description": "Reports a concrete security vulnerability with supporting evidence.",
+            "color": "ee0701"
+          }
+        ],
+        "labels_source_id": "S2",
+        "labels_complete": true,
+        "limitations": [],
+        "usage": {
+          "model_requests": 5,
+          "tool_calls": 4,
+          "total_tokens": 12466,
+          "elapsed_seconds": 7.64
+        }
+      },
+      "events": [
+        {
+          "id": 1,
+          "kind": "model",
+          "message": "Investigation step 1: choosing the next action.",
+          "created_at": "2026-11-09T05:57:27.216205Z"
+        },
+        {
+          "id": 2,
+          "kind": "tool",
+          "message": "Calling get_issue with {}.",
+          "created_at": "2026-11-09T05:57:28.065417Z"
+        },
+        {
+          "id": 3,
+          "kind": "tool",
+          "message": "Finished get_issue; 1 sources collected.",
+          "created_at": "2026-11-09T05:57:28.066193Z"
+        },
+        {
+          "id": 4,
+          "kind": "model",
+          "message": "Investigation step 2: choosing the next action.",
+          "created_at": "2026-11-09T05:57:28.067538Z"
+        },
+        {
+          "id": 5,
+          "kind": "tool",
+          "message": "Calling get_repo_labels with {}.",
+          "created_at": "2026-11-09T05:57:28.688088Z"
+        },
+        {
+          "id": 6,
+          "kind": "tool",
+          "message": "Finished get_repo_labels; 2 sources collected.",
+          "created_at": "2026-11-09T05:57:28.689364Z"
+        },
+        {
+          "id": 7,
+          "kind": "model",
+          "message": "Investigation step 3: choosing the next action.",
+          "created_at": "2026-11-09T05:57:28.690859Z"
+        },
+        {
+          "id": 8,
+          "kind": "tool",
+          "message": "Calling search_issues with {\"query\":\"zero-byte PNG\"}.",
+          "created_at": "2026-11-09T05:57:30.394748Z"
+        },
+        {
+          "id": 9,
+          "kind": "tool",
+          "message": "Finished search_issues; 3 sources collected.",
+          "created_at": "2026-11-09T05:57:30.396139Z"
+        },
+        {
+          "id": 10,
+          "kind": "model",
+          "message": "Investigation step 4: choosing the next action.",
+          "created_at": "2026-11-09T05:57:30.398359Z"
+        },
+        {
+          "id": 11,
+          "kind": "tool",
+          "message": "Calling search_issues with {\"query\":\"export bytes\"}.",
+          "created_at": "2026-11-09T05:57:31.521283Z"
+        },
+        {
+          "id": 12,
+          "kind": "tool",
+          "message": "Finished search_issues; 4 sources collected.",
+          "created_at": "2026-11-09T05:57:31.522676Z"
+        },
+        {
+          "id": 13,
+          "kind": "model",
+          "message": "Investigation step 5: choosing the next action.",
+          "created_at": "2026-11-09T05:57:31.525077Z"
+        }
+      ],
+      "snapshot_requests": [
+        {
+          "method": "GET",
+          "path": "/repos/example/eval-png/issues/105",
+          "query": {}
+        },
+        {
+          "method": "GET",
+          "path": "/repos/example/eval-png/labels",
+          "query": {
+            "per_page": "100"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/search/issues",
+          "query": {
+            "q": "repo:example/eval-png is:issue in:title,body \"zero-byte\" \"PNG\"",
+            "per_page": "20"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/search/issues",
+          "query": {
+            "q": "repo:example/eval-png is:issue in:title,body \"export\" \"bytes\"",
+            "per_page": "20"
+          }
+        }
+      ]
+    }
+  ],
+  "cases_not_run": [],
+  "summary": {
+    "cases_attempted": 5,
+    "cases_meeting_automated_expectations": 5,
+    "check_counts": {
+      "passed": 49,
+      "failed": 0,
+      "not_scored": 0
+    },
+    "human_review_status": "pending",
+    "interpretation": "A development checklist on five fictional cases, not a production accuracy estimate.",
+    "cases_with_accepted_answers": 5
+  },
+  "stop_reason": null,
+  "usage": {
+    "model_requests": 28,
+    "tool_calls": 23,
+    "reported_total_tokens": 72120
+  },
+  "limitations": [
+    "Five assistant-authored fictional cases are a starting regression set, not a representative benchmark.",
+    "Reference expectations are hidden from the agent and remain pending human review.",
+    "Automatic checks do not establish factual support, reason quality or production search recall.",
+    "Real model requests use API quota. GitHub is not contacted; snapshot source URLs are fictional.",
+    "Token totals include only usage returned by completed API responses; failed requests may be unreported."
+  ],
+  "elapsed_seconds": 40.75
+}

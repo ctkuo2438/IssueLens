@@ -1,0 +1,31 @@
+{
+  "change": "Maintainer draft voice and assistant-style service closing rejection",
+  "date": "2026-11-09",
+  "offline_tests": {
+    "passed": 96,
+    "draft_specific_tests": 5,
+    "command": "uv run --locked python -W error::RuntimeWarning -m unittest discover -s tests -v",
+    "github_and_model_responses": "simulated"
+  },
+  "python_type_check": {
+    "command": "pyright --pythonpath .venv/bin/python backend evaluation lessons scripts",
+    "errors": 0,
+    "warnings": 0
+  },
+  "observed_phrase_covered": "If you want, I can help turn this into a more concrete migration plan or checklist for 3.2/4.0.",
+  "behavior_verified_offline": [
+    "Known service closings are flagged while normal maintainer questions and review statements remain allowed.",
+    "The model is asked to correct the draft before acceptance.",
+    "An invalid final answer is rejected when correction budget is exhausted, preserving sources.",
+    "Draft voice checking is limited to draft_reply; absent final content is not scored as passing."
+  ],
+  "new_evaluation_check": "maintainer_draft_voice",
+  "real_model_calls": 0,
+  "frontend": "unchanged; frontend checks were not rerun",
+  "new_dependencies": [],
+  "limitations": [
+    "The English pattern check can miss other assistant-like phrasing and can require rephrasing legitimate offers.",
+    "Offline correction tests do not prove the behavior of future real-model outputs.",
+    "New and old evaluation totals require common-grader rescoring for direct comparison."
+  ]
+}

@@ -1,0 +1,106 @@
+{
+  "milestone": "M2 step 1 - Similar issue investigation",
+  "date": "2026-11-08",
+  "architecture": "single agent",
+  "offline_checks": {
+    "passed": 39,
+    "command": "uv run --locked python -W error::RuntimeWarning -m unittest discover -s tests -v",
+    "github_and_model_responses": "simulated",
+    "quality_benchmark": false
+  },
+  "live_smoke_test": {
+    "github_api": "real",
+    "model_api": "real",
+    "model": "gpt-5.4-mini",
+    "issue_url": "https://github.com/pallets/flask/issues/6146",
+    "status": "completed",
+    "search_count": 2,
+    "candidate_count": 17,
+    "candidate_bodies_read": 1,
+    "comparison_count": 1,
+    "uncompared_candidates": 16,
+    "source_count": 8,
+    "usage": {
+      "model_requests": 6,
+      "tool_calls": 5,
+      "total_tokens": 17382,
+      "elapsed_seconds": 15.08
+    },
+    "searches": [
+      {
+        "query": "repo:pallets/flask is:issue in:title,body \"Cloudflare\" \"hosting\"",
+        "total_count": 1,
+        "incomplete_results": false,
+        "candidate_numbers": [],
+        "source_id": "S2"
+      },
+      {
+        "query": "repo:pallets/flask is:issue in:title,body \"workers\" \"Flask\"",
+        "total_count": 18,
+        "incomplete_results": false,
+        "candidate_numbers": [
+          5396,
+          5256,
+          5259,
+          4910,
+          4457,
+          2759,
+          3353,
+          3379,
+          918,
+          3655,
+          2698,
+          1115,
+          984,
+          3586,
+          1787,
+          3036,
+          3469
+        ],
+        "source_id": "S3"
+      }
+    ],
+    "comparisons": [
+      {
+        "issue_number": 918,
+        "relationship": "related_but_different",
+        "reason": "Both issues mention hosting/deployment services used with Flask, but the target asks about adding a documentation link for Cloudflare Workers, while issue 918 reports a runtime/session failure on Heroku under gevent/Gunicorn.",
+        "similarities": [
+          "Both involve deploying Flask applications on third-party hosting/platform services.",
+          "Both discuss Flask behavior in a hosted deployment context."
+        ],
+        "differences": [
+          "The target is a docs inclusion request, not a bug report.",
+          "Issue 918 is about broken sessions and a traceback on Heroku, not Cloudflare or documentation coverage.",
+          "Issue 918 appears to focus on runtime troubleshooting rather than platform listing policy."
+        ],
+        "source_ids": [
+          "S1",
+          "S4"
+        ]
+      }
+    ],
+    "quality_benchmark": false
+  },
+  "browser_checks": {
+    "same_job_restored_after_refresh": true,
+    "query_scope_visible": true,
+    "compared_candidate_shown_first": true,
+    "uncompared_candidates_labeled": true,
+    "mobile_page_horizontal_overflow": false,
+    "mobile_comparison_columns": "single column",
+    "screenshot": "evidence/m2-live-comparison.jpg"
+  },
+  "limitations": [
+    "One live functional example does not establish retrieval or classification quality.",
+    "The second model-selected query was broad; only one of the 17 candidates was read and compared.",
+    "Unread candidates cannot be treated as ruled-out duplicates.",
+    "Jobs remain in memory and disappear when the backend stops."
+  ],
+  "type_checks": {
+    "python_sdk_parameters": "passed - Pyright reported zero errors",
+    "frontend_typescript": "passed",
+    "next_production_build": "passed"
+  },
+  "test_servers_stopped": true
+}
