@@ -31,6 +31,13 @@ class TransientToolError(ToolError):
         self.failure = failure
 
 
+REPOSITORY_NOT_PUBLIC = "The repository is not public or could not be found. IssueLens analyzes public repositories only."
+
+
+class RepositoryNotPublicError(ToolError):
+    """GitHub did not confirm that the target repository is public."""
+
+
 def github_rate_limit_delay(response: httpx.Response) -> float | None:
     primary_limit = response.headers.get("x-ratelimit-remaining") == "0"
     if response.status_code == 403 and not primary_limit:
@@ -155,6 +162,7 @@ class GitHubToolState(BaseModel):
     comment_failed_pages: set[int]
     comment_pages: dict[int, tuple[list[str], bool]]
     cooldown_until: float | None = None
+    repository_public: bool = False
 
 
 class GitHubTools:
@@ -194,6 +202,7 @@ class GitHubTools:
         self.comment_failed_pages: set[int] = set()
         self.comment_pages: dict[int, tuple[list[str], bool]] = {}
         self.cooldown_until: float | None = None
+        self.repository_public = False
 
     def checkpoint(self) -> GitHubToolState:
         return GitHubToolState.model_validate(self)
@@ -288,6 +297,21 @@ class GitHubTools:
         if not 200 <= response.status_code < 300:
             raise ToolError(f"GitHub returned HTTP {response.status_code}. Repository redirects are not followed.")
         return response
+
+    async def require_public_repository(self) -> None:
+        """Fail closed unless GitHub reports the target repository as public."""
+        if self.repository_public:
+            return
+        response = await self._get(self.target.api_path, allow_not_found=True)
+        data = response.json() if response.status_code != 404 else None
+        # Missing and private repositories share one outcome, so a server
+        # credential cannot reveal which private repositories exist.
+        if (
+            not isinstance(data, dict) or data.get("private") is not False
+            or data.get("visibility", "public") != "public"
+        ):
+            raise RepositoryNotPublicError(REPOSITORY_NOT_PUBLIC)
+        self.repository_public = True
 
     def _source(self, kind: SourceKind, title: str, url: str, text: str, budget: int) -> dict[str, Any]:
         existing = next((source for source in self.sources.values() if source.url == url), None)

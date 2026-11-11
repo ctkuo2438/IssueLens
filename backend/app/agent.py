@@ -20,7 +20,9 @@ from backend.app.analysis_validation import validate_analysis
 from backend.app.checkpoint import AgentCheckpoint, CheckpointWriter, PendingTools, ScheduledRetry
 from backend.app.config import Settings
 from backend.app.context import ContextBuilder
-from backend.app.github import CommentArguments, GitHubTools, SearchArguments, TOOLS, ToolError, TransientToolError
+from backend.app.github import (
+    CommentArguments, GitHubTools, RepositoryNotPublicError, SearchArguments, TOOLS, ToolError, TransientToolError,
+)
 from backend.app.models import AnalysisContent, AnalysisResult, EventKind, IssueTarget, RejectedAnswer
 from backend.app.retry import TransientFailure, openai_transient_failure
 from backend.app.trace import TraceLog
@@ -405,6 +407,21 @@ class AgentRun:
             )
             if checkpoint and checkpoint.tools:
                 self.tools.restore(checkpoint.tools)
+            if self.settings.github_token:
+                # A server credential may read private repositories; anonymous reads cannot.
+                # This server check is not a model tool and does not use the tool budget.
+                try:
+                    await self.tools.require_public_repository()
+                except (ToolError, ValueError) as exc:
+                    if isinstance(exc, RepositoryNotPublicError):
+                        message, stop_reason = str(exc), "repository_not_public"
+                    else:
+                        detail = str(exc) if isinstance(exc, ToolError) else "GitHub returned invalid repository data"
+                        detail = detail if detail.endswith(".") else f"{detail}."
+                        message = f"Could not confirm that the repository is public; no issue data was read. {detail}"
+                        stop_reason = "repository_check_failed"
+                    self.emit("warning", message)
+                    return self.snapshot(message, stop_reason=stop_reason)
             if checkpoint and checkpoint.pending_tools:
                 await self._complete_tool_round(
                     context, history, checkpoint.pending_tools,
