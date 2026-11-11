@@ -4,7 +4,7 @@ import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 import logging
 from typing import Protocol
 
@@ -12,15 +12,20 @@ import psycopg
 from psycopg.conninfo import conninfo_to_dict
 from psycopg.types.json import Jsonb
 from psycopg_pool import AsyncConnectionPool
+from pydantic import ValidationError
 
 from backend.app.checkpoint import AgentCheckpoint
-from backend.app.models import GitHubUser, JobSnapshot, JobStatus, ProgressEvent
+from backend.app.models import GitHubUser, IssueTarget, JobSnapshot, JobStatus, ProgressEvent
 from backend.app.trace import AnalysisTrace, TraceLog
+
+
+logger = logging.getLogger(__name__)
 
 
 STORAGE_UNAVAILABLE = "PostgreSQL storage is unavailable. Check DATABASE_URL and the database service."
 INTERRUPTED = "The previous analysis process stopped before this analysis finished. Start a new analysis to investigate again."
 INVALID_CHECKPOINT = "The saved checkpoint is incompatible with this Worker. Start a new analysis to investigate again."
+INCOMPATIBLE_RECORD = "This saved analysis cannot be read by the current version and was stopped. Start a new analysis to investigate again."
 WORKER_LOCK = 0x49737375654C656E  # Reuse the lock held by the old in-process backend.
 SCHEMA_LOCK = WORKER_LOCK + 1
 ENQUEUE_LOCK = WORKER_LOCK + 2
@@ -94,6 +99,30 @@ def interrupted_snapshot(snapshot: JobSnapshot, reason: str = INTERRUPTED) -> Jo
     return restored
 
 
+def incompatible_snapshot(job_id: str, stored: object) -> JobSnapshot:
+    """A terminal snapshot for a stored record that no longer validates, keeping readable fields."""
+    fields = stored if isinstance(stored, dict) else {}
+    issue_url, created_at = "", datetime.now(UTC)
+    try:
+        if isinstance(fields.get("issue_url"), str):
+            issue_url = IssueTarget.from_url(fields["issue_url"]).url
+    except ValueError:
+        pass
+    try:
+        if isinstance(fields.get("created_at"), str):
+            parsed = datetime.fromisoformat(fields["created_at"])
+            created_at = parsed if parsed.tzinfo is not None else created_at
+    except ValueError:
+        pass
+    return JobSnapshot(
+        job_id=job_id, issue_url=issue_url, status="failed", created_at=created_at, error=INCOMPATIBLE_RECORD,
+        events=[
+            ProgressEvent(id=1, kind="warning", message=INCOMPATIBLE_RECORD),
+            ProgressEvent(id=2, kind="status", message="Analysis failed."),
+        ],
+    )
+
+
 @dataclass
 class ClaimedAnalysis:
     snapshot: JobSnapshot
@@ -133,16 +162,20 @@ class PostgresAnalysisStore:
             await self._prepare_schema(connection)
             async with connection.transaction():
                 cursor = await connection.execute("""
-                    SELECT snapshot, trace FROM issuelens_analyses
+                    SELECT job_id, snapshot, trace FROM issuelens_analyses
                     WHERE snapshot->>'status' = 'running' AND checkpoint IS NULL
                     FOR UPDATE
                 """)
-                for row in await cursor.fetchall():
-                    restored = interrupted_snapshot(JobSnapshot.model_validate(row[0]))
-                    trace = TraceLog.model_validate(row[1])
+                for job_id, stored_snapshot, stored_trace in await cursor.fetchall():
+                    try:
+                        snapshot = JobSnapshot.model_validate(stored_snapshot)
+                        trace = TraceLog.model_validate(stored_trace)
+                    except ValidationError:
+                        await self._retire_incompatible(connection, job_id, stored_snapshot, stored_trace)
+                        continue
                     trace.mark_interrupted()
                     trace.stop_reason = "checkpoint_unavailable"
-                    await self._update(connection, restored, "running", trace=trace)
+                    await self._update(connection, interrupted_snapshot(snapshot), "running", trace=trace)
             self._connection = connection
         except BaseException as exc:
             lost = connection is None or connection.closed
@@ -205,7 +238,7 @@ class PostgresAnalysisStore:
             columns = await connection.execute("""
                 SELECT attname FROM pg_attribute
                 WHERE attrelid = 'issuelens_analyses'::regclass
-                  AND attname IN ('cancel_requested', 'checkpoint', 'trace', 'owner_github_id')
+                  AND attname IN ('cancel_requested', 'checkpoint', 'trace', 'owner_github_id', 'incompatible_record')
                   AND NOT attisdropped
             """)
             present = {row[0] for row in await columns.fetchall()}
@@ -225,6 +258,9 @@ class PostgresAnalysisStore:
                 await connection.execute("""
                     ALTER TABLE issuelens_analyses ADD COLUMN owner_github_id bigint CHECK (owner_github_id > 0)
                 """)
+            if "incompatible_record" not in present:
+                # The original snapshot and trace of a record this version could not read.
+                await connection.execute("ALTER TABLE issuelens_analyses ADD COLUMN incompatible_record jsonb")
             await connection.execute("""
                 CREATE INDEX IF NOT EXISTS issuelens_analyses_pending
                 ON issuelens_analyses (updated_at, job_id)
@@ -269,6 +305,26 @@ class PostgresAnalysisStore:
         ))
         if cursor.rowcount != 1:
             raise StorageError("The analysis changed before the Worker could save it.")
+
+    @staticmethod
+    async def _retire_incompatible(
+        connection: psycopg.AsyncConnection, job_id: str, stored_snapshot: object, stored_trace: object,
+    ) -> None:
+        """Make a record this version cannot read terminal, so it never blocks the queue.
+
+        The caller holds the row lock. The original JSON is kept for debugging.
+        """
+        await connection.execute("""
+            UPDATE issuelens_analyses
+            SET snapshot = %s, trace = %s, incompatible_record = %s,
+                checkpoint = NULL, cancel_requested = false, updated_at = CURRENT_TIMESTAMP
+            WHERE job_id = %s
+        """, (
+            Jsonb(incompatible_snapshot(job_id, stored_snapshot).model_dump(mode="json")),
+            Jsonb(TraceLog(stop_reason="record_incompatible").model_dump(mode="json")),
+            Jsonb({"snapshot": stored_snapshot, "trace": stored_trace}), job_id,
+        ))
+        logger.warning("Stopped stored analysis %s because this version cannot read it.", job_id)
 
     def _connected(self) -> psycopg.AsyncConnection:
         if self._connection is None or self._connection.closed:
@@ -341,7 +397,7 @@ class PostgresAnalysisStore:
     async def claim(self, active_job_ids: list[str], signature: str) -> ClaimedAnalysis | None:
         async with self._operation() as connection, connection.transaction():
             cursor = await connection.execute("""
-                SELECT snapshot, checkpoint, cancel_requested, trace FROM issuelens_analyses
+                SELECT job_id, snapshot, checkpoint, cancel_requested, trace FROM issuelens_analyses
                 WHERE snapshot->>'status' IN ('queued', 'running') AND NOT (job_id = ANY(%s))
                 ORDER BY (snapshot->>'status' = 'running') DESC, updated_at, job_id
                 LIMIT 1 FOR UPDATE
@@ -349,22 +405,28 @@ class PostgresAnalysisStore:
             row = await cursor.fetchone()
             if row is None:
                 return None
-            snapshot = JobSnapshot.model_validate(row[0])
+            job_id, stored_snapshot, stored_checkpoint, cancel_requested, stored_trace = row
+            try:
+                snapshot = JobSnapshot.model_validate(stored_snapshot)
+                trace = TraceLog.model_validate(stored_trace)
+            except ValidationError:
+                # Running rows are claimed first, so an unreadable one would block the whole queue.
+                await self._retire_incompatible(connection, job_id, stored_snapshot, stored_trace)
+                return None
             if snapshot.status == "queued":
                 checkpoint = AgentCheckpoint.start(signature)
                 snapshot.status = "running"
                 await self._update(connection, snapshot, "queued", checkpoint)
                 return ClaimedAnalysis(snapshot, checkpoint)
 
-            trace = TraceLog.model_validate(row[3])
             interrupted = trace.mark_interrupted()
             try:
-                checkpoint = AgentCheckpoint.model_validate_json(row[1])
+                checkpoint = AgentCheckpoint.model_validate_json(stored_checkpoint)
             except ValueError:
                 trace.stop_reason = "checkpoint_incompatible"
                 await self._update(connection, interrupted_snapshot(snapshot, INVALID_CHECKPOINT), "running", trace=trace)
                 return None
-            if row[2]:
+            if cancel_requested:
                 snapshot.result = checkpoint.result
                 if not checkpoint.finished:
                     snapshot.result.usage.elapsed_seconds = round(checkpoint.elapsed_seconds(), 2)

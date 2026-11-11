@@ -29,8 +29,8 @@ from backend.app.jobs import JobManager, QueueFullError
 from backend.app.main import create_app
 from backend.app.models import JobSnapshot, ProgressEvent, TERMINAL_STATUSES
 from backend.app.storage import (
-    INTERRUPTED, PostgresAnalysisStore, STORAGE_UNAVAILABLE, StorageConnectionError, StorageError, WorkerLockHeld,
-    interrupted_snapshot,
+    INCOMPATIBLE_RECORD, INTERRUPTED, PostgresAnalysisStore, STORAGE_UNAVAILABLE, StorageConnectionError, StorageError, WorkerLockHeld,
+    incompatible_snapshot, interrupted_snapshot,
 )
 from backend.app.worker import AnalysisWorker
 from test_mvp import SETTINGS, TARGET, offline_result
@@ -101,6 +101,26 @@ class PersistenceConfigurationTests(unittest.TestCase):
             with self.assertRaises(ValueError) as error:
                 Settings.from_env()
         self.assertNotIn("SENSITIVE_DATABASE_CANARY", str(error.exception))
+
+
+class IncompatibleRecordTests(unittest.TestCase):
+    def test_retired_snapshot_keeps_readable_fields_and_is_terminal(self):
+        created = "2026-11-01T00:00:00+00:00"
+        retired = incompatible_snapshot("a" * 32, {"issue_url": TARGET.url, "created_at": created, "result": "broken"})
+        self.assertEqual((retired.status, retired.error, retired.result), ("failed", INCOMPATIBLE_RECORD, None))
+        self.assertEqual((retired.issue_url, retired.created_at.isoformat()), (TARGET.url, created))
+        self.assertIn(retired.status, TERMINAL_STATUSES)
+
+    def test_unreadable_fields_fall_back_without_echoing_stored_text(self):
+        for stored in (
+            ["not", "an", "object"],
+            {"issue_url": "javascript:alert(1)", "created_at": "2026-11-01T00:00:00"},
+            {"issue_url": 42, "created_at": 7},
+        ):
+            with self.subTest(stored=stored):
+                retired = incompatible_snapshot("b" * 32, stored)
+                self.assertEqual(retired.issue_url, "")
+                self.assertIsNotNone(retired.created_at.tzinfo)
 
 
 class PersistenceAPITests(unittest.TestCase):
@@ -510,25 +530,60 @@ class PostgresIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 await worker.close()
                 await writer.rollback()
 
-    async def test_worker_stops_on_a_stored_row_that_no_longer_validates(self):
+    async def test_worker_retires_a_queued_row_that_no_longer_validates_and_keeps_working(self):
+        settings = replace(SETTINGS, database_url=self.database_url, concurrent_jobs=1)
+        job_id = uuid4().hex
+        self.created_ids.append(job_id)
+        stored = {"job_id": job_id, "status": "queued", "issue_url": TARGET.url, "created_at": "not a date"}
+        stored_trace = {"attempts": "not a list"}
+        async with await psycopg.AsyncConnection.connect(self.database_url, autocommit=True) as connection:
+            await connection.execute(
+                "INSERT INTO issuelens_analyses (job_id, snapshot, trace) VALUES (%s, %s, %s)",
+                (job_id, Jsonb(stored), Jsonb(stored_trace)),
+            )
+        stop, output = asyncio.Event(), io.StringIO()
+        with patch("backend.app.jobs.AgentRun.run", new=AsyncMock(return_value=offline_result())), redirect_stdout(output):
+            worker = asyncio.create_task(AnalysisWorker(settings).run(stop))
+            try:
+                async with api_client(settings) as client:
+                    # Queued after the unreadable row, so the Worker reaches that row first.
+                    path = await self.submit(client)
+                    await self.wait_for_snapshot(path, lambda item: item.status == "completed")
+                    retired = (await client.get(f"/api/v1/analyses/{job_id}")).json()
+                    trace = (await client.get(f"/api/v1/analyses/{job_id}/trace")).json()
+                self.assertFalse(worker.done())
+            finally:
+                stop.set()
+                await worker
+        self.assertEqual((retired["status"], retired["error"]), ("failed", INCOMPATIBLE_RECORD))
+        self.assertEqual(retired["issue_url"], TARGET.url)
+        self.assertEqual(trace["stop_reason"], "record_incompatible")
+        self.assertNotIn("Reconnecting", output.getvalue())
+        async with await psycopg.AsyncConnection.connect(self.database_url) as connection:
+            cursor = await connection.execute(
+                "SELECT incompatible_record FROM issuelens_analyses WHERE job_id = %s", (job_id,),
+            )
+            row = await cursor.fetchone()
+        assert row is not None
+        # The original record is kept for debugging instead of being overwritten.
+        self.assertEqual(row[0], {"snapshot": stored, "trace": stored_trace})
+
+    async def test_worker_startup_retires_an_interrupted_row_that_no_longer_validates(self):
         job_id = uuid4().hex
         self.created_ids.append(job_id)
         async with await psycopg.AsyncConnection.connect(self.database_url, autocommit=True) as connection:
             await connection.execute(
                 "INSERT INTO issuelens_analyses (job_id, snapshot) VALUES (%s, %s)",
-                (job_id, Jsonb({"job_id": job_id, "status": "queued"})),
+                (job_id, Jsonb({"job_id": job_id, "status": "running"})),
             )
-        output = io.StringIO()
-        with (
-            patch("backend.app.jobs.AgentRun.run", new=AsyncMock(return_value=offline_result())),
-            redirect_stdout(output),
-            self.assertRaises(StorageError) as error,
-        ):
-            async with asyncio.timeout(10):
-                await AnalysisWorker(replace(SETTINGS, database_url=self.database_url)).run(asyncio.Event())
-        # The connection is healthy, so reconnecting would only claim the same row again.
-        self.assertNotIsInstance(error.exception, StorageConnectionError)
-        self.assertNotIn("Reconnecting", output.getvalue())
+        worker = PostgresAnalysisStore(self.database_url)
+        try:
+            await worker.open(worker=True)
+        finally:
+            await worker.close()
+        retired = await self.store.get(job_id)
+        assert retired is not None
+        self.assertEqual((retired.status, retired.error, retired.issue_url), ("failed", INCOMPATIBLE_RECORD, ""))
 
     async def test_worker_reconnects_in_process_and_resumes_a_running_analysis(self):
         settings = replace(SETTINGS, database_url=self.database_url, concurrent_jobs=1)

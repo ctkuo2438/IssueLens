@@ -1,0 +1,44 @@
+{
+  "verified_on_utc": "2026-11-11",
+  "scope": "A stored analysis whose snapshot or trace no longer validates is marked failed and kept aside, so it no longer stops the Worker or blocks queued analyses.",
+  "checks": {
+    "unittest_total_passed": 336,
+    "postgresql_integration_passed": 24,
+    "offline_passed": 312,
+    "offline_run_skipped_without_database": 24,
+    "incompatible_record_tests_passed": 4,
+    "pyright_errors": 0,
+    "pyright_warnings": 0,
+    "pyright_command": "pyright --pythonpath .venv/bin/python backend evaluation lessons scripts"
+  },
+  "database": "A temporary PostgreSQL 14.15 cluster on 127.0.0.1:55432 with a database named issuelens_test. The project cluster on port 5432 was not stopped or modified.",
+  "providers": "The Worker test used a simulated agent run; no model or GitHub request was made.",
+  "reproduction_before_fix": {
+    "unreadable_queued_row": "A queued row with an invalid created_at and trace stopped the Worker with StorageError ('PostgreSQL storage is unavailable'), so the analysis queued after it never ran.",
+    "unreadable_interrupted_row": "A running row without a checkpoint and with an incomplete snapshot made the Worker fail at startup."
+  },
+  "after_fix": {
+    "unreadable_queued_row": "The row became failed with the incompatible-record error, kept its canonical issue URL and owner, and got a readable trace with stop_reason record_incompatible. The analysis queued after it completed, and the Worker kept running without a reconnect.",
+    "original_kept": "incompatible_record held the original snapshot and trace exactly as stored.",
+    "unreadable_interrupted_row": "Worker startup marked the row failed and opened normally. Without a readable issue URL, the retired snapshot used an empty one.",
+    "unreadable_fields": "Non-object snapshots, non-GitHub URLs, timestamps without a time zone and non-string values fell back to an empty URL and the current UTC time."
+  },
+  "mutation_checks": {
+    "claim_raises_on_unreadable_row": "test_worker_retires_a_queued_row failed",
+    "startup_raises_on_unreadable_row": "test_worker_startup_retires failed",
+    "original_record_not_kept": "test_worker_retires_a_queued_row failed",
+    "trace_left_unreadable": "test_worker_retires_a_queued_row failed",
+    "stored_url_echoed_unchecked": "IncompatibleRecordTests failed"
+  },
+  "tests": [
+    "tests/test_persistence.py::IncompatibleRecordTests::test_retired_snapshot_keeps_readable_fields_and_is_terminal",
+    "tests/test_persistence.py::IncompatibleRecordTests::test_unreadable_fields_fall_back_without_echoing_stored_text",
+    "tests/test_persistence.py::PostgresIntegrationTests::test_worker_retires_a_queued_row_that_no_longer_validates_and_keeps_working",
+    "tests/test_persistence.py::PostgresIntegrationTests::test_worker_startup_retires_an_interrupted_row_that_no_longer_validates"
+  ],
+  "limitations": [
+    "Only rows the Worker claims or recovers are handled. An API read of an unreadable row that the Worker has not reached still returns 503.",
+    "The retired snapshot does not carry the old Activity; the original events are kept in incompatible_record.",
+    "GitHub text containing a NUL character is still rejected by PostgreSQL JSONB and stops the Worker."
+  ]
+}
