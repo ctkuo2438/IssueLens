@@ -17,6 +17,7 @@ import psycopg
 from backend.app import config
 from backend.app.auth import TOKEN_URL, USER_URL
 from backend.app.config import GITHUB_CALLBACK_PATH, GitHubOAuthConfig, Settings
+from backend.app.jobs import ACCOUNT_LIMIT
 from backend.app.main import create_app
 from backend.app.worker import AnalysisWorker
 from test_mvp import SETTINGS, TARGET, offline_result
@@ -217,6 +218,24 @@ class PostgresOAuthTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((await reopened.get(paths[0])).status_code, 401)
         await self.sign_in(alice, 4101, "alice-renamed", job_id=paths[0].rsplit("/", 1)[-1])
         self.assertEqual((await alice.get(paths[0])).status_code, 200)
+
+    async def test_each_account_keeps_at_most_two_analyses_in_progress(self):
+        # No Worker runs here, so every accepted analysis stays queued.
+        alice, bob = await self.browser(), await self.browser()
+        await self.sign_in(alice, 4201, "alice-limit-fixture")
+        await self.sign_in(bob, 4202, "bob-limit-fixture")
+        first = await self.submit(alice, 42)
+        await self.submit(alice, 43)
+        refused = await alice.post(ANALYSES, json={"issue_url": "https://github.com/example/project/issues/44"})
+        if refused.status_code == 202:
+            self.job_ids.append(refused.json()["job_id"])  # Clean up a wrongly accepted analysis too.
+        self.assertEqual(refused.status_code, 429)
+        self.assertEqual(refused.json()["detail"], ACCOUNT_LIMIT.format(limit=2))
+        # Another account keeps its own share of the shared queue.
+        await self.submit(bob, 42)
+        # Cancelling a queued analysis frees a place for the same account.
+        self.assertEqual((await alice.delete(first)).json()["status"], "cancelled")
+        await self.submit(alice, 44)
 
     async def test_oauth_callback_is_bound_to_the_browser_and_consumed_once(self):
         alice, other = await self.browser(), await self.browser()

@@ -58,6 +58,8 @@ class Settings:
     max_candidates: int = 20
     max_candidate_reads: int = 5
     max_jobs: int = 30
+    # Queued or running analyses one signed-in account may hold in the shared queue.
+    max_active_per_account: int = 2
     concurrent_jobs: int = 2
     job_ttl_seconds: int = 3600
     github_oauth: GitHubOAuthConfig | None = None

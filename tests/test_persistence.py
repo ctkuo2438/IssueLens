@@ -696,7 +696,24 @@ class PostgresIntegrationTests(unittest.IsolatedAsyncioTestCase):
         try:
             await other.open()
             accepted = await asyncio.gather(self.store.enqueue(first, 1), other.enqueue(second, 1))
-            self.assertEqual(sorted(accepted), [False, True])
+            self.assertEqual(sorted(accepted), ["queue_full", "queued"])
+        finally:
+            await other.close()
+
+    async def test_separate_api_connections_share_one_account_limit(self):
+        first, second, local, also_local = (saved_snapshot("queued") for _ in range(4))
+        self.created_ids.extend(item.job_id for item in (first, second, local, also_local))
+        other = PostgresAnalysisStore(self.database_url)
+        try:
+            await other.open()
+            accepted = await asyncio.gather(
+                self.store.enqueue(first, 30, owner_id=4301, account_capacity=1),
+                other.enqueue(second, 30, owner_id=4301, account_capacity=1),
+            )
+            self.assertEqual(sorted(accepted), ["account_full", "queued"])
+            # Local mode has no owner, so only the shared limit applies.
+            for snapshot in (local, also_local):
+                self.assertEqual(await self.store.enqueue(snapshot, 30, account_capacity=1), "queued")
         finally:
             await other.close()
 

@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 import logging
-from typing import Protocol
+from typing import Literal, Protocol
 
 import psycopg
 from psycopg.conninfo import conninfo_to_dict
@@ -30,6 +30,7 @@ WORKER_LOCK = 0x49737375654C656E  # Reuse the lock held by the old in-process ba
 SCHEMA_LOCK = WORKER_LOCK + 1
 ENQUEUE_LOCK = WORKER_LOCK + 2
 POLL_SECONDS = 0.25
+EnqueueOutcome = Literal["queued", "queue_full", "account_full"]
 # One limit for a connection attempt, a pool wait and the pool's reconnect window.
 CONNECT_SECONDS = 3
 # After a database restart every idle connection is stale. The pool waits about 0 and
@@ -379,20 +380,32 @@ class PostgresAnalysisStore:
             row = await cursor.fetchone()
             return AnalysisTrace.model_validate({**row[1], "job_id": job_id, "status": row[0]}) if row else None
 
-    async def enqueue(self, snapshot: JobSnapshot, capacity: int, *, owner_id: int | None = None) -> bool:
+    async def enqueue(
+        self, snapshot: JobSnapshot, capacity: int, *, owner_id: int | None = None, account_capacity: int | None = None,
+    ) -> EnqueueOutcome:
+        """Insert a queued analysis unless the shared queue or the owner's share is full."""
         async with self._operation() as connection, connection.transaction():
+            # One lock orders every create, so both limits hold across API processes.
             await connection.execute("SELECT pg_advisory_xact_lock(%s)", (ENQUEUE_LOCK,))
             cursor = await connection.execute("""
-                SELECT count(*) FROM issuelens_analyses WHERE snapshot->>'status' IN ('queued', 'running')
-            """)
-            count = await cursor.fetchone()
-            if count is None or count[0] >= capacity:
-                return False
+                SELECT count(*), count(*) FILTER (WHERE owner_github_id = %s)
+                FROM issuelens_analyses WHERE snapshot->>'status' IN ('queued', 'running')
+            """, (owner_id,))
+            counts = await cursor.fetchone()
+            if counts is None:
+                return "queue_full"
+            active, owned = counts
+            # Local mode has no owner, so only the shared limit applies. The account limit
+            # is checked first because the user can act on it by waiting for their own run.
+            if owner_id is not None and account_capacity is not None and owned >= account_capacity:
+                return "account_full"
+            if active >= capacity:
+                return "queue_full"
             await connection.execute(
                 "INSERT INTO issuelens_analyses (job_id, snapshot, owner_github_id) VALUES (%s, %s, %s)",
                 (snapshot.job_id, Jsonb(snapshot.model_dump(mode="json")), owner_id),
             )
-            return True
+            return "queued"
 
     async def claim(self, active_job_ids: list[str], signature: str) -> ClaimedAnalysis | None:
         async with self._operation() as connection, connection.transaction():

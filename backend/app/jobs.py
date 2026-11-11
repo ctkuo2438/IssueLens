@@ -22,10 +22,15 @@ from backend.app.trace import AnalysisTrace, TraceLog
 
 logger = logging.getLogger(__name__)
 QUEUE_FULL = "The local queue is full. Wait for an analysis to finish."
+ACCOUNT_LIMIT = "This account has reached its limit of analyses in progress ({limit}). Wait for one to finish before starting another."
 
 
 class QueueFullError(Exception):
     """The local job store has reached its capacity."""
+
+
+class AccountLimitError(QueueFullError):
+    """One signed-in account holds its full share of the shared queue."""
 
 
 @dataclass
@@ -246,6 +251,7 @@ class PostgresJobQueue:
     def __init__(self, settings: Settings, store: PostgresAnalysisStore) -> None:
         self.store = store
         self.capacity = settings.max_jobs
+        self.account_capacity = settings.max_active_per_account
 
     async def start(self) -> None:
         await self.store.open()
@@ -255,7 +261,13 @@ class PostgresJobQueue:
 
     async def create(self, target: IssueTarget, *, owner_id: int | None = None) -> Job:
         job = queued_job(target)
-        if not await self.store.enqueue(job.snapshot, self.capacity, owner_id=owner_id):
+        outcome = await self.store.enqueue(
+            job.snapshot, self.capacity, owner_id=owner_id, account_capacity=self.account_capacity,
+        )
+        if outcome == "account_full":
+            # One account cannot fill the queue and use up the shared model budget.
+            raise AccountLimitError(ACCOUNT_LIMIT.format(limit=self.account_capacity))
+        if outcome == "queue_full":
             raise QueueFullError(QUEUE_FULL)
         return job
 
