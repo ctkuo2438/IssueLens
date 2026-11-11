@@ -13,12 +13,14 @@ from urllib.parse import parse_qs, urlsplit
 from fastapi.testclient import TestClient
 import httpx
 import psycopg
+from psycopg import sql
 
 from backend.app import config
-from backend.app.auth import TOKEN_URL, USER_URL
+from backend.app.auth import LOGIN_LIFETIME, SESSION_LIFETIME, TOKEN_URL, USER_URL
 from backend.app.config import GITHUB_CALLBACK_PATH, GitHubOAuthConfig, Settings
 from backend.app.jobs import ACCOUNT_LIMIT
 from backend.app.main import create_app
+from backend.app.models import GitHubUser
 from backend.app.worker import AnalysisWorker
 from test_mvp import SETTINGS, TARGET, offline_result
 from test_persistence import api_client, saved_snapshot
@@ -32,6 +34,8 @@ SESSION = "/api/v1/auth/session"
 LOGOUT = "/api/v1/auth/logout"
 ANALYSES = "/api/v1/analyses"
 STATE_COOKIE = "issuelens_oauth_state"
+VERIFIER_COOKIE = "issuelens_oauth_verifier"
+RETURN_COOKIE = "issuelens_oauth_return"
 SESSION_COOKIE = "issuelens_session"
 
 
@@ -85,7 +89,7 @@ class PostgresOAuthTests(unittest.IsolatedAsyncioTestCase):
                 await connection.execute("DELETE FROM issuelens_analyses WHERE job_id = ANY(%s)", (self.job_ids,))
             if self.state_hashes:
                 await connection.execute(
-                    "DELETE FROM issuelens_oauth_requests WHERE state_hash = ANY(%s)", (self.state_hashes,),
+                    "DELETE FROM issuelens_used_logins WHERE state_hash = ANY(%s)", (self.state_hashes,),
                 )
             if self.session_hashes:
                 await connection.execute(
@@ -123,6 +127,9 @@ class PostgresOAuthTests(unittest.IsolatedAsyncioTestCase):
         state = query["state"][0]
         self.state_hashes.append(sha256(state.encode()).hexdigest())
         self.assertEqual(browser.cookies.get(STATE_COOKIE), state)
+        verifier = browser.cookies.get(VERIFIER_COOKIE)
+        self.assertIsNotNone(verifier)
+        self.assertEqual(query["code_challenge"][0], urlsafe_b64encode(sha256(verifier.encode()).digest()).rstrip(b"=").decode())
         self.assertEqual(query["code_challenge_method"], ["S256"])
         self.assertEqual(query["redirect_uri"], [CALLBACK])
         self.assertNotIn("client_secret", query)
@@ -139,7 +146,8 @@ class PostgresOAuthTests(unittest.IsolatedAsyncioTestCase):
         cookie = browser.cookies.get(SESSION_COOKIE)
         self.assertIsNotNone(cookie)
         self.session_hashes.append(sha256(cookie.encode()).hexdigest())
-        self.assertNotIn(STATE_COOKIE, browser.cookies)
+        for name in (STATE_COOKIE, VERIFIER_COOKIE, RETURN_COOKIE):
+            self.assertNotIn(name, browser.cookies)
         self.assertEqual((await browser.get(SESSION)).json(), {
             "enabled": True, "user": {"id": user_id, "login": login},
         })
@@ -237,9 +245,37 @@ class PostgresOAuthTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((await alice.delete(first)).json()["status"], "cancelled")
         await self.submit(alice, 44)
 
+    async def auth_table_rows(self):
+        """Row counts of every login table, or None for a table this database does not have."""
+        counts = {}
+        async with await psycopg.AsyncConnection.connect(self.database_url) as connection:
+            for table in ("issuelens_sessions", "issuelens_used_logins", "issuelens_oauth_requests"):
+                cursor = await connection.execute("SELECT to_regclass(%s) IS NOT NULL", (table,))
+                row = await cursor.fetchone()
+                if row and row[0]:
+                    cursor = await connection.execute(sql.SQL("SELECT count(*) FROM {}").format(sql.Identifier(table)))
+                    count = await cursor.fetchone()
+                    counts[table] = count[0] if count else None
+                else:
+                    counts[table] = None
+        return counts
+
+    async def test_anonymous_login_requests_do_not_write_to_the_database(self):
+        before = await self.auth_table_rows()
+        for _ in range(20):
+            anonymous = await self.browser()
+            response = await anonymous.get(LOGIN)
+            self.assertEqual(response.status_code, 303)
+            state = parse_qs(urlsplit(response.headers["location"]).query)["state"][0]
+            self.state_hashes.append(sha256(state.encode()).hexdigest())
+        # Unauthenticated callers cannot grow the database or its cleanup scans.
+        self.assertEqual(await self.auth_table_rows(), before)
+
     async def test_oauth_callback_is_bound_to_the_browser_and_consumed_once(self):
         alice, other = await self.browser(), await self.browser()
         state, challenge = await self.begin(alice)
+        verifier = alice.cookies.get(VERIFIER_COOKIE)
+        assert verifier is not None
         params = {"state": state, "code": "fixture-callback-code"}
         self.codes[params["code"]] = ({"id": 4103, "login": "state-fixture"}, challenge)
         rejected = await other.get(GITHUB_CALLBACK_PATH, params=params)
@@ -249,10 +285,28 @@ class PostgresOAuthTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(accepted.headers["location"], "/")
         self.assertEqual(self.exchanges, 1)
         self.session_hashes.append(sha256(alice.cookies.get(SESSION_COOKIE).encode()).hexdigest())
+        # Restoring every login cookie still cannot reuse the attempt, and GitHub is not asked again.
         alice.cookies.set(STATE_COOKIE, state)
+        alice.cookies.set(VERIFIER_COOKIE, verifier)
         replay = await alice.get(GITHUB_CALLBACK_PATH, params=params)
         self.assertEqual(replay.headers["location"], "/?auth_error=github")
         self.assertEqual(self.exchanges, 1)
+
+    async def test_a_login_attempt_creates_at_most_one_session_when_callbacks_race(self):
+        store = self.app.state.manager.store
+        user = GitHubUser(id=4104, login="race-fixture")
+        attempt = sha256(b"race-fixture-state").hexdigest()
+        self.state_hashes.append(attempt)
+        first, second = sha256(b"race-session-1").hexdigest(), sha256(b"race-session-2").hexdigest()
+        self.session_hashes.extend([first, second])
+        # Two callbacks can both pass the read before either one commits its session.
+        created = await asyncio.gather(*(
+            store.create_session(token, user, SESSION_LIFETIME, None, login_hash=attempt, login_lifetime=LOGIN_LIFETIME)
+            for token in (first, second)
+        ))
+        self.assertEqual(sorted(created), [False, True])
+        users = [await store.session_user(token) for token in (first, second)]
+        self.assertEqual(sum(found is not None for found in users), 1)
 
     async def test_legacy_records_stay_in_local_mode_and_owned_records_are_private(self):
         legacy = saved_snapshot()

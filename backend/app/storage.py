@@ -268,13 +268,17 @@ class PostgresAnalysisStore:
                 WHERE snapshot->>'status' IN ('queued', 'running')
             """)
             if self._auth_enabled:
+                # Login attempts live in browser cookies; only completed ones are recorded here,
+                # so each attempt creates at most one session. Older databases may still have
+                # an unused issuelens_oauth_requests table, which is left untouched.
                 await connection.execute("""
-                    CREATE TABLE IF NOT EXISTS issuelens_oauth_requests (
+                    CREATE TABLE IF NOT EXISTS issuelens_used_logins (
                         state_hash text PRIMARY KEY,
-                        code_verifier text NOT NULL,
-                        return_job_id text,
                         expires_at timestamptz NOT NULL
                     )
+                """)
+                await connection.execute("""
+                    CREATE INDEX IF NOT EXISTS issuelens_used_logins_expiry ON issuelens_used_logins (expires_at)
                 """)
                 await connection.execute("""
                     CREATE TABLE IF NOT EXISTS issuelens_sessions (
@@ -500,30 +504,28 @@ class PostgresAnalysisStore:
             """, (job_ids,))
             return [row[0] for row in await cursor.fetchall()]
 
-    async def save_oauth_request(
-        self, state_hash: str, verifier: str, return_job_id: str | None, lifetime: timedelta,
-    ) -> None:
-        async with self._operation() as connection, connection.transaction():
-            await connection.execute("DELETE FROM issuelens_oauth_requests WHERE expires_at <= CURRENT_TIMESTAMP")
-            await connection.execute("""
-                INSERT INTO issuelens_oauth_requests (state_hash, code_verifier, return_job_id, expires_at)
-                VALUES (%s, %s, %s, CURRENT_TIMESTAMP + %s)
-            """, (state_hash, verifier, return_job_id, lifetime))
-
-    async def consume_oauth_request(self, state_hash: str) -> tuple[str, str | None] | None:
+    async def login_used(self, state_hash: str) -> bool:
+        """Whether a login attempt already created a session. A read, so anonymous calls write nothing."""
         async with self._operation() as connection:
-            cursor = await connection.execute("""
-                DELETE FROM issuelens_oauth_requests
-                WHERE state_hash = %s AND expires_at > CURRENT_TIMESTAMP
-                RETURNING code_verifier, return_job_id
-            """, (state_hash,))
-            row = await cursor.fetchone()
-            return (row[0], row[1]) if row else None
+            cursor = await connection.execute(
+                "SELECT 1 FROM issuelens_used_logins WHERE state_hash = %s", (state_hash,),
+            )
+            return await cursor.fetchone() is not None
 
     async def create_session(
         self, token_hash: str, user: GitHubUser, lifetime: timedelta, previous_hash: str | None,
-    ) -> None:
+        *, login_hash: str, login_lifetime: timedelta,
+    ) -> bool:
+        """Create a session unless this login attempt already created one."""
         async with self._operation() as connection, connection.transaction():
+            # Only GitHub-confirmed logins reach this write, so the table grows with real sign-ins.
+            await connection.execute("DELETE FROM issuelens_used_logins WHERE expires_at <= CURRENT_TIMESTAMP")
+            cursor = await connection.execute("""
+                INSERT INTO issuelens_used_logins (state_hash, expires_at) VALUES (%s, CURRENT_TIMESTAMP + %s)
+                ON CONFLICT (state_hash) DO NOTHING
+            """, (login_hash, login_lifetime))
+            if cursor.rowcount != 1:
+                return False  # Another callback completed this attempt first.
             await connection.execute("""
                 DELETE FROM issuelens_sessions WHERE expires_at <= CURRENT_TIMESTAMP OR token_hash = %s
             """, (previous_hash,))
@@ -531,6 +533,7 @@ class PostgresAnalysisStore:
                 INSERT INTO issuelens_sessions (token_hash, github_id, github_login, expires_at)
                 VALUES (%s, %s, %s, CURRENT_TIMESTAMP + %s)
             """, (token_hash, user.id, user.login, lifetime))
+            return True
 
     async def session_user(self, token_hash: str) -> GitHubUser | None:
         async with self._operation() as connection:
