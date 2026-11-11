@@ -1,0 +1,97 @@
+{
+  "verified_on_utc": "2026-11-11",
+  "scope": "Recover from PostgreSQL outages and dropped connections: the API reconnects through a connection pool, and the Worker suspends its runs, reacquires its lock in-process and resumes from checkpoints only when its connection is lost.",
+  "checks": {
+    "unittest_total_passed": 333,
+    "postgresql_integration_passed": 23,
+    "offline_passed": 310,
+    "offline_run_skipped_without_database": 23,
+    "reconnect_tests_passed": 15,
+    "pyright_errors": 0,
+    "pyright_warnings": 0,
+    "pyright_command": "pyright --pythonpath .venv/bin/python backend evaluation lessons scripts"
+  },
+  "database": "A temporary PostgreSQL 14.15 cluster on 127.0.0.1:55432 with a database named issuelens_test. The project cluster on port 5432 was not stopped or modified.",
+  "providers": "No analysis was created in the launcher run. Worker tests used a simulated agent run; no model or GitHub request was made.",
+  "reproduction_before_fix": {
+    "server_terminated_api_connections": "Three later reads raised StorageError.",
+    "server_restarted": "Two later reads raised StorageError. The single API connection never reconnected."
+  },
+  "corrected_after_review": {
+    "first_review": {
+      "masked_backoff": "The first outage check lowered the pool's reconnect_timeout to 2 seconds, which hid the default 300-second retry window. With the default, a review run measured 503 responses for 19.8 seconds after a 42-second outage ended.",
+      "incomplete_log_check": "The first log check covered only a refused connection, whose message has no URL. A malformed percent-encoded password was logged verbatim by the pool.",
+      "schema_on_every_connection": "The first version ran the schema DDL for every new pooled connection, which competes with writes for table locks."
+    },
+    "second_review": {
+      "every_storage_error_reconnected": "The in-process Worker reconnect treated any StorageError as a lost connection, so a stored row that no longer validated would suspend and resume every other analysis about once per second, spending their budgets.",
+      "backoff_reset_each_cycle": "The reconnect delay restarted at 1 second on every cycle.",
+      "server_kept_dead_lock": "Client keepalives alone let the server keep a silently dropped Worker session, and its lock, for hours.",
+      "stale_pool_connections": "With four pooled connections, three stale checks with the pool's 0, 1 and 2 second waits exceeded the 3-second request limit after a restart.",
+      "shutdown_exit_code": "A failed final save during shutdown was swallowed and the Worker exited with code 0."
+    }
+  },
+  "after_fix": {
+    "server_terminated_api_connections": "The next read succeeded. The pool checks each connection before use.",
+    "stale_pool_connections": "With both pooled connections stale after the server dropped them, the first read succeeded in under 3 seconds.",
+    "outage_15_seconds": "Connections were refused for 15 seconds with ALLOW_CONNECTIONS false. After they were allowed again, the next read succeeded within CONNECT_SECONDS + 1.",
+    "malformed_url": "open() failed in under 1 second with the sanitized StorageError and logged nothing.",
+    "unreachable_database": "open() failed in about 3 seconds. Pool warnings read \"error connecting in 'issuelens-api': OperationalError\" without the libpq message or the password.",
+    "worker_lost_connection_mid_run": "The same Worker process suspended the running analysis, reconnected after 1 second, reacquired the lock and completed the same job from its checkpoint.",
+    "worker_invalid_stored_row": "A queued row whose snapshot no longer validates stopped the Worker with a StorageError that is not a connection error, and no reconnect was attempted.",
+    "worker_reconnect_with_open_write": "With another transaction holding a write on the table, reopening the Worker store succeeded because the schema check was skipped.",
+    "server_keepalives_as_non_superuser": "A NOSUPERUSER role connected with -c tcp_keepalives_idle=10 -c tcp_keepalives_interval=5 -c tcp_keepalives_count=3 and the session reported 10, 5 and 3."
+  },
+  "mutation_checks": {
+    "default_300_second_reconnect_window": "test_api_recovers_promptly failed",
+    "log_filter_removed": "both log tests failed",
+    "url_pre_parse_removed": "test_malformed_database_url failed",
+    "worker_exits_on_storage_loss": "test_worker_reconnects_in_process failed",
+    "worker_reconnects_on_every_storage_error": "test_other_storage_errors and test_worker_stops_on_a_stored_row failed",
+    "backoff_restarts_every_cycle": "test_quick_repeated_connection_losses failed",
+    "shutdown_error_swallowed": "test_a_lost_connection_during_shutdown failed",
+    "held_lock_not_retried": "test_reconnect_waits_for_a_lock failed",
+    "pool_of_four_connections": "test_api_pool_full failed after 3.5 seconds",
+    "schema_ddl_on_every_reopen": "test_worker_reconnect_skips_schema failed",
+    "store_can_open_twice": "test_a_store_cannot_be_opened_twice failed",
+    "every_failure_counts_as_lost_connection": "test_worker_stops_on_a_stored_row failed",
+    "no_failure_counts_as_lost_connection": "test_worker_reconnects_in_process failed"
+  },
+  "launcher_end_to_end": {
+    "command": "scripts/dev.py with DATABASE_URL pointing at the temporary cluster and default settings",
+    "timeline_seconds": {
+      "0.8": "API returned 404 for an unknown analysis ID.",
+      "0.8_to_2.1": "The server dropped every client connection. The Worker reconnected after 1 second and reported ready. The API returned 404.",
+      "2.1_to_50.5": "PostgreSQL stopped for 48 seconds. The API returned only 503. Because the Worker had served for under a minute, its retries continued at 2 and 4 seconds, then every 5 seconds.",
+      "50.5": "PostgreSQL returned. The API returned 404 again within 0.1 seconds.",
+      "53.6": "The Worker reported ready 3.1 seconds after PostgreSQL returned.",
+      "53.8": "Ctrl+C stopped the launcher with exit code 0. One API process and one Worker process were started in total."
+    }
+  },
+  "tests": [
+    "tests/test_persistence.py::PersistenceLifecycleTests::test_malformed_database_url_fails_at_once_without_logging_it",
+    "tests/test_persistence.py::PersistenceLifecycleTests::test_unreachable_database_fails_startup_and_pool_logs_only_exception_types",
+    "tests/test_persistence.py::PersistenceLifecycleTests::test_pool_log_filter_drops_libpq_error_text",
+    "tests/test_persistence.py::WorkerRecoveryTests::test_quick_repeated_connection_losses_keep_backing_off",
+    "tests/test_persistence.py::WorkerRecoveryTests::test_other_storage_errors_stop_the_worker_instead_of_reconnecting",
+    "tests/test_persistence.py::WorkerRecoveryTests::test_a_lost_connection_during_shutdown_still_fails_the_worker",
+    "tests/test_persistence.py::WorkerRecoveryTests::test_reconnect_waits_for_a_lock_still_held_by_the_dropped_session",
+    "tests/test_persistence.py::PostgresIntegrationTests::test_api_store_recovers_after_the_server_drops_its_connections",
+    "tests/test_persistence.py::PostgresIntegrationTests::test_api_recovers_promptly_after_an_outage_longer_than_its_retries",
+    "tests/test_persistence.py::PostgresIntegrationTests::test_api_pool_full_of_stale_connections_recovers_on_the_first_request",
+    "tests/test_persistence.py::PostgresIntegrationTests::test_a_store_cannot_be_opened_twice",
+    "tests/test_persistence.py::PostgresIntegrationTests::test_worker_store_fails_when_its_lock_connection_drops_and_releases_the_lock",
+    "tests/test_persistence.py::PostgresIntegrationTests::test_worker_reconnect_skips_schema_ddl_while_a_write_holds_the_table",
+    "tests/test_persistence.py::PostgresIntegrationTests::test_worker_stops_on_a_stored_row_that_no_longer_validates",
+    "tests/test_persistence.py::PostgresIntegrationTests::test_worker_reconnects_in_process_and_resumes_a_running_analysis"
+  ],
+  "limitations": [
+    "Client and server keepalive settings for silently dropped network paths were not simulated locally.",
+    "A stored row that no longer validates stops the Worker, so queued analyses wait until that row is handled.",
+    "An unsaved in-flight model or tool attempt still counts toward the job budget after the Worker resumes.",
+    "If publishing a result fails during an outage, other finished but unpublished analyses in the same round may rerun from their last checkpoint.",
+    "Each database call during an outage waits up to 3 seconds; signed-in routes make two calls, so a 503 can take about 6 seconds.",
+    "The API checks the schema once at startup, so a database recreated while the API runs requires an API restart.",
+    "Connection settings set in code override parameters with the same names in DATABASE_URL."
+  ]
+}

@@ -44,13 +44,18 @@ try:
     print("IssueLens: http://127.0.0.1:3000", flush=True)
     print("API docs: http://127.0.0.1:8000/docs", flush=True)
     print("Press Ctrl+C to stop the local stack.", flush=True)
+    api_started, restart_delay = time.monotonic(), 1
+    # The Worker reconnects to PostgreSQL by itself, so its exit means a configuration
+    # error or a stop request. Stopping the stack keeps that error visible.
     while web.poll() is None and (worker is None or worker.poll() is None):
         if api.poll() is not None:
             if not database_configured:
                 break
-            print("API stopped. Restarting it independently.", flush=True)
-            time.sleep(2)
-            api = start_api()
+            # Wait 2 seconds, doubling up to 30 while the API keeps failing soon after it starts.
+            restart_delay = 2 if time.monotonic() - api_started >= 60 else min(30, restart_delay * 2)
+            print(f"API stopped. Restarting it in {restart_delay} seconds.", flush=True)
+            time.sleep(restart_delay)
+            api, api_started = start_api(), time.monotonic()
         time.sleep(0.5)
 except KeyboardInterrupt:
     pass

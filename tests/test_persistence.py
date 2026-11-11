@@ -1,11 +1,16 @@
 """Offline lifecycle checks and opt-in PostgreSQL queue and Worker checks."""
 
 import asyncio
-from contextlib import asynccontextmanager
+from contextlib import AsyncExitStack, asynccontextmanager, redirect_stdout
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
+import io
 import json
+import logging
 import os
+import re
+import time
+from typing import cast
 from urllib.parse import urlsplit
 from uuid import uuid4
 import unittest
@@ -14,15 +19,19 @@ from unittest.mock import AsyncMock, patch
 from fastapi.testclient import TestClient
 import httpx
 import psycopg
+from psycopg import sql
 from psycopg.types.json import Jsonb
 
-from backend.app import config
+from backend.app import config, storage, worker as worker_module
 from backend.app.agent import checkpoint_signature
 from backend.app.config import Settings
 from backend.app.jobs import JobManager, QueueFullError
 from backend.app.main import create_app
 from backend.app.models import JobSnapshot, ProgressEvent, TERMINAL_STATUSES
-from backend.app.storage import INTERRUPTED, PostgresAnalysisStore, StorageError, interrupted_snapshot
+from backend.app.storage import (
+    INTERRUPTED, PostgresAnalysisStore, STORAGE_UNAVAILABLE, StorageConnectionError, StorageError, WorkerLockHeld,
+    interrupted_snapshot,
+)
 from backend.app.worker import AnalysisWorker
 from test_mvp import SETTINGS, TARGET, offline_result
 
@@ -259,6 +268,141 @@ class PersistenceLifecycleTests(unittest.IsolatedAsyncioTestCase):
             store.allow_write.set()
             await manager.close()
 
+    async def test_malformed_database_url_fails_at_once_without_logging_it(self):
+        # An unencoded % makes libpq's parse error repeat the password text.
+        store = PostgresAnalysisStore("postgresql://issuelens:SENSITIVE_DATABASE_CANARY%zz@127.0.0.1:1/project_test")
+        started = time.monotonic()
+        with self.assertNoLogs("psycopg.pool"), self.assertRaises(StorageError) as error:
+            await store.open()
+        self.assertEqual(str(error.exception), STORAGE_UNAVAILABLE)
+        self.assertLess(time.monotonic() - started, 1)
+
+    async def test_unreachable_database_fails_startup_and_pool_logs_only_exception_types(self):
+        # Nothing listens on port 1, so the connection is refused without a database.
+        store = PostgresAnalysisStore("postgresql://issuelens:SENSITIVE_DATABASE_CANARY@127.0.0.1:1/project_test")
+        started = time.monotonic()
+        with self.assertLogs("psycopg.pool", "WARNING") as logs, self.assertRaises(StorageError) as error:
+            await store.open()
+        self.assertEqual(str(error.exception), STORAGE_UNAVAILABLE)
+        self.assertLess(time.monotonic() - started, storage.CONNECT_SECONDS + 2)
+        output = "\n".join(logs.output)
+        self.assertIn("error connecting in 'issuelens-api': OperationalError", output)
+        self.assertNotIn("SENSITIVE_DATABASE_CANARY", output)
+
+    def test_pool_log_filter_drops_libpq_error_text(self):
+        error = psycopg.OperationalError('invalid percent-encoded token: "SENSITIVE_DATABASE_CANARY%zz"')
+        with self.assertLogs("psycopg.pool", "WARNING") as logs:
+            logging.getLogger("psycopg.pool").warning("error connecting in %r: %s", "issuelens-api", error)
+        self.assertEqual(logs.output, ["WARNING:psycopg.pool:error connecting in 'issuelens-api': OperationalError"])
+
+
+class ScriptedWorkerStore:
+    """Worker storage whose claims raise scripted errors, then request a stop."""
+
+    def __init__(self, stop, claim_errors, open_errors=(), *, stop_before_error=False):
+        self.stop = stop
+        self.claim_errors = list(claim_errors)
+        self.open_errors = list(open_errors)
+        self.stop_before_error = stop_before_error
+        self.opens = 0
+
+    async def open(self, *, worker=False):
+        self.opens += 1
+        # The first open is the Worker's startup; scripted errors apply to reconnects.
+        if self.opens > 1 and self.open_errors:
+            raise self.open_errors.pop(0)
+
+    async def close(self):
+        pass
+
+    async def cancellation_requests(self, job_ids):
+        return []
+
+    async def claim(self, active_job_ids, signature):
+        if self.claim_errors:
+            if self.stop_before_error:
+                self.stop.set()
+            raise self.claim_errors.pop(0)
+        self.stop.set()
+        return None
+
+
+class WorkerRecoveryTests(unittest.IsolatedAsyncioTestCase):
+    async def run_worker(self, *claim_errors, open_errors=(), stop_before_error=False):
+        stop = asyncio.Event()
+        worker = AnalysisWorker(SETTINGS)
+        store = ScriptedWorkerStore(stop, claim_errors, open_errors, stop_before_error=stop_before_error)
+        worker.store = cast(PostgresAnalysisStore, store)  # A scripted stand-in for the Worker's storage.
+        output = io.StringIO()
+        with (
+            patch.object(worker_module, "RECONNECT_SECONDS", 0.01),
+            patch.object(worker_module, "MAX_RECONNECT_SECONDS", 0.04),
+            redirect_stdout(output),
+        ):
+            try:
+                async with asyncio.timeout(5):
+                    await worker.run(stop)
+            finally:
+                self.output = output.getvalue()
+                self.opens = store.opens
+
+    async def test_quick_repeated_connection_losses_keep_backing_off(self):
+        await self.run_worker(*(StorageConnectionError("lost") for _ in range(4)))
+        delays = re.findall(r"Reconnecting to PostgreSQL in ([0-9.]+) seconds\.", self.output)
+        self.assertEqual(delays, ["0.01", "0.02", "0.04", "0.04"])
+        self.assertEqual(self.opens, 5)
+
+    async def test_other_storage_errors_stop_the_worker_instead_of_reconnecting(self):
+        with self.assertRaises(StorageError) as error:
+            await self.run_worker(StorageError("stored data no longer validates"))
+        self.assertNotIsInstance(error.exception, StorageConnectionError)
+        self.assertNotIn("Reconnecting", self.output)
+        self.assertEqual(self.opens, 1)
+
+    async def test_a_lost_connection_during_shutdown_still_fails_the_worker(self):
+        with self.assertRaises(StorageConnectionError):
+            await self.run_worker(StorageConnectionError("lost"), stop_before_error=True)
+        self.assertNotIn("Reconnecting", self.output)
+
+    async def test_reconnect_waits_for_a_lock_still_held_by_the_dropped_session(self):
+        await self.run_worker(StorageConnectionError("lost"), open_errors=[WorkerLockHeld("held")])
+        self.assertIn("held", self.output)
+        self.assertEqual(self.opens, 3)
+
+
+async def terminate_backends(admin, database_name):
+    """End every other session on the database and wait until each has exited."""
+    await admin.execute("""
+        SELECT pg_terminate_backend(pid, 5000) FROM pg_stat_activity
+        WHERE datname = %s AND pid <> pg_backend_pid()
+    """, (database_name,))
+
+
+async def drop_client_connections(database_url):
+    """Simulate a database restart: the server closes every other connection to this database."""
+    async with await psycopg.AsyncConnection.connect(database_url, autocommit=True) as admin:
+        await terminate_backends(admin, urlsplit(database_url).path.lstrip("/"))
+
+
+@asynccontextmanager
+async def database_outage(test_case, database_url):
+    """Refuse new connections to the test database and drop existing ones until the block ends."""
+    name = urlsplit(database_url).path.lstrip("/")
+    statement = "ALTER DATABASE {} ALLOW_CONNECTIONS {}"
+    # The database cannot change its own connection rule, so use the maintenance database.
+    async with await psycopg.AsyncConnection.connect(
+        urlsplit(database_url)._replace(path="/postgres").geturl(), autocommit=True,
+    ) as admin:
+        try:
+            await admin.execute(sql.SQL(statement).format(sql.Identifier(name), sql.SQL("false")))
+        except psycopg.errors.InsufficientPrivilege:
+            test_case.skipTest("Simulating an outage requires owning the test database.")
+        try:
+            await terminate_backends(admin, name)
+            yield
+        finally:
+            await admin.execute(sql.SQL(statement).format(sql.Identifier(name), sql.SQL("true")))
+
 
 @unittest.skipUnless(os.getenv("ISSUELENS_TEST_DATABASE_URL"), "Real PostgreSQL checks require ISSUELENS_TEST_DATABASE_URL.")
 class PostgresIntegrationTests(unittest.IsolatedAsyncioTestCase):
@@ -285,6 +429,138 @@ class PostgresIntegrationTests(unittest.IsolatedAsyncioTestCase):
         self.store = PostgresAnalysisStore(self.database_url)
         await self.store.open()
         self.assertEqual(await self.store.get(snapshot.job_id), snapshot)
+
+    async def test_api_store_recovers_after_the_server_drops_its_connections(self):
+        snapshot = saved_snapshot()
+        self.created_ids.append(snapshot.job_id)
+        await self.store.save(snapshot)
+        await drop_client_connections(self.database_url)
+        # The pool checks each connection before use, so even the first request recovers.
+        self.assertEqual(await self.store.get(snapshot.job_id), snapshot)
+        self.assertEqual(await self.store.get(snapshot.job_id), snapshot)
+
+    async def test_api_recovers_promptly_after_an_outage_longer_than_its_retries(self):
+        snapshot = saved_snapshot()
+        self.created_ids.append(snapshot.job_id)
+        await self.store.save(snapshot)
+        async with database_outage(self, self.database_url):
+            with self.assertRaises(StorageError):
+                await self.store.get(snapshot.job_id)
+            # With the pool's default 300-second window, retries would run near 1, 3, 7,
+            # 15 and 31 seconds and block new attempts, so recovery would wait until 31.
+            await asyncio.sleep(15)
+        returned = time.monotonic()
+        while True:
+            try:
+                recovered = await self.store.get(snapshot.job_id)
+                break
+            except StorageError:
+                self.assertLess(time.monotonic() - returned, 10)
+        self.assertEqual(recovered, snapshot)
+        self.assertLess(time.monotonic() - returned, storage.CONNECT_SECONDS + 1)
+
+    async def test_worker_store_fails_when_its_lock_connection_drops_and_releases_the_lock(self):
+        worker, replacement = PostgresAnalysisStore(self.database_url), PostgresAnalysisStore(self.database_url)
+        try:
+            await worker.open(worker=True)
+            await drop_client_connections(self.database_url)
+            # The ownership lock went with the connection, so this store must not keep claiming.
+            with self.assertRaises(StorageError):
+                await worker.claim([], checkpoint_signature(SETTINGS))
+            await replacement.open(worker=True)
+        finally:
+            await worker.close()
+            await replacement.close()
+
+    async def test_a_store_cannot_be_opened_twice(self):
+        # Opening the API pool's store as a Worker would bypass the lock connection.
+        with self.assertRaisesRegex(RuntimeError, "already open"):
+            await self.store.open(worker=True)
+
+    async def test_api_pool_full_of_stale_connections_recovers_on_the_first_request(self):
+        snapshot = saved_snapshot()
+        self.created_ids.append(snapshot.job_id)
+        await self.store.save(snapshot)
+        pool = self.store._pool
+        assert pool is not None
+        # Hold every connection at once so the pool grows to its limit, then let them go idle.
+        async with AsyncExitStack() as stack:
+            for _ in range(storage.API_CONNECTIONS):
+                await stack.enter_async_context(pool.connection())
+        await drop_client_connections(self.database_url)
+        started = time.monotonic()
+        self.assertEqual(await self.store.get(snapshot.job_id), snapshot)
+        self.assertLess(time.monotonic() - started, storage.CONNECT_SECONDS)
+
+    async def test_worker_reconnect_skips_schema_ddl_while_a_write_holds_the_table(self):
+        snapshot = saved_snapshot()
+        self.created_ids.append(snapshot.job_id)
+        await self.store.save(snapshot)
+        worker = PostgresAnalysisStore(self.database_url)
+        await worker.open(worker=True)
+        await worker.close()
+        async with await psycopg.AsyncConnection.connect(self.database_url) as writer:
+            # The open write holds ROW EXCLUSIVE; CREATE INDEX would wait for it until lock_timeout.
+            await writer.execute(
+                "UPDATE issuelens_analyses SET updated_at = updated_at WHERE job_id = %s", (snapshot.job_id,),
+            )
+            try:
+                await worker.open(worker=True)
+            finally:
+                await worker.close()
+                await writer.rollback()
+
+    async def test_worker_stops_on_a_stored_row_that_no_longer_validates(self):
+        job_id = uuid4().hex
+        self.created_ids.append(job_id)
+        async with await psycopg.AsyncConnection.connect(self.database_url, autocommit=True) as connection:
+            await connection.execute(
+                "INSERT INTO issuelens_analyses (job_id, snapshot) VALUES (%s, %s)",
+                (job_id, Jsonb({"job_id": job_id, "status": "queued"})),
+            )
+        output = io.StringIO()
+        with (
+            patch("backend.app.jobs.AgentRun.run", new=AsyncMock(return_value=offline_result())),
+            redirect_stdout(output),
+            self.assertRaises(StorageError) as error,
+        ):
+            async with asyncio.timeout(10):
+                await AnalysisWorker(replace(SETTINGS, database_url=self.database_url)).run(asyncio.Event())
+        # The connection is healthy, so reconnecting would only claim the same row again.
+        self.assertNotIsInstance(error.exception, StorageConnectionError)
+        self.assertNotIn("Reconnecting", output.getvalue())
+
+    async def test_worker_reconnects_in_process_and_resumes_a_running_analysis(self):
+        settings = replace(SETTINGS, database_url=self.database_url, concurrent_jobs=1)
+        stop, started = asyncio.Event(), asyncio.Event()
+        runs = []
+
+        async def controlled(run):
+            runs.append(run.target.number)
+            if len(runs) == 1:
+                await run.save_checkpoint(run.checkpoint)
+                started.set()
+                await asyncio.Event().wait()  # Suspended when the Worker loses PostgreSQL.
+            return offline_result()
+
+        output = io.StringIO()
+        with patch("backend.app.jobs.AgentRun.run", new=controlled), redirect_stdout(output):
+            worker = asyncio.create_task(AnalysisWorker(settings).run(stop))
+            try:
+                async with api_client(settings) as client:
+                    path = await self.submit(client)
+                    async with asyncio.timeout(5):
+                        await started.wait()
+                    await drop_client_connections(self.database_url)
+                    finished = await self.wait_for_snapshot(path, lambda item: item.status == "completed")
+                self.assertFalse(worker.done())
+                self.assertEqual(runs, [TARGET.number, TARGET.number])
+                self.assertTrue(any(event.message.startswith("Resumed from a checkpoint") for event in finished.events))
+                self.assertIn("Suspended 1 running analyses; their checkpoints are kept.", output.getvalue())
+                self.assertIn("Reconnecting to PostgreSQL in 1 seconds.", output.getvalue())
+            finally:
+                stop.set()
+                await worker
 
     async def test_only_a_replacement_worker_marks_abandoned_running_jobs_interrupted(self):
         owner = PostgresAnalysisStore(self.database_url)

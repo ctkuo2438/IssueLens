@@ -4,6 +4,8 @@
 
 ## 先看最新結果
 
+M3 資料庫重連驗收使用暫時的 PostgreSQL 叢集，未影響專案資料庫。以預設設定停機 48 秒，期間 API 回傳 503；資料庫恢復後 API 立即回到正常，Worker 在同一個程序內 3.1 秒後就緒。Worker 在分析執行中失去連線時，會重新取得鎖並從檢查點完成同一筆分析；其他儲存錯誤則停止 Worker。兩輪程式碼審查發現的問題與修正也記錄在內。未呼叫模型或 GitHub。[資料庫重連驗證](m3/verification/database-reconnect.json)
+
 M3 Trace 驗收使用真實 PostgreSQL 與 Worker 程序。替換 Worker 後，同一任務 ID 可查到原嘗試、重試關聯與停止原因。工具呼叫途中中斷的測試也確認未保存的耗時留空。模型與 GitHub 回應使用模擬資料。[Trace 驗證](m3/verification/trace.json)
 
 M3 有界重試驗收涵蓋模型與 GitHub 的暫時性失敗、預算耗盡和永久錯誤。真實 PostgreSQL 與 Worker 程序驗證替換後遵守已保存的重送時間，並以原任務 ID 完成。模型與 GitHub 回應使用模擬資料。[有界重試驗證](m3/verification/bounded-retry.json)

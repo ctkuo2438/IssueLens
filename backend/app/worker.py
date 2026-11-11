@@ -3,12 +3,22 @@
 import asyncio
 from functools import partial
 import signal
+import time
 
 from backend.app.agent import checkpoint_signature
 from backend.app.config import Settings
 from backend.app.jobs import Job, JobManager
 from backend.app.models import TERMINAL_STATUSES
-from backend.app.storage import POLL_SECONDS, PostgresAnalysisStore, StorageError
+from backend.app.storage import (
+    POLL_SECONDS, PostgresAnalysisStore, StorageConnectionError, StorageError, WorkerLockHeld,
+)
+
+
+RECONNECT_SECONDS = 1.0
+# A failed attempt is cheap, so a short cap keeps recovery prompt after PostgreSQL returns.
+MAX_RECONNECT_SECONDS = 5.0
+# A Worker that served this long before losing PostgreSQL starts over at the shortest delay.
+STABLE_SECONDS = 60.0
 
 
 class AnalysisWorker:
@@ -26,7 +36,51 @@ class AnalysisWorker:
                 del active[job_id]
 
     async def run(self, stop: asyncio.Event) -> None:
+        # Startup fails fast, like the API, so a configuration error is shown at once.
         await self.store.open(worker=True)
+        delay = RECONNECT_SECONDS
+        while True:
+            served = time.monotonic()
+            try:
+                await self._serve(stop)
+                return
+            except StorageConnectionError as exc:
+                # A failed final save during shutdown must still end the process with an error.
+                if stop.is_set():
+                    raise
+                print(str(exc), flush=True)
+            # Other StorageErrors, such as stored data that no longer validates, would repeat
+            # after a reconnect, so they stop the Worker. A lost connection also lost the
+            # ownership lock: reopening reacquires it and claimed runs resume from checkpoints.
+            if time.monotonic() - served >= STABLE_SECONDS:
+                delay = RECONNECT_SECONDS
+            next_delay = await self._reopen(stop, delay)
+            if next_delay is None:
+                return
+            delay = next_delay
+
+    async def _reopen(self, stop: asyncio.Event, delay: float) -> float | None:
+        """Retry with doubling delays until the store reopens.
+
+        Returns the delay for the next reconnect, so a connection that drops again soon
+        keeps backing off. None means a stop was requested.
+        """
+        while True:
+            print(f"Reconnecting to PostgreSQL in {delay:g} seconds.", flush=True)
+            try:
+                await asyncio.wait_for(stop.wait(), timeout=delay)
+                return None
+            except TimeoutError:
+                pass
+            delay = min(MAX_RECONNECT_SECONDS, delay * 2)
+            try:
+                await self.store.open(worker=True)
+                return delay
+            except (StorageConnectionError, WorkerLockHeld) as exc:
+                # The server may still hold the lock for the dropped session until it notices.
+                print(str(exc), flush=True)
+
+    async def _serve(self, stop: asyncio.Event) -> None:
         active: dict[str, Job] = {}
         print("IssueLens Worker is ready.", flush=True)
         try:
@@ -58,7 +112,11 @@ class AnalysisWorker:
                     except TimeoutError:
                         pass
             finally:
-                await asyncio.gather(*(self.runner.cancel(job, suspend=True) for job in active.values()), return_exceptions=True)
+                # Only unfinished analyses are suspended; finished ones have nothing to stop.
+                running =[job for job in active.values() if job.snapshot.status not in TERMINAL_STATUSES]
+                await asyncio.gather(*(self.runner.cancel(job, suspend=True) for job in running), return_exceptions=True)
+                if running:
+                    print(f"Suspended {len(running)} running analyses; their checkpoints are kept.", flush=True)
             # Completed results can be published while suspended jobs keep their checkpoints.
             await self._publish(active)
         finally:

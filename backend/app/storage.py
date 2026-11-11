@@ -5,10 +5,13 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import timedelta
+import logging
 from typing import Protocol
 
 import psycopg
+from psycopg.conninfo import conninfo_to_dict
 from psycopg.types.json import Jsonb
+from psycopg_pool import AsyncConnectionPool
 
 from backend.app.checkpoint import AgentCheckpoint
 from backend.app.models import GitHubUser, JobSnapshot, JobStatus, ProgressEvent
@@ -22,10 +25,53 @@ WORKER_LOCK = 0x49737375654C656E  # Reuse the lock held by the old in-process ba
 SCHEMA_LOCK = WORKER_LOCK + 1
 ENQUEUE_LOCK = WORKER_LOCK + 2
 POLL_SECONDS = 0.25
+# One limit for a connection attempt, a pool wait and the pool's reconnect window.
+CONNECT_SECONDS = 3
+# After a database restart every idle connection is stale. The pool waits about 0 and
+# then 1 second between failed checks, so with two connections a request still gets a
+# fresh one within CONNECT_SECONDS. Two connections are enough for one API process.
+API_CONNECTIONS = 2
+CONNECTION_OPTIONS = {
+    "autocommit": True, "connect_timeout": CONNECT_SECONDS,
+    # Detect a silently dropped network path instead of waiting for the operating
+    # system's retransmission limit. tcp_user_timeout has no effect where the OS lacks it.
+    "keepalives": 1, "keepalives_idle": 10, "keepalives_interval": 5, "keepalives_count": 3,
+    "tcp_user_timeout": 15_000,
+    # Server-side keepalives let PostgreSQL end a dead session, and release the Worker
+    # lock it holds, instead of keeping both until the OS gives up hours later.
+    "options": (
+        "-c statement_timeout=5000 -c lock_timeout=3000 "
+        "-c tcp_keepalives_idle=10 -c tcp_keepalives_interval=5 -c tcp_keepalives_count=3"
+    ),
+}
+
+
+class ExceptionTypeOnly(logging.Filter):
+    """Log exceptions passed as arguments by type only.
+
+    libpq messages can repeat parts of the connection URL, including a password.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if isinstance(record.args, tuple):
+            record.args = tuple(type(arg).__name__ if isinstance(arg, BaseException) else arg for arg in record.args)
+        return True
+
+
+# psycopg_pool logs each failed connection attempt with the libpq error text.
+logging.getLogger("psycopg.pool").addFilter(ExceptionTypeOnly())
 
 
 class StorageError(RuntimeError):
     """A sanitized storage failure that is safe to return through the API."""
+
+
+class StorageConnectionError(StorageError):
+    """The connection could not be made or was lost, so reconnecting may succeed."""
+
+
+class WorkerLockHeld(StorageError):
+    """Another session holds the Worker lock, possibly the server's copy of a dropped connection."""
 
 
 class AnalysisStore(Protocol):
@@ -57,102 +103,151 @@ class ClaimedAnalysis:
 
 
 class PostgresAnalysisStore:
-    """One async connection per process, with a separate lock for Worker ownership."""
+    """PostgreSQL access for the API (a reconnecting pool) or the Worker (one lock-holding connection)."""
 
     def __init__(self, database_url: str, *, auth_enabled: bool = False) -> None:
         self._database_url = database_url
         self._auth_enabled = auth_enabled
+        self._pool: AsyncConnectionPool | None = None
         self._connection: psycopg.AsyncConnection | None = None
         self._lock = asyncio.Lock()
+        self._schema_ready = False
 
     async def open(self, *, worker: bool = False) -> None:
+        if self._pool is not None or self._connection is not None:
+            # One instance is the API pool or the Worker's lock connection, never both.
+            raise RuntimeError("This store is already open.")
+        if not worker:
+            await self._open_pool()
+            return
+        # The Worker's ownership is a session advisory lock on this one connection.
+        # If the connection drops, the lock is gone: the Worker suspends its runs and
+        # reopens the store, and checkpoints let the claimed runs resume.
         connection: psycopg.AsyncConnection | None = None
         try:
-            connection = await psycopg.AsyncConnection.connect(
-                self._database_url, autocommit=True, connect_timeout=3,
-                options="-c statement_timeout=5000 -c lock_timeout=3000",
-            )
-            if worker:
-                cursor = await connection.execute("SELECT pg_try_advisory_lock(%s)", (WORKER_LOCK,))
-                owner = await cursor.fetchone()
-                if not owner or not owner[0]:
-                    raise StorageError("Another IssueLens Worker or legacy backend already owns this database.")
+            connection = await psycopg.AsyncConnection.connect(self._database_url, **CONNECTION_OPTIONS)
+            cursor = await connection.execute("SELECT pg_try_advisory_lock(%s)", (WORKER_LOCK,))
+            owner = await cursor.fetchone()
+            if not owner or not owner[0]:
+                raise WorkerLockHeld("Another IssueLens Worker or legacy backend already owns this database.")
+            await self._prepare_schema(connection)
             async with connection.transaction():
-                await connection.execute("SELECT pg_advisory_xact_lock(%s)", (SCHEMA_LOCK,))
-                await connection.execute("""
-                    CREATE TABLE IF NOT EXISTS issuelens_analyses (
-                        job_id text PRIMARY KEY,
-                        snapshot jsonb NOT NULL,
-                        updated_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        CHECK (jsonb_typeof(snapshot) = 'object'),
-                        CHECK (snapshot->>'job_id' = job_id)
-                    )
+                cursor = await connection.execute("""
+                    SELECT snapshot, trace FROM issuelens_analyses
+                    WHERE snapshot->>'status' = 'running' AND checkpoint IS NULL
+                    FOR UPDATE
                 """)
-                columns = await connection.execute("""
-                    SELECT attname FROM pg_attribute
-                    WHERE attrelid = 'issuelens_analyses'::regclass
-                      AND attname IN ('cancel_requested', 'checkpoint', 'trace', 'owner_github_id')
-                      AND NOT attisdropped
-                """)
-                present = {row[0] for row in await columns.fetchall()}
-                if "cancel_requested" not in present:
-                    await connection.execute("""
-                        ALTER TABLE issuelens_analyses
-                        ADD COLUMN cancel_requested boolean NOT NULL DEFAULT false
-                    """)
-                if "checkpoint" not in present:
-                    # Keep the exact JSON replay order used by the local token estimator.
-                    await connection.execute("ALTER TABLE issuelens_analyses ADD COLUMN checkpoint text")
-                if "trace" not in present:
-                    await connection.execute("""
-                        ALTER TABLE issuelens_analyses ADD COLUMN trace jsonb NOT NULL DEFAULT '{}'::jsonb
-                    """)
-                if "owner_github_id" not in present:
-                    await connection.execute("""
-                        ALTER TABLE issuelens_analyses ADD COLUMN owner_github_id bigint CHECK (owner_github_id > 0)
-                    """)
-                await connection.execute("""
-                    CREATE INDEX IF NOT EXISTS issuelens_analyses_pending
-                    ON issuelens_analyses (updated_at, job_id)
-                    WHERE snapshot->>'status' IN ('queued', 'running')
-                """)
-                if self._auth_enabled:
-                    await connection.execute("""
-                        CREATE TABLE IF NOT EXISTS issuelens_oauth_requests (
-                            state_hash text PRIMARY KEY,
-                            code_verifier text NOT NULL,
-                            return_job_id text,
-                            expires_at timestamptz NOT NULL
-                        )
-                    """)
-                    await connection.execute("""
-                        CREATE TABLE IF NOT EXISTS issuelens_sessions (
-                            token_hash text PRIMARY KEY,
-                            github_id bigint NOT NULL CHECK (github_id > 0),
-                            github_login text NOT NULL,
-                            expires_at timestamptz NOT NULL
-                        )
-                    """)
-            if worker:
-                async with connection.transaction():
-                    cursor = await connection.execute("""
-                        SELECT snapshot, trace FROM issuelens_analyses
-                        WHERE snapshot->>'status' = 'running' AND checkpoint IS NULL
-                        FOR UPDATE
-                    """)
-                    for row in await cursor.fetchall():
-                        restored = interrupted_snapshot(JobSnapshot.model_validate(row[0]))
-                        trace = TraceLog.model_validate(row[1])
-                        trace.mark_interrupted()
-                        trace.stop_reason = "checkpoint_unavailable"
-                        await self._update(connection, restored, "running", trace=trace)
+                for row in await cursor.fetchall():
+                    restored = interrupted_snapshot(JobSnapshot.model_validate(row[0]))
+                    trace = TraceLog.model_validate(row[1])
+                    trace.mark_interrupted()
+                    trace.stop_reason = "checkpoint_unavailable"
+                    await self._update(connection, restored, "running", trace=trace)
             self._connection = connection
         except BaseException as exc:
+            lost = connection is None or connection.closed
             if connection is not None:
                 await connection.close()
+            if isinstance(exc, psycopg.OperationalError) and lost:
+                raise StorageConnectionError(STORAGE_UNAVAILABLE) from None
             if isinstance(exc, (psycopg.Error, ValueError, TypeError)):
                 raise StorageError(STORAGE_UNAVAILABLE) from None
             raise
+
+    async def _open_pool(self) -> None:
+        # The pool checks each connection before use and replaces dropped ones, so
+        # the API recovers after a database restart. Startup still fails fast.
+        try:
+            # Parse first: libpq parse errors repeat the URL text, so they must not
+            # reach the pool's retry log.
+            conninfo_to_dict(self._database_url)
+        except psycopg.Error:
+            raise StorageError(STORAGE_UNAVAILABLE) from None
+        pool = AsyncConnectionPool(
+            # connection_class is the default; passing it lets Pyright infer the pool type.
+            self._database_url, connection_class=psycopg.AsyncConnection,
+            kwargs=dict(CONNECTION_OPTIONS), min_size=1, max_size=API_CONNECTIONS,
+            open=False, check=AsyncConnectionPool.check_connection, timeout=CONNECT_SECONDS,
+            # A short reconnect window ends a failed attempt quickly, so the next
+            # request starts a fresh one instead of waiting for a long backoff.
+            reconnect_timeout=CONNECT_SECONDS, name="issuelens-api",
+        )
+        try:
+            await pool.open(wait=True, timeout=CONNECT_SECONDS)
+            async with pool.connection() as connection:
+                await self._prepare_schema(connection)
+        except BaseException as exc:
+            await pool.close()
+            if isinstance(exc, (psycopg.Error, ValueError, TypeError)):
+                raise StorageError(STORAGE_UNAVAILABLE) from None
+            raise
+        self._pool = pool
+
+    async def _prepare_schema(self, connection: psycopg.AsyncConnection) -> None:
+        """Create or upgrade the tables the first time this store opens.
+
+        A Worker reconnect skips it, because CREATE INDEX IF NOT EXISTS takes a table
+        lock that would compete with the API's writes during recovery.
+        """
+        if self._schema_ready:
+            return
+        async with connection.transaction():
+            await connection.execute("SELECT pg_advisory_xact_lock(%s)", (SCHEMA_LOCK,))
+            await connection.execute("""
+                CREATE TABLE IF NOT EXISTS issuelens_analyses (
+                    job_id text PRIMARY KEY,
+                    snapshot jsonb NOT NULL,
+                    updated_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    CHECK (jsonb_typeof(snapshot) = 'object'),
+                    CHECK (snapshot->>'job_id' = job_id)
+                )
+            """)
+            columns = await connection.execute("""
+                SELECT attname FROM pg_attribute
+                WHERE attrelid = 'issuelens_analyses'::regclass
+                  AND attname IN ('cancel_requested', 'checkpoint', 'trace', 'owner_github_id')
+                  AND NOT attisdropped
+            """)
+            present = {row[0] for row in await columns.fetchall()}
+            if "cancel_requested" not in present:
+                await connection.execute("""
+                    ALTER TABLE issuelens_analyses
+                    ADD COLUMN cancel_requested boolean NOT NULL DEFAULT false
+                """)
+            if "checkpoint" not in present:
+                # Keep the exact JSON replay order used by the local token estimator.
+                await connection.execute("ALTER TABLE issuelens_analyses ADD COLUMN checkpoint text")
+            if "trace" not in present:
+                await connection.execute("""
+                    ALTER TABLE issuelens_analyses ADD COLUMN trace jsonb NOT NULL DEFAULT '{}'::jsonb
+                """)
+            if "owner_github_id" not in present:
+                await connection.execute("""
+                    ALTER TABLE issuelens_analyses ADD COLUMN owner_github_id bigint CHECK (owner_github_id > 0)
+                """)
+            await connection.execute("""
+                CREATE INDEX IF NOT EXISTS issuelens_analyses_pending
+                ON issuelens_analyses (updated_at, job_id)
+                WHERE snapshot->>'status' IN ('queued', 'running')
+            """)
+            if self._auth_enabled:
+                await connection.execute("""
+                    CREATE TABLE IF NOT EXISTS issuelens_oauth_requests (
+                        state_hash text PRIMARY KEY,
+                        code_verifier text NOT NULL,
+                        return_job_id text,
+                        expires_at timestamptz NOT NULL
+                    )
+                """)
+                await connection.execute("""
+                    CREATE TABLE IF NOT EXISTS issuelens_sessions (
+                        token_hash text PRIMARY KEY,
+                        github_id bigint NOT NULL CHECK (github_id > 0),
+                        github_login text NOT NULL,
+                        expires_at timestamptz NOT NULL
+                    )
+                """)
+        self._schema_ready = True
 
     @staticmethod
     async def _update(
@@ -177,15 +272,28 @@ class PostgresAnalysisStore:
 
     def _connected(self) -> psycopg.AsyncConnection:
         if self._connection is None or self._connection.closed:
-            raise StorageError(STORAGE_UNAVAILABLE)
+            raise StorageConnectionError(STORAGE_UNAVAILABLE)
         return self._connection
 
     @asynccontextmanager
     async def _operation(self) -> AsyncIterator[psycopg.AsyncConnection]:
-        async with self._lock:
+        if self._pool is not None:
             try:
-                yield self._connected()
+                # A broken connection is discarded when it returns to the pool.
+                async with self._pool.connection() as connection:
+                    yield connection
             except (psycopg.Error, ValueError, TypeError):
+                raise StorageError(STORAGE_UNAVAILABLE) from None
+            return
+        async with self._lock:
+            connection = self._connected()
+            try:
+                yield connection
+            except (psycopg.Error, ValueError, TypeError) as exc:
+                # Only a closed connection means the Worker lost its lock. Other failures,
+                # such as stored data that no longer validates, would repeat after a reconnect.
+                if isinstance(exc, psycopg.OperationalError) and connection.closed:
+                    raise StorageConnectionError(STORAGE_UNAVAILABLE) from None
                 raise StorageError(STORAGE_UNAVAILABLE) from None
 
     async def save(self, snapshot: JobSnapshot) -> None:
@@ -363,6 +471,9 @@ class PostgresAnalysisStore:
             await connection.execute("DELETE FROM issuelens_sessions WHERE token_hash = %s", (token_hash,))
 
     async def close(self) -> None:
+        if self._pool is not None:
+            pool, self._pool = self._pool, None
+            await pool.close()
         async with self._lock:
             if self._connection is not None:
                 await self._connection.close()
