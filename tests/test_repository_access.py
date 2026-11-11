@@ -1,6 +1,8 @@
 """Offline checks for the public-repository guard. GitHub and model responses are simulated."""
 
-from dataclasses import replace
+from contextlib import nullcontext
+from dataclasses import dataclass, replace
+import time
 import unittest
 from unittest.mock import AsyncMock, Mock, patch
 
@@ -8,23 +10,57 @@ import httpx
 
 from backend.app.agent import AgentRun
 from backend.app.checkpoint import AgentCheckpoint, PendingTools
-from backend.app.github import GitHubTools, REPOSITORY_NOT_PUBLIC
+from backend.app.github import (
+    GitHubTools, REPOSITORY_CHECK_FAILED, REPOSITORY_NOT_PUBLIC, RepositoryNotPublicError,
+)
+from backend.app.jobs import JobManager
+from backend.app.models import AnalysisResult, RejectedAnswer, Source
 from test_mvp import SETTINGS, TARGET, OfflineEncoding, final_content, github_response, simulated_response, tool_call
 
 
 TOKEN_SETTINGS = replace(SETTINGS, github_token="offline-github-token")
 REPOSITORY_PATH = "/repos/example/project"
+ISSUE_PATH = f"{REPOSITORY_PATH}/issues/42"
 PUBLIC = {"full_name": "example/project", "private": False, "visibility": "public"}
 PRIVATE = {**PUBLIC, "private": True, "visibility": "private"}
 
 
-async def run_agent(repository_response, settings=TOKEN_SETTINGS, checkpoint=None):
-    paths = []
+def answer(status=200, body=PUBLIC, headers=None):
+    """Build a fresh simulated GitHub repository response for each request."""
+    def build():
+        if isinstance(body, bytes):
+            return httpx.Response(status, content=body, headers=headers)
+        return httpx.Response(status, json=body, headers=headers)
+    return build
+
+
+@dataclass
+class Outcome:
+    run: AgentRun
+    result: AnalysisResult
+    create: AsyncMock
+    paths: list[str]
+    emit: Mock
+    saved: AsyncMock
+    sleep: AsyncMock | None
+
+
+def offline_patches(github, client):
+    return (
+        patch("backend.app.agent.httpx.AsyncClient", return_value=github),
+        patch("backend.app.agent.AsyncOpenAI", return_value=client),
+        patch("backend.app.agent.tiktoken.get_encoding", return_value=OfflineEncoding()),
+        patch.object(AgentRun, "required_lookup", return_value=None),
+    )
+
+
+def simulated_services(answers, paths):
+    queue = list(answers) or [answer()]
 
     def handler(request):
         paths.append(request.url.path)
         if request.url.path == REPOSITORY_PATH:
-            return repository_response
+            return (queue.pop(0) if len(queue) > 1 else queue[0])()
         return github_response(request)
 
     github = httpx.AsyncClient(base_url="https://api.github.com", transport=httpx.MockTransport(handler))
@@ -33,22 +69,24 @@ async def run_agent(repository_response, settings=TOKEN_SETTINGS, checkpoint=Non
     ])
     client = AsyncMock()
     client.__aenter__.return_value.responses.create = create
+    return github, client, create
+
+
+async def run_agent(*answers, settings=TOKEN_SETTINGS, checkpoint=None, fake_sleep=False):
+    # Only use fake_sleep without a GitHub cooldown: a cooldown wait needs real time to pass.
+    paths = []
+    github, client, create = simulated_services(answers, paths)
     emit = Mock()
-    run = AgentRun(
-        TARGET, settings, emit, checkpoint=checkpoint,
-        save_checkpoint=AsyncMock() if checkpoint is not None else None,
-    )
-    with (
-        patch("backend.app.agent.httpx.AsyncClient", return_value=github),
-        patch("backend.app.agent.AsyncOpenAI", return_value=client),
-        patch("backend.app.agent.tiktoken.get_encoding", return_value=OfflineEncoding()),
-        patch.object(AgentRun, "required_lookup", return_value=None),
-    ):
+    saved = AsyncMock()
+    run = AgentRun(TARGET, settings, emit, checkpoint=checkpoint, save_checkpoint=saved if checkpoint else None)
+    gateway, model, encoding, lookups = offline_patches(github, client)
+    sleeping = patch("backend.app.agent.asyncio.sleep", new_callable=AsyncMock) if fake_sleep else nullcontext()
+    with gateway, model, encoding, lookups, sleeping as sleep:
         result = await run.run()
-    return run, result, create, paths, emit
+    return Outcome(run, result, create, paths, emit, saved, sleep)
 
 
-def pending_issue_read() -> AgentCheckpoint:
+def resumed_checkpoint(*, repository_public=False, cooldown_until=None, restored_evidence=False) -> AgentCheckpoint:
     """A checkpoint saved after the model requested get_issue but before the read finished."""
     checkpoint = AgentCheckpoint.start("offline-signature")
     call = tool_call("get_issue")
@@ -59,75 +97,158 @@ def pending_issue_read() -> AgentCheckpoint:
     checkpoint.pending_tools = PendingTools(
         calls=[call], required_action=None, require_comments=False, closing_for_repairs=False, at_limit=False,
     )
+    tools = GitHubTools(Mock(spec=httpx.AsyncClient), TARGET, lambda text, limit: (text, False))
+    tools.repository_public = repository_public
+    tools.cooldown_until = cooldown_until
+    if restored_evidence:
+        # For example, an older checkpoint that read a repository before this check existed.
+        source = Source(id="S1", kind="issue", title="Restored", url=TARGET.url, excerpt="RESTORED_EVIDENCE_CANARY")
+        tools.sources = {"S1": source}
+        tools.limitations = ["RESTORED_LIMITATION_CANARY"]
+        checkpoint.result.sources = [source]
+        checkpoint.result.rejected_answers = [RejectedAnswer(
+            request_number=1, reason="offline", output_text="RESTORED_OUTPUT_CANARY", output_sha256="0" * 64, feedback="",
+        )]
+        checkpoint.result.usage.model_requests = 1
+    checkpoint.tools = tools.checkpoint()
     return checkpoint
 
 
 class PublicRepositoryGuardTests(unittest.IsolatedAsyncioTestCase):
     async def test_public_repository_is_confirmed_once_before_any_issue_read(self):
-        run, result, create, paths, _ = await run_agent(httpx.Response(200, json=PUBLIC))
-        self.assertEqual(paths[0], REPOSITORY_PATH)
-        self.assertEqual(paths.count(REPOSITORY_PATH), 1)
-        self.assertIsNotNone(result.content)
-        self.assertEqual(create.await_count, 2)
+        outcome = await run_agent(answer(), checkpoint=AgentCheckpoint.start("offline-signature"))
+        self.assertEqual(outcome.paths[0], REPOSITORY_PATH)
+        self.assertEqual(outcome.paths.count(REPOSITORY_PATH), 1)
+        self.assertIsNotNone(outcome.result.content)
+        self.assertEqual(outcome.create.await_count, 2)
         # The server check is neither a model tool call nor a Trace attempt.
-        self.assertEqual(result.usage.tool_calls, 1)
-        self.assertEqual([attempt.kind for attempt in run.trace.attempts], ["model", "tool", "model"])
+        self.assertEqual(outcome.result.usage.tool_calls, 1)
+        self.assertEqual([attempt.kind for attempt in outcome.run.trace.attempts], ["model", "tool", "model"])
+        # The confirmation is saved with the run, so a replacement Worker does not repeat it.
+        first_save = outcome.saved.await_args_list[0].args[0]
+        self.assertTrue(first_save.tools.repository_public)
 
-    async def test_private_and_missing_repositories_share_one_outcome_without_reads(self):
+    async def test_every_repository_dependent_refusal_shares_one_outcome_without_reads(self):
         cases = {
-            "private": httpx.Response(200, json=PRIVATE),
-            "internal": httpx.Response(200, json={**PUBLIC, "private": True, "visibility": "internal"}),
-            "unknown visibility": httpx.Response(200, json={"full_name": "example/project"}),
-            "missing": httpx.Response(404, json={"message": "Not Found"}),
+            "private": answer(body=PRIVATE),
+            "internal": answer(body={**PUBLIC, "private": True, "visibility": "internal"}),
+            "no visibility": answer(body={"full_name": "example/project", "private": False}),
+            "no fields": answer(body={"full_name": "example/project"}),
+            "malformed": answer(body=b"not json"),
+            "missing": answer(404, {"message": "Not Found"}),
+            "renamed": answer(301, {"message": "Moved Permanently"}),
+            "refused": answer(403, {"message": "Resource protected by organization SAML enforcement."}),
         }
         outcomes = set()
         for name, response in cases.items():
             with self.subTest(name):
-                run, result, create, paths, emit = await run_agent(response)
-                self.assertEqual(paths, [REPOSITORY_PATH])
-                self.assertEqual(create.await_count, 0)
-                self.assertIsNone(result.content)
-                self.assertEqual(result.sources, [])
-                self.assertIn(REPOSITORY_NOT_PUBLIC, result.limitations)
-                self.assertEqual(run.trace.stop_reason, "repository_not_public")
-                outcomes.add((tuple(result.limitations), repr(emit.call_args_list)))
-        # A single public outcome means a server credential cannot reveal which private repositories exist.
+                outcome = await run_agent(response)
+                self.assertEqual(outcome.paths, [REPOSITORY_PATH])
+                self.assertEqual(outcome.create.await_count, 0)
+                self.assertIsNone(outcome.result.content)
+                self.assertEqual(outcome.result.sources, [])
+                self.assertEqual(outcome.result.limitations, [REPOSITORY_NOT_PUBLIC])
+                self.assertEqual(outcome.run.trace.stop_reason, "repository_not_public")
+                outcomes.add(repr(outcome.emit.call_args_list))
+        # One public outcome means a server credential cannot reveal which private repositories exist.
         self.assertEqual(len(outcomes), 1)
 
-    async def test_failed_visibility_check_fails_closed_without_model_cost(self):
-        run, result, create, paths, _ = await run_agent(httpx.Response(503))
-        self.assertEqual(paths, [REPOSITORY_PATH])
-        self.assertEqual(create.await_count, 0)
-        self.assertEqual(result.sources, [])
-        self.assertEqual(run.trace.stop_reason, "repository_check_failed")
-        self.assertIn(
-            "Could not confirm that the repository is public; no issue data was read. GitHub returned temporary HTTP 503.",
-            result.limitations,
-        )
+    async def test_rejected_server_token_is_a_check_failure_for_every_repository(self):
+        outcome = await run_agent(answer(401, {"message": "Bad credentials"}))
+        self.assertEqual(outcome.create.await_count, 0)
+        self.assertEqual(outcome.run.trace.stop_reason, "repository_check_failed")
+        self.assertEqual(outcome.result.limitations, [
+            "Could not confirm that the repository is public, so no repository data is included. "
+            "GitHub rejected GITHUB_TOKEN. Check the server configuration.",
+        ])
+
+    async def test_temporary_failure_is_retried_once(self):
+        outcome = await run_agent(answer(503, {}), answer(), fake_sleep=True)
+        self.assertEqual(outcome.paths.count(REPOSITORY_PATH), 2)
+        assert outcome.sleep is not None
+        outcome.sleep.assert_awaited_once_with(1.0)
+        self.assertIsNotNone(outcome.result.content)
+
+    async def test_repeated_temporary_failure_fails_closed_without_model_cost(self):
+        outcome = await run_agent(answer(503, {}), fake_sleep=True)
+        self.assertEqual(outcome.paths, [REPOSITORY_PATH, REPOSITORY_PATH])
+        self.assertEqual(outcome.create.await_count, 0)
+        self.assertEqual(outcome.result.sources, [])
+        self.assertEqual(outcome.run.trace.stop_reason, "repository_check_failed")
+        self.assertEqual(outcome.result.limitations, [
+            "Could not confirm that the repository is public, so no repository data is included. "
+            "GitHub returned temporary HTTP 503.",
+        ])
 
     async def test_anonymous_runs_skip_the_check_because_they_cannot_read_private_data(self):
-        _, result, _, paths, _ = await run_agent(httpx.Response(200, json=PRIVATE), settings=SETTINGS)
-        self.assertNotIn(REPOSITORY_PATH, paths)
-        self.assertIsNotNone(result.content)
+        outcome = await run_agent(answer(body=PRIVATE), settings=SETTINGS)
+        self.assertNotIn(REPOSITORY_PATH, outcome.paths)
+        self.assertIsNotNone(outcome.result.content)
 
     async def test_resumed_tool_round_is_checked_before_pending_reads(self):
-        _, result, create, paths, _ = await run_agent(httpx.Response(200, json=PRIVATE), checkpoint=pending_issue_read())
-        self.assertEqual(paths, [REPOSITORY_PATH])
-        self.assertEqual(create.await_count, 0)
-        self.assertEqual(result.sources, [])
+        outcome = await run_agent(answer(body=PRIVATE), checkpoint=resumed_checkpoint())
+        self.assertEqual(outcome.paths, [REPOSITORY_PATH])
+        self.assertEqual(outcome.create.await_count, 0)
+
+    async def test_refusal_withholds_evidence_and_output_restored_from_a_checkpoint(self):
+        outcome = await run_agent(answer(body=PRIVATE), checkpoint=resumed_checkpoint(restored_evidence=True))
+        published = outcome.result.model_dump_json()
+        for canary in ("RESTORED_EVIDENCE_CANARY", "RESTORED_LIMITATION_CANARY", "RESTORED_OUTPUT_CANARY"):
+            self.assertNotIn(canary, published)
+        self.assertEqual(outcome.result.limitations, [REPOSITORY_NOT_PUBLIC])
+        # Spent budget is still reported.
+        self.assertEqual(outcome.result.usage.model_requests, 1)
+
+    async def test_restored_cooldown_is_waited_instead_of_failing_the_check(self):
+        checkpoint = resumed_checkpoint(cooldown_until=time.time() + 0.05)
+        outcome = await run_agent(answer(), checkpoint=checkpoint)
+        self.assertEqual(outcome.paths[:2], [REPOSITORY_PATH, ISSUE_PATH])
+        self.assertIsNotNone(outcome.result.content)
+
+    async def test_cooldown_beyond_the_job_runtime_fails_without_waiting(self):
+        checkpoint = resumed_checkpoint(cooldown_until=time.time() + 10_000)
+        outcome = await run_agent(answer(), checkpoint=checkpoint)
+        self.assertEqual(outcome.paths, [])
+        self.assertEqual(outcome.run.trace.stop_reason, "repository_check_failed")
 
     async def test_confirmed_repository_is_not_rechecked_after_resume(self):
-        # Skipping the repeat check also keeps a saved GitHub cooldown or retry wait
-        # from turning a confirmed repository into a failed check.
-        checkpoint = pending_issue_read()
-        async with httpx.AsyncClient() as unused:
-            tools = GitHubTools(unused, TARGET, lambda text, limit: (text, False))
-            tools.repository_public = True
-            checkpoint.tools = tools.checkpoint()
-        _, result, _, paths, _ = await run_agent(httpx.Response(200, json=PRIVATE), checkpoint=checkpoint)
-        self.assertNotIn(REPOSITORY_PATH, paths)
-        self.assertIn(f"{REPOSITORY_PATH}/issues/42", paths)
-        self.assertIsNotNone(result.content)
+        outcome = await run_agent(answer(body=PRIVATE), checkpoint=resumed_checkpoint(repository_public=True))
+        self.assertNotIn(REPOSITORY_PATH, outcome.paths)
+        self.assertIn(ISSUE_PATH, outcome.paths)
+        self.assertIsNotNone(outcome.result.content)
+
+
+class RepositoryToolGateTests(unittest.IsolatedAsyncioTestCase):
+    async def test_authenticated_tools_refuse_reads_until_the_repository_is_confirmed(self):
+        paths = []
+        github, _, _ = simulated_services([answer()], paths)
+        async with github:
+            tools = GitHubTools(github, TARGET, lambda text, limit: (text, False), require_public=True)
+            with self.assertRaises(RepositoryNotPublicError):
+                await tools.execute("get_issue", "{}")
+            self.assertEqual(paths, [])
+            await tools.require_public_repository()
+            issue = await tools.execute("get_issue", "{}")
+        self.assertEqual(paths, [REPOSITORY_PATH, ISSUE_PATH])
+        self.assertEqual(issue["source"]["id"], "S1")
+
+
+class RepositoryJobErrorTests(unittest.IsolatedAsyncioTestCase):
+    async def run_job(self, *answers):
+        github, client, _ = simulated_services(answers, [])
+        manager = JobManager(TOKEN_SETTINGS)
+        gateway, model, encoding, lookups = offline_patches(github, client)
+        with gateway, model, encoding, lookups, patch("backend.app.agent.asyncio.sleep", new_callable=AsyncMock):
+            job = await manager.create(TARGET)
+            assert job.task is not None
+            await job.task
+        return job.snapshot
+
+    async def test_job_errors_name_the_repository_rule(self):
+        refused = await self.run_job(answer(body=PRIVATE))
+        self.assertEqual((refused.status, refused.error), ("failed", REPOSITORY_NOT_PUBLIC))
+        unconfirmed = await self.run_job(answer(503, {}))
+        self.assertEqual((unconfirmed.status, unconfirmed.error), ("failed", REPOSITORY_CHECK_FAILED))
 
 
 if __name__ == "__main__":

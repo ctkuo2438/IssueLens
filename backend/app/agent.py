@@ -241,6 +241,53 @@ class AgentRun:
         if self._remaining_seconds() <= 0:
             raise TimeoutError
 
+    async def _confirm_public_repository(self) -> AnalysisResult | None:
+        """Run the server's visibility check before any read; return a refusal if it does not pass.
+
+        The check is not a model tool and uses no tool budget. It is read-only and
+        repeated after an interruption, so its one retry needs no checkpoint.
+        """
+        assert self.tools is not None
+        retried = False
+        while True:
+            # Honor GitHub's cooldown, including one restored from a checkpoint.
+            while (cooldown := (self.tools.cooldown_until or 0) - time.time()) > 0:
+                if cooldown >= self._remaining_seconds():
+                    return self._refuse_repository(
+                        "GitHub's requested wait exceeds the remaining job time.", "repository_check_failed",
+                    )
+                await asyncio.sleep(cooldown)
+            try:
+                await self.tools.require_public_repository()
+                return None
+            except RepositoryNotPublicError as exc:
+                return self._refuse_repository(str(exc), "repository_not_public")
+            except TransientToolError as exc:
+                if retried or exc.failure.delay >= self._remaining_seconds():
+                    return self._refuse_repository(str(exc), "repository_check_failed")
+                retried = True
+                self.emit("warning", (
+                    f"Retrying the repository visibility check in {exc.failure.delay:.2f} seconds "
+                    f"because {exc.failure.reason}."
+                ))
+                await asyncio.sleep(exc.failure.delay)
+            except ToolError as exc:
+                return self._refuse_repository(str(exc), "repository_check_failed")
+
+    def _refuse_repository(self, detail: str, stop_reason: str) -> AnalysisResult:
+        """Publish no repository evidence or model output, including state restored from a checkpoint."""
+        assert self.tools is not None
+        if stop_reason == "repository_not_public":
+            message = detail
+        else:
+            # Transient failure reasons are sentence fragments; GitHub status messages are sentences.
+            detail = detail if detail.endswith(".") else f"{detail}."
+            message = f"Could not confirm that the repository is public, so no repository data is included. {detail}"
+        self.tools = GitHubTools(self.tools.client, self.target, self.tools.clip, require_public=True)
+        self.result = AnalysisResult(analysis_date=self.result.analysis_date, usage=self.result.usage)
+        self.emit("warning", message)
+        return self.snapshot(message, stop_reason=stop_reason)
+
     def _tool_failure(self, name: str, message: str) -> dict[str, Any]:
         self.result.limitations.append(f"{name}: {message}")
         self.emit("warning", f"{name}: {message}")
@@ -402,26 +449,18 @@ class AgentRun:
             ) as github,
             AsyncOpenAI(api_key=self.settings.openai_api_key, timeout=35, max_retries=0) as client,
         ):
+            # A server credential may read private repositories; anonymous reads cannot.
+            require_public = bool(self.settings.github_token)
             self.tools = GitHubTools(
                 github, self.target, clip, self.settings.max_candidates, self.settings.max_candidate_reads,
+                require_public=require_public,
             )
             if checkpoint and checkpoint.tools:
                 self.tools.restore(checkpoint.tools)
-            if self.settings.github_token:
-                # A server credential may read private repositories; anonymous reads cannot.
-                # This server check is not a model tool and does not use the tool budget.
-                try:
-                    await self.tools.require_public_repository()
-                except (ToolError, ValueError) as exc:
-                    if isinstance(exc, RepositoryNotPublicError):
-                        message, stop_reason = str(exc), "repository_not_public"
-                    else:
-                        detail = str(exc) if isinstance(exc, ToolError) else "GitHub returned invalid repository data"
-                        detail = detail if detail.endswith(".") else f"{detail}."
-                        message = f"Could not confirm that the repository is public; no issue data was read. {detail}"
-                        stop_reason = "repository_check_failed"
-                    self.emit("warning", message)
-                    return self.snapshot(message, stop_reason=stop_reason)
+            if require_public:
+                refusal = await self._confirm_public_repository()
+                if refusal is not None:
+                    return refusal
             if checkpoint and checkpoint.pending_tools:
                 await self._complete_tool_round(
                     context, history, checkpoint.pending_tools,

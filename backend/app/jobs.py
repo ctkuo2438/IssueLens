@@ -12,6 +12,7 @@ from openai import APIConnectionError, APIStatusError, APITimeoutError, Authenti
 from backend.app.agent import AgentRun
 from backend.app.checkpoint import AgentCheckpoint, CheckpointWriter
 from backend.app.config import Settings
+from backend.app.github import REPOSITORY_CHECK_FAILED, REPOSITORY_NOT_PUBLIC
 from backend.app.models import (
     AnalysisResult, EventKind, IssueTarget, JobSnapshot, JobStatus, ProgressEvent, TERMINAL_STATUSES,
 )
@@ -172,6 +173,10 @@ class JobManager:
                     final_status = "completed"
                 elif result.sources:
                     final_status = "partial"
+                elif job.trace.stop_reason == "repository_not_public":
+                    error = REPOSITORY_NOT_PUBLIC
+                elif job.trace.stop_reason == "repository_check_failed":
+                    error = REPOSITORY_CHECK_FAILED
                 else:
                     error = "No issue evidence could be retrieved. Check the URL and the activity log."
         except asyncio.CancelledError:

@@ -31,7 +31,16 @@ class TransientToolError(ToolError):
         self.failure = failure
 
 
+class GitHubResponseError(ToolError):
+    """GitHub answered with a status that the tools do not accept."""
+
+    def __init__(self, message: str, status_code: int) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+
+
 REPOSITORY_NOT_PUBLIC = "The repository is not public or could not be found. IssueLens analyzes public repositories only."
+REPOSITORY_CHECK_FAILED = "Could not confirm that the repository is public. Check the activity log and try again."
 
 
 class RepositoryNotPublicError(ToolError):
@@ -173,10 +182,14 @@ class GitHubTools:
         clip: Callable[[str, int], tuple[str, bool]],
         max_candidates: int = 20,
         max_candidate_reads: int = 5,
+        *,
+        require_public: bool = False,
     ) -> None:
         self.client = client
         self.target = target
         self.clip = clip
+        # Set for an authenticated client, whose credential may read private repositories.
+        self.require_public = require_public
         self.sources: dict[str, Source] = {}
         self.issue: IssueInfo | None = None
         self.limitations: list[str] = []
@@ -264,6 +277,9 @@ class GitHubTools:
     async def _get(
         self, path: str, params: dict[str, int | str] | None = None, *, allow_not_found: bool = False,
     ) -> httpx.Response:
+        if self.require_public and not self.repository_public and path != self.target.api_path:
+            # Every read waits for require_public_repository, whoever calls the tools.
+            raise RepositoryNotPublicError(REPOSITORY_NOT_PUBLIC)
         if self.cooldown_until is not None and time.time() < self.cooldown_until:
             raise ToolError("GitHub's requested cooldown is still active.")
         try:
@@ -281,13 +297,13 @@ class GitHubTools:
             if delay is not None:
                 self.cooldown_until = time.time() + delay
                 raise TransientToolError(TransientFailure("GitHub rate limit was reached", delay))
-            raise ToolError("GitHub denied access. Check GITHUB_TOKEN and repository permissions.")
+            raise GitHubResponseError("GitHub denied access. Check GITHUB_TOKEN and repository permissions.", response.status_code)
         if response.status_code == 404:
             if allow_not_found:
                 return response
-            raise ToolError("GitHub could not find this resource. It may be missing or inaccessible.")
+            raise GitHubResponseError("GitHub could not find this resource. It may be missing or inaccessible.", 404)
         if response.status_code == 401:
-            raise ToolError("GitHub rejected GITHUB_TOKEN. Check the server configuration.")
+            raise GitHubResponseError("GitHub rejected GITHUB_TOKEN. Check the server configuration.", 401)
         if response.status_code in TEMPORARY_HTTP_STATUSES:
             retry_after = retry_after_seconds(response.headers)
             delay = max(MIN_RETRY_DELAY, retry_after or 0)
@@ -295,21 +311,28 @@ class GitHubTools:
                 self.cooldown_until = time.time() + delay
             raise TransientToolError(TransientFailure(f"GitHub returned temporary HTTP {response.status_code}", delay))
         if not 200 <= response.status_code < 300:
-            raise ToolError(f"GitHub returned HTTP {response.status_code}. Repository redirects are not followed.")
+            raise GitHubResponseError(
+                f"GitHub returned HTTP {response.status_code}. Repository redirects are not followed.", response.status_code,
+            )
         return response
 
     async def require_public_repository(self) -> None:
-        """Fail closed unless GitHub reports the target repository as public."""
+        """Fail closed unless GitHub explicitly reports the target repository as public."""
         if self.repository_public:
             return
-        response = await self._get(self.target.api_path, allow_not_found=True)
-        data = response.json() if response.status_code != 404 else None
-        # Missing and private repositories share one outcome, so a server
-        # credential cannot reveal which private repositories exist.
-        if (
-            not isinstance(data, dict) or data.get("private") is not False
-            or data.get("visibility", "public") != "public"
-        ):
+        try:
+            data = (await self._get(self.target.api_path)).json()
+        except GitHubResponseError as exc:
+            if exc.status_code == 401:
+                raise  # A rejected server token fails the same way for every repository.
+            data = None
+        except ValueError:
+            data = None
+        # Any answer that depends on the repository and is not an explicit public
+        # confirmation (missing, private, internal, renamed, refused, malformed)
+        # shares one outcome, so a server credential cannot reveal which private
+        # repositories exist. Timeouts, temporary errors and cooldowns propagate.
+        if not isinstance(data, dict) or data.get("private") is not False or data.get("visibility") != "public":
             raise RepositoryNotPublicError(REPOSITORY_NOT_PUBLIC)
         self.repository_public = True
 
