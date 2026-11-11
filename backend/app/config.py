@@ -46,8 +46,8 @@ class GitHubOAuthConfig:
 
 @dataclass(frozen=True)
 class Settings:
-    openai_api_key: str = ""
-    github_token: str = ""
+    openai_api_key: str = field(default="", repr=False)
+    github_token: str = field(default="", repr=False)
     database_url: str = field(default="", repr=False)
     model: str = "gpt-5.6"
     reasoning_effort: ReasoningEffort = None

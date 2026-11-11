@@ -15,7 +15,7 @@ from openai.types.responses import ResponseFunctionToolCall, ResponseReasoningIt
 from pydantic import ValidationError
 
 from backend.app.agent import AgentRun
-from backend.app.config import Settings
+from backend.app.config import GitHubOAuthConfig, Settings
 from backend.app.github import GitHubTools, ToolError
 from backend.app.main import create_app
 from backend.app.models import AnalysisContent, AnalysisResult, IssueTarget, Source
@@ -108,6 +108,22 @@ class TargetTests(unittest.TestCase):
         for url in urls:
             with self.subTest(url=url), self.assertRaises(ValueError):
                 IssueTarget.from_url(url)
+
+
+class SettingsTests(unittest.TestCase):
+    def test_credentials_never_appear_in_settings_repr(self):
+        settings = Settings(
+            openai_api_key="SENSITIVE_OPENAI_CANARY", github_token="SENSITIVE_GITHUB_CANARY",
+            database_url="postgresql://user:SENSITIVE_DATABASE_CANARY@localhost/project",
+            github_oauth=GitHubOAuthConfig(
+                "offline-client", "SENSITIVE_OAUTH_CANARY", "http://127.0.0.1:3000/api/v1/auth/github/callback",
+            ),
+        )
+        text = repr(settings)
+        for canary in ("OPENAI", "GITHUB", "DATABASE", "OAUTH"):
+            self.assertNotIn(f"SENSITIVE_{canary}_CANARY", text)
+        # Non-secret settings stay visible for debugging.
+        self.assertIn(f"model={settings.model!r}", text)
 
 
 class GitHubToolTests(unittest.IsolatedAsyncioTestCase):
