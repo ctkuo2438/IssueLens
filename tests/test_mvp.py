@@ -5,6 +5,8 @@ import base64
 from contextlib import nullcontext
 from dataclasses import replace
 import json
+import subprocess
+import sys
 from types import SimpleNamespace
 import unittest
 from unittest.mock import AsyncMock, Mock, patch
@@ -15,7 +17,7 @@ from openai.types.responses import ResponseFunctionToolCall, ResponseReasoningIt
 from pydantic import ValidationError
 
 from backend.app.agent import AgentRun
-from backend.app.config import GitHubOAuthConfig, Settings
+from backend.app.config import GitHubOAuthConfig, ROOT, Settings
 from backend.app.github import GitHubTools, ToolError
 from backend.app.main import create_app
 from backend.app.models import AnalysisContent, AnalysisResult, IssueTarget, Source
@@ -124,6 +126,21 @@ class SettingsTests(unittest.TestCase):
             self.assertNotIn(f"SENSITIVE_{canary}_CANARY", text)
         # Non-secret settings stay visible for debugging.
         self.assertIn(f"model={settings.model!r}", text)
+
+    def test_importing_the_api_module_reads_no_configuration(self):
+        # Importing must not load .env, or every test process would hold the real credentials.
+        # A subprocess is needed because this test process imported the module long ago.
+        probe = (
+            "import backend.app.config as config\n"
+            "calls = []\n"
+            "config.load_dotenv = lambda *args, **kwargs: calls.append(args)\n"
+            "import backend.app.main\n"
+            "print(len(calls))\n"
+        )
+        result = subprocess.run(
+            [sys.executable, "-c", probe], cwd=ROOT, capture_output=True, text=True, check=True, timeout=60,
+        )
+        self.assertEqual(result.stdout.strip(), "0")
 
 
 class GitHubToolTests(unittest.IsolatedAsyncioTestCase):

@@ -25,6 +25,11 @@ def create_app(
     settings: Settings | None = None, *, store: AnalysisStore | None = None,
     oauth_transport: httpx.AsyncBaseTransport | None = None,
 ) -> FastAPI:
+    """Build the API. Serve it with `uvicorn --factory backend.app.main:create_app`.
+
+    There is no module-level app, so importing this module (as tests do) never reads
+    .env or loads credentials into the process environment.
+    """
     config = settings or Settings.from_env()
     database = (
         PostgresAnalysisStore(config.database_url, auth_enabled=config.github_oauth is not None)
@@ -185,6 +190,3 @@ def create_app(
         })
 
     return app
-
-
-app = create_app()

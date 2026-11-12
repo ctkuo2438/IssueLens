@@ -20,8 +20,8 @@ if not (frontend / "node_modules" / "next").exists():
 
 def start_api() -> subprocess.Popen:
     api = subprocess.Popen(
-        [sys.executable, "-m", "uvicorn", "backend.app.main:app", "--host", "127.0.0.1", "--port", "8000",
-         "--timeout-graceful-shutdown", "2"],
+        [sys.executable, "-m", "uvicorn", "--factory", "backend.app.main:create_app", "--host", "127.0.0.1",
+         "--port", "8000", "--timeout-graceful-shutdown", "2"],
         cwd=root, start_new_session=True,
     )
     print(f"API PID: {api.pid}", flush=True)
