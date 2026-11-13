@@ -1,0 +1,167 @@
+[
+  {
+    "request_number": 1,
+    "budget_tokens": 24000,
+    "estimated_tokens_before": 4739,
+    "estimated_tokens": 4739,
+    "margin_tokens": 1024,
+    "repair_reserve_tokens": 256,
+    "future_reserve_tokens": 512,
+    "future_reserve_target_tokens": 512,
+    "future_reserve_minimum_tokens": 512,
+    "phase": "investigation",
+    "fits": true,
+    "sent": true,
+    "sources": [],
+    "reused_call_ids": []
+  },
+  {
+    "request_number": 2,
+    "budget_tokens": 24000,
+    "estimated_tokens_before": 5141,
+    "estimated_tokens": 5104,
+    "margin_tokens": 1024,
+    "repair_reserve_tokens": 256,
+    "future_reserve_tokens": 4960,
+    "future_reserve_target_tokens": 4960,
+    "future_reserve_minimum_tokens": 512,
+    "phase": "investigation",
+    "fits": true,
+    "sent": true,
+    "sources": [
+      {
+        "source_id": "S1",
+        "kind": "issue",
+        "action": "kept",
+        "reason": "Protected evidence is retained without further excerpt reduction.",
+        "excerpt_tokens": 52,
+        "priority": null
+      }
+    ],
+    "reused_call_ids": []
+  },
+  {
+    "request_number": 3,
+    "budget_tokens": 24000,
+    "estimated_tokens_before": 5862,
+    "estimated_tokens": 5805,
+    "margin_tokens": 1024,
+    "repair_reserve_tokens": 256,
+    "future_reserve_tokens": 4960,
+    "future_reserve_target_tokens": 4960,
+    "future_reserve_minimum_tokens": 512,
+    "phase": "investigation",
+    "fits": true,
+    "sent": true,
+    "sources": [
+      {
+        "source_id": "S2",
+        "kind": "comment",
+        "action": "kept",
+        "reason": "Comment heuristic: 0 matching title terms; maintainer association: True.",
+        "excerpt_tokens": 42,
+        "priority": 13
+      },
+      {
+        "source_id": "S3",
+        "kind": "comment",
+        "action": "kept",
+        "reason": "Comment heuristic: 0 matching title terms; maintainer association: False.",
+        "excerpt_tokens": 36,
+        "priority": 10
+      },
+      {
+        "source_id": "S4",
+        "kind": "comment",
+        "action": "kept",
+        "reason": "Comment heuristic: 0 matching title terms; maintainer association: False.",
+        "excerpt_tokens": 49,
+        "priority": 10
+      },
+      {
+        "source_id": "S5",
+        "kind": "comment",
+        "action": "kept",
+        "reason": "Comment heuristic: 4 matching title terms; maintainer association: True.",
+        "excerpt_tokens": 137,
+        "priority": 21
+      }
+    ],
+    "reused_call_ids": []
+  },
+  {
+    "request_number": 4,
+    "budget_tokens": 24000,
+    "estimated_tokens_before": 6652,
+    "estimated_tokens": 6636,
+    "margin_tokens": 1024,
+    "repair_reserve_tokens": 256,
+    "future_reserve_tokens": 3936,
+    "future_reserve_target_tokens": 3936,
+    "future_reserve_minimum_tokens": 512,
+    "phase": "investigation",
+    "fits": true,
+    "sent": true,
+    "sources": [
+      {
+        "source_id": "S6",
+        "kind": "repo_labels",
+        "action": "kept",
+        "reason": "Protected evidence is retained without further excerpt reduction.",
+        "excerpt_tokens": 343,
+        "priority": null
+      }
+    ],
+    "reused_call_ids": []
+  },
+  {
+    "request_number": 5,
+    "budget_tokens": 24000,
+    "estimated_tokens_before": 7011,
+    "estimated_tokens": 6938,
+    "margin_tokens": 1024,
+    "repair_reserve_tokens": 256,
+    "future_reserve_tokens": 3936,
+    "future_reserve_target_tokens": 3936,
+    "future_reserve_minimum_tokens": 512,
+    "phase": "investigation",
+    "fits": true,
+    "sent": true,
+    "sources": [
+      {
+        "source_id": "S7",
+        "kind": "search",
+        "action": "redundant",
+        "reason": "Exact search metadata is retained in the search object.",
+        "excerpt_tokens": 44,
+        "priority": null
+      }
+    ],
+    "reused_call_ids": []
+  },
+  {
+    "request_number": 6,
+    "budget_tokens": 24000,
+    "estimated_tokens_before": 8690,
+    "estimated_tokens": 8618,
+    "margin_tokens": 1024,
+    "repair_reserve_tokens": 256,
+    "future_reserve_tokens": 0,
+    "future_reserve_target_tokens": 0,
+    "future_reserve_minimum_tokens": 0,
+    "phase": "investigation",
+    "fits": true,
+    "sent": true,
+    "sources": [
+      {
+        "source_id": "S8",
+        "kind": "search",
+        "action": "redundant",
+        "reason": "Exact search metadata is retained in the search object.",
+        "excerpt_tokens": 43,
+        "priority": null
+      }
+    ],
+    "reused_call_ids": []
+  }
+]

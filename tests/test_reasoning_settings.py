@@ -33,7 +33,7 @@ class ReasoningSettingsTests(unittest.TestCase):
                 settings = self.settings({} if value is None else {"OPENAI_REASONING_EFFORT": value})
                 self.assertIsNone(settings.reasoning_effort)
                 self.assertEqual(settings.model, "gpt-5.6")
-                self.assertEqual((settings.max_iterations, settings.max_tool_calls, settings.runtime_seconds, settings.context_tokens), (8, 15, 90, 12000))
+                self.assertEqual((settings.max_iterations, settings.max_tool_calls, settings.runtime_seconds, settings.context_tokens), (8, 15, 90, 24000))
 
     def test_supported_values_are_loaded_with_explicit_none_distinct_from_unset(self):
         for effort in ("none", "low", "medium", "high", "xhigh", "max"):

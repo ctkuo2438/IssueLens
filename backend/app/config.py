@@ -54,7 +54,7 @@ class Settings:
     max_iterations: int = 8
     max_tool_calls: int = 15
     runtime_seconds: float = 90
-    context_tokens: int = 12_000
+    context_tokens: int = 24_000
     max_candidates: int = 20
     max_candidate_reads: int = 5
     max_jobs: int = 30
@@ -87,7 +87,7 @@ class Settings:
             max_iterations=int(os.getenv("AGENT_MAX_ITERATIONS", "8")),
             max_tool_calls=int(os.getenv("AGENT_MAX_TOOL_CALLS", "15")),
             runtime_seconds=float(os.getenv("AGENT_RUNTIME_SECONDS", "90")),
-            context_tokens=int(os.getenv("AGENT_CONTEXT_TOKENS", "12000")),
+            context_tokens=int(os.getenv("AGENT_CONTEXT_TOKENS", "24000")),
             max_candidates=int(os.getenv("AGENT_MAX_CANDIDATES", "20")),
             max_candidate_reads=int(os.getenv("AGENT_MAX_CANDIDATE_READS", "5")),
             github_oauth=oauth,

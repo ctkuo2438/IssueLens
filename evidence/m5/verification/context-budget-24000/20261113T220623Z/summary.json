@@ -1,0 +1,225 @@
+{
+  "started_utc": "20261113T220623Z",
+  "scope": "Raise the default AGENT_CONTEXT_TOKENS from 12000 to 24000 and rerun pallets/flask#6146, which both MCP clients returned as partial at 12000.",
+  "change": "backend/app/config.py default and fallback, .env.example, and the two tests that pin the defaults. The checkout's .env does not set AGENT_CONTEXT_TOKENS, so the default applies to the web app, the Worker and the MCP server.",
+  "method": "One real analysis with real OpenAI and GitHub requests, run in process with the MCP server's own load_settings and IssueAnalysisTool. The report is the text the tool returns to MCP clients; stdio framing was not exercised here because both clients already verified it.",
+  "diagnosis_before_change": {
+    "fixed_tokens_per_request": {
+      "instructions": 1997,
+      "tool_definitions": 830,
+      "answer_schema": 608,
+      "request_margin": 1024
+    },
+    "comment_excerpts": [
+      {
+        "id": "S2",
+        "author_association": "MEMBER",
+        "excerpt_tokens": 42,
+        "priority": 13
+      },
+      {
+        "id": "S3",
+        "author_association": "NONE",
+        "excerpt_tokens": 36,
+        "priority": 10
+      },
+      {
+        "id": "S4",
+        "author_association": "NONE",
+        "excerpt_tokens": 49,
+        "priority": 10
+      },
+      {
+        "id": "S5",
+        "author_association": "MEMBER",
+        "excerpt_tokens": 137,
+        "priority": 21
+      }
+    ],
+    "offline_replay": "The real comments were fed to the real ContextBuilder under budgets 1 to 200 tokens short. It kept S2-S4, whose omission notice costs more than the excerpt, and omitted S5, the highest-priority and newest maintainer comment, saving about 90 tokens. No model or GitHub request was made in the replay; the comments were fetched once from the public GitHub API.",
+    "limitation": "The 12000 runs did not record per-request estimates, so how far they exceeded the budget is unknown."
+  },
+  "results": {
+    "context_tokens": 24000,
+    "model": "gpt-5.6",
+    "reasoning_effort": "medium",
+    "tool_seconds": 23.493,
+    "is_error": false,
+    "progress_notifications": 14,
+    "report_status": "completed",
+    "report_sources": 8,
+    "report_sources_cited": [
+      "S1",
+      "S2",
+      "S3",
+      "S5",
+      "S6",
+      "S7",
+      "S8"
+    ],
+    "issuelens_usage": {
+      "model_requests": 6,
+      "tool_calls": 5,
+      "total_tokens": 25874,
+      "elapsed_seconds": 23.49
+    },
+    "per_request_context": [
+      {
+        "request": 1,
+        "estimated_tokens": 4739,
+        "repair_reserve": 256,
+        "future_reserve": 512,
+        "with_reserves": 5507,
+        "omitted": []
+      },
+      {
+        "request": 2,
+        "estimated_tokens": 5104,
+        "repair_reserve": 256,
+        "future_reserve": 4960,
+        "with_reserves": 10320,
+        "omitted": []
+      },
+      {
+        "request": 3,
+        "estimated_tokens": 5805,
+        "repair_reserve": 256,
+        "future_reserve": 4960,
+        "with_reserves": 11021,
+        "omitted": []
+      },
+      {
+        "request": 4,
+        "estimated_tokens": 6636,
+        "repair_reserve": 256,
+        "future_reserve": 3936,
+        "with_reserves": 10828,
+        "omitted": []
+      },
+      {
+        "request": 5,
+        "estimated_tokens": 6938,
+        "repair_reserve": 256,
+        "future_reserve": 3936,
+        "with_reserves": 11130,
+        "omitted": []
+      },
+      {
+        "request": 6,
+        "estimated_tokens": 8618,
+        "repair_reserve": 256,
+        "future_reserve": 0,
+        "with_reserves": 8874,
+        "omitted": []
+      }
+    ],
+    "peak_with_reserves": 11130
+  },
+  "comparison_at_12000": [
+    {
+      "client": "Codex",
+      "status": "partial",
+      "sources": 7,
+      "total_tokens": 20845,
+      "omitted": [
+        "S5"
+      ]
+    },
+    {
+      "client": "Claude Code",
+      "status": "partial",
+      "sources": 8,
+      "total_tokens": 25823,
+      "omitted": [
+        "S5"
+      ]
+    }
+  ],
+  "observations": [
+    "The analysis completed with no omitted excerpt and no early finalization. S5 was visible and cited by two known facts.",
+    "The summary, a second label and the draft now reflect S5: the maintainer is conflicted because provider links can feel like advertising, Cloudflare is comparable in scale to listed providers, and the donation page carries no promise of a link. Claude checked these S5 claims against the comment text; this is not the user's review.",
+    "The draft asks the reporter to propose provider-independent inclusion criteria. The maintainer did not ask for that; it is the model's suggestion.",
+    "The discussion label's reason relies on maintainer feedback in S5 but cites only S1 and S6.",
+    "The peak request with reserves was 11,130 tokens, which would also have fit 12000 in this run: its two searches returned no eligible candidate. The 12000 runs took other paths; the Claude Code run's broad search returned two other Cloudflare issues. 12000 therefore sits at the edge for this issue, and 24000 leaves about 12,900 tokens of headroom. This run alone does not show that 12000 always fails.",
+    "Total tokens were about the same as the 12000 Claude Code run (25,874 against 25,823): the budget is a cap, so a small issue does not grow its requests.",
+    "Analyses interrupted under 12000 keep a checkpoint signature that includes the budget, so a Worker running with 24000 marks them interrupted instead of resuming them. This is the existing M3 behavior for any settings change."
+  ],
+  "progress": [
+    {
+      "seconds": 0.002,
+      "progress": 1,
+      "message": "Analysis queued."
+    },
+    {
+      "seconds": 0.002,
+      "progress": 2,
+      "message": "Model: gpt-5.6; reasoning effort: medium; output limit: 2400 tokens including reasoning and visible text."
+    },
+    {
+      "seconds": 0.901,
+      "progress": 3,
+      "message": "Investigation step 1: choosing the next action."
+    },
+    {
+      "seconds": 3.296,
+      "progress": 4,
+      "message": "Calling get_issue with {}."
+    },
+    {
+      "seconds": 3.619,
+      "progress": 5,
+      "message": "Investigation step 2: choosing the next action."
+    },
+    {
+      "seconds": 4.921,
+      "progress": 6,
+      "message": "Calling get_issue_comments with {\"page\":1}."
+    },
+    {
+      "seconds": 5.233,
+      "progress": 7,
+      "message": "Investigation step 3: choosing the next action."
+    },
+    {
+      "seconds": 7.028,
+      "progress": 8,
+      "message": "Calling get_repo_labels with {}."
+    },
+    {
+      "seconds": 7.34,
+      "progress": 9,
+      "message": "Investigation step 4: choosing the next action."
+    },
+    {
+      "seconds": 8.771,
+      "progress": 10,
+      "message": "Calling search_issues with {\"query\":\"Cloudflare hosting\"}."
+    },
+    {
+      "seconds": 9.231,
+      "progress": 11,
+      "message": "Investigation step 5: choosing the next action."
+    },
+    {
+      "seconds": 12.335,
+      "progress": 12,
+      "message": "Calling search_issues with {\"query\":\"Hosting Platforms\"}."
+    },
+    {
+      "seconds": 12.884,
+      "progress": 13,
+      "message": "Finalizing with existing evidence; reserving up to 2 requests for validation repair."
+    },
+    {
+      "seconds": 23.492,
+      "progress": 14,
+      "message": "Analysis completed."
+    }
+  ],
+  "human_review": "pending",
+  "not_verified": [
+    "Quality at 24000 on other issues, including the M2 evaluation and acceptance cases, which were run at 12000",
+    "Runtime for issues with many comments or candidates, where larger requests could approach the 90-second limit",
+    "The Context Builder rule that can omit the highest-priority comment when shorter ones cannot be omitted profitably; it is unchanged"
+  ]
+}

@@ -94,7 +94,7 @@ class PersistenceConfigurationTests(unittest.TestCase):
                 settings = Settings.from_env()
             self.assertEqual(settings.database_url, value)
             self.assertNotIn("SENSITIVE_DATABASE_CANARY", repr(settings))
-            self.assertEqual((settings.max_iterations, settings.max_tool_calls, settings.context_tokens), (8, 15, 12000))
+            self.assertEqual((settings.max_iterations, settings.max_tool_calls, settings.context_tokens), (8, 15, 24000))
 
     def test_other_database_schemes_fail_without_echoing_credentials(self):
         with patch.dict(os.environ, {"DATABASE_URL": "sqlite://SENSITIVE_DATABASE_CANARY"}, clear=True), patch.object(config, "load_dotenv"):
