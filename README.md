@@ -46,7 +46,7 @@ M3 已完成 PostgreSQL 分析紀錄、獨立 Worker、執行檢查點、有界�
 
 M4 已接入可設定的 GitHub 登入，登入後建立的分析由帳號持有。[OAuth 設定與驗收](docs/m4.md)
 
-M5 第一步讓 Claude Code 與 Codex 透過本機 MCP server 呼叫 IssueLens 分析 issue。兩個客戶端已完成連線並取得工具清單；Codex 已實際分析一個公開 issue，約 20 秒完成並回報進度，Claude Code 尚未實際分析。[設定與驗證](docs/m5.md)
+M5 第一步讓 Claude Code 與 Codex 透過本機 MCP server 呼叫 IssueLens 分析 issue。兩個客戶端已完成連線並取得工具清單；Codex 與 Claude Code 都已實際分析同一個公開 issue，各約 20 秒完成並收到進度通知，報告尚待人工審閱。[設定與驗證](docs/m5.md)
 
 ## 保留的入門課程
 
