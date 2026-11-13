@@ -388,13 +388,30 @@ class GitHubTools:
     async def get_issue(self) -> dict[str, Any]:
         response = await self._get(f"{self.target.api_path}/issues/{self.target.number}")
         data = response.json()
+        if not isinstance(data, dict):
+            raise ToolError("GitHub returned invalid issue data.")
         if "pull_request" in data:
             raise ToolError("This URL refers to a pull request. Submit an issue URL instead.")
+        user, labels, comments = data.get("user"), data.get("labels", []), data.get("comments", 0)
+        # GitHub documents user as nullable and each label as either a name or a label object.
+        if (
+            not isinstance(data.get("title"), str) or not isinstance(data.get("state"), str)
+            or (data.get("body") is not None and not isinstance(data["body"], str))
+            or (user is not None and not (isinstance(user, dict) and isinstance(user.get("login"), str)))
+            or not isinstance(labels, list)
+            or not all(
+                isinstance(label, str) or (isinstance(label, dict) and isinstance(label.get("name"), str))
+                for label in labels
+            )
+            or type(comments) is not int or comments < 0
+        ):
+            raise ToolError("GitHub returned invalid issue data.")
         self.issue = IssueInfo(
             title=data["title"], url=self.target.url, number=self.target.number,
-            state=data["state"], author=data["user"]["login"],
-            labels=[label["name"] for label in data.get("labels", [])],
-            comment_count=data.get("comments", 0),
+            # Parentheses cannot appear in a GitHub login, so this cannot name a real account.
+            state=data["state"], author=user["login"] if user is not None else "(unknown)",
+            labels=[label if isinstance(label, str) else label["name"] for label in labels],
+            comment_count=comments,
             created_at=data.get("created_at"), closed_at=data.get("closed_at"),
         )
         source = self._source("issue", data["title"], self.target.url, data.get("body") or "(No issue body.)", 2400)
@@ -439,6 +456,12 @@ class GitHubTools:
     async def get_readme(self) -> dict[str, Any]:
         response = await self._get(f"{self.target.api_path}/readme")
         data = response.json()
+        if (
+            not isinstance(data, dict) or not isinstance(data.get("content"), str)
+            or type(data.get("size", 0)) is not int
+            or not isinstance(data.get("html_url", ""), str) or not isinstance(data.get("path", "README"), str)
+        ):
+            raise ToolError("GitHub returned invalid README data.")
         if data.get("encoding") != "base64" or data.get("size", 0) > 1_000_000:
             raise ToolError("The README is too large or has an unsupported encoding.")
         url = data.get("html_url", "")
@@ -454,7 +477,14 @@ class GitHubTools:
             raise ToolError("Read the target with get_issue before checking repository labels.")
         self.label_lookup_attempted = True
         response = await self._get(f"{self.target.api_path}/labels", {"per_page": 100})
-        active = [item for item in response.json() if item.get("archived_at") is None]
+        data = response.json()
+        if not isinstance(data, list) or not all(
+            isinstance(item, dict) and isinstance(item.get("name"), str)
+            and (item.get("description") is None or isinstance(item["description"], str))
+            for item in data
+        ):
+            raise ToolError("GitHub returned invalid label data.")
+        active = [item for item in data if item.get("archived_at") is None]
         labels: list[RepositoryLabel] = []
         rows: list[dict[str, str]] = []
         for item in active:
