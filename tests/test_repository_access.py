@@ -54,7 +54,7 @@ def offline_patches(github, client):
     )
 
 
-def simulated_services(answers, paths):
+def simulated_services(answers, paths, responses=None):
     queue = list(answers) or [answer()]
 
     def handler(request):
@@ -64,7 +64,7 @@ def simulated_services(answers, paths):
         return github_response(request)
 
     github = httpx.AsyncClient(base_url="https://api.github.com", transport=httpx.MockTransport(handler))
-    create = AsyncMock(side_effect=[
+    create = AsyncMock(side_effect=responses or [
         simulated_response([tool_call("get_issue")]), simulated_response(content=final_content()),
     ])
     client = AsyncMock()
@@ -72,10 +72,10 @@ def simulated_services(answers, paths):
     return github, client, create
 
 
-async def run_agent(*answers, settings=TOKEN_SETTINGS, checkpoint=None, fake_sleep=False):
+async def run_agent(*answers, settings=TOKEN_SETTINGS, checkpoint=None, fake_sleep=False, responses=None):
     # Only use fake_sleep without a GitHub cooldown: a cooldown wait needs real time to pass.
     paths = []
-    github, client, create = simulated_services(answers, paths)
+    github, client, create = simulated_services(answers, paths, responses)
     emit = Mock()
     saved = AsyncMock()
     run = AgentRun(TARGET, settings, emit, checkpoint=checkpoint, save_checkpoint=saved if checkpoint else None)
@@ -216,6 +216,29 @@ class PublicRepositoryGuardTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn(REPOSITORY_PATH, outcome.paths)
         self.assertIn(ISSUE_PATH, outcome.paths)
         self.assertIsNotNone(outcome.result.content)
+
+    async def test_restored_cooldown_after_confirmation_keeps_the_evidence(self):
+        # First leg: confirm the repository, read the issue, then save while the comments read is in flight.
+        first = await run_agent(checkpoint=AgentCheckpoint.start("offline-signature"), responses=[
+            simulated_response([tool_call("get_issue")]),
+            simulated_response([tool_call("get_issue_comments", '{"page": 1}', call_id="call_offline_2")]),
+            simulated_response(content=final_content()),
+        ])
+        saves = [call.args[0] for call in first.saved.await_args_list]
+        interrupted = next(
+            AgentCheckpoint.model_validate_json(state.model_dump_json()) for state in saves
+            if state.in_flight == "tool" and state.pending_tools is not None
+            and state.pending_tools.calls[0].name == "get_issue_comments"
+        )
+        assert interrupted.tools is not None
+        # GitHub asked for a wait longer than the job runtime just before the Worker stopped.
+        interrupted.tools.cooldown_until = time.time() + 600
+        resumed = await run_agent(checkpoint=interrupted, responses=[simulated_response(content=final_content())])
+        self.assertEqual(resumed.paths, [])  # The cooldown is honored.
+        self.assertEqual([source.id for source in resumed.result.sources], ["S1"])
+        self.assertIsNotNone(resumed.result.content)
+        self.assertIn("get_issue_comments: GitHub's requested cooldown is still active.", resumed.result.limitations)
+        self.assertNotEqual(resumed.run.trace.stop_reason, "repository_check_failed")
 
 
 class RepositoryToolGateTests(unittest.IsolatedAsyncioTestCase):

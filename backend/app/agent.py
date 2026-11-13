@@ -248,6 +248,10 @@ class AgentRun:
         repeated after an interruption, so its one retry needs no checkpoint.
         """
         assert self.tools is not None
+        if self.tools.repository_public:
+            # Confirmed before an interruption. A restored cooldown limits the next reads,
+            # which fail like any other lookup, so it must not discard the evidence.
+            return None
         retried = False
         while True:
             # Honor GitHub's cooldown, including one restored from a checkpoint.

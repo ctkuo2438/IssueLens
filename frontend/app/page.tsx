@@ -167,6 +167,15 @@ async function errorMessage(response: Response) {
   return "The request could not be completed. Please try again.";
 }
 
+/** The owner/repo/issues/N label, or null when a stored record has no readable URL. */
+function issuePath(issueUrl: string) {
+  try {
+    return new URL(issueUrl).pathname.slice(1);
+  } catch {
+    return null;
+  }
+}
+
 function Citations({
   finding,
   sources,
@@ -210,7 +219,10 @@ export default function Home() {
   const [draftEdit, setDraftEdit] = useState<DraftEdit | null>(null);
   const [copyFeedback, setCopyFeedback] = useState<CopyFeedback | null>(null);
   const stream = useRef<EventSource | null>(null);
+  // Starting a new analysis bumps this, so a slower load of the requested one is ignored.
+  const loadVersion = useRef(0);
   const active = submitting || !!(job && !FINISHED.has(job.status));
+  const jobIssuePath = job ? issuePath(job.issue_url) : null;
   const signInRequired = session?.enabled && !session.user;
   const loginHref = requestedAnalysis
     ? `/api/v1/auth/github/login?analysis=${requestedAnalysis}`
@@ -327,6 +339,8 @@ export default function Home() {
 
   useEffect(() => {
     let mounted = true;
+    const version = loadVersion.current;
+    const current = () => mounted && loadVersion.current === version;
     const location = new URL(window.location.href);
     const candidate = location.searchParams.get("analysis");
     const id = candidate && /^[a-f0-9]{32}$/.test(candidate) ? candidate : null;
@@ -359,7 +373,7 @@ export default function Home() {
         const response = await fetch(`/api/v1/analyses/${id}`);
         if (!response.ok) throw new Error(await errorMessage(response));
         const analysis = (await response.json()) as Job;
-        if (!mounted) return;
+        if (!current()) return;
         setJob(analysis);
         setUrl(analysis.issue_url);
         setEvents(analysis.events);
@@ -367,7 +381,7 @@ export default function Home() {
           watch(id, analysis.events.at(-1)?.id || 0);
       })
       .catch((reason: Error) => {
-        if (mounted) setError(reason.message);
+        if (current()) setError(reason.message);
       });
     return () => {
       mounted = false;
@@ -378,6 +392,7 @@ export default function Home() {
   async function analyze(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (session === null || signInRequired) return;
+    loadVersion.current += 1;
     stopWatching();
     setError("");
     setConnection("");
@@ -667,10 +682,10 @@ export default function Home() {
                       : "Investigation overview")}
                 </h2>
                 <div className="issue-meta">
-                  {job && (
+                  {job && jobIssuePath && (
                     <a href={job.issue_url} target="_blank" rel="noreferrer">
                       <Icon name="github" size={14} />
-                      {new URL(job.issue_url).pathname.slice(1)} ↗
+                      {jobIssuePath} ↗
                     </a>
                   )}
                   {result?.issue && (
