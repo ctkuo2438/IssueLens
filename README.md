@@ -48,17 +48,6 @@ M4 已接入可設定的 GitHub 登入，登入後建立的分析由帳號持有
 
 M5 第一步讓 Claude Code 與 Codex 透過本機 MCP server 呼叫 IssueLens 分析 issue。兩個客戶端已完成連線並取得工具清單；Codex 與 Claude Code 都已實際分析同一個公開 issue，各約 20 秒完成並收到進度通知，報告尚待人工審閱。[設定與驗證](docs/m5.md)
 
-## 保留的入門課程
-
-這兩課是小型線性範例，與產品的自主循環分開。下列命令都會呼叫真實模型 API，沒有 CLI 選項。
-
-| 課程 | 命令 | 筆記 |
-| --- | --- | --- |
-| 一次模型呼叫 | `uv run --locked python lessons/01_llm_call.py` | [Lesson 01](lessons/01_llm_call.md) |
-| 一次工具往返 | `uv run --locked python lessons/02_tool_call.py` | [Lesson 02](lessons/02_tool_call.md) |
-
-Lesson 02 使用固定虛構 Issue，第一輪指定工具、第二輪回答，正常共兩次模型請求。切換資料直接修改程式中的 `issue_number`；舊 `--dry-run`／`--issue` 會在發送請求前停止。
-
 ## 離線檢查
 
 ```bash

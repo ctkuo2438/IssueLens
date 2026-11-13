@@ -6,7 +6,6 @@
 - Use Traditional Chinese for explanations and teaching notes. Introduce technical terms as needed. Use English for code, comments, docstrings, prompts, errors, printed labels, and test data.
 - For every task, explain the motivation for the approach, its benefits, and what could be improved or why the current approach is sufficient.
 - For implementation lessons, explain why the step comes now, give a command and observable success criteria, and include a small exercise, limitations, and an interview-relevant tradeoff. End with one concrete next step and its purpose.
-- Keep [Lesson 01](lessons/01_llm_call.md) and [Lesson 02](lessons/02_tool_call.md) linear, with visible model and tool calls and no CLI arguments. Lesson 02 uses a fictional local tool in a fixed two-request flow.
 
 ## Architecture and current scope
 
