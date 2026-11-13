@@ -1,8 +1,10 @@
 # 驗證證據索引
 
-這裡保存 M1／M2／M3 的驗證紀錄、原始模型輸出、來源、審閱與畫面。功能與目前狀態以 [M1](../docs/m1.md)／[M2](../docs/m2.md)／[M3](../docs/m3.md) 為準；本索引協助找到證據，不把歷史結果改寫成最新驗收。
+這裡保存 M1／M2／M3／M5 的驗證紀錄、原始模型輸出、來源、審閱與畫面。功能與目前狀態以 [M1](../docs/m1.md)／[M2](../docs/m2.md)／[M3](../docs/m3.md)／[M5](../docs/m5.md) 為準；本索引協助找到證據，不把歷史結果改寫成最新驗收。
 
 ## 先看最新結果
+
+M5 第一步的本機 MCP server 已和真實的 Claude Code 2.1.323、Codex 0.167.2 完成握手，兩者都取得 `analyze_github_issue`。Claude Code 先試 2026-07-28 的 `server/discover`，再退回 `2025-11-25`；Codex 直接使用 `2025-06-18`。兩個客戶端都使用暫存設定，沒有執行分析，也沒有呼叫模型或 GitHub。[客戶端連線驗證](m5/verification/client-handshake.json)
 
 M3 無法讀取紀錄的驗收使用暫時的 PostgreSQL 叢集。一筆快照或 Trace 已無法通過驗證的排隊紀錄，修正前會讓 Worker 停止；修正後標為 `failed`，原始內容另存於 `incompatible_record`，之後排入的分析照常完成。啟動時遇到無法讀取的中斷紀錄也不再失敗。未呼叫模型或 GitHub。[無法讀取紀錄驗證](m3/verification/incompatible-records.json)
 
@@ -44,6 +46,8 @@ evidence/
     screenshots/
   m3/
     verification/
+  m5/
+    verification/
   evaluations/
     <UTC timestamp>/
   live-acceptance/
@@ -58,6 +62,7 @@ evidence/
 | `m2/verification/` | 各開發步驟的檢查摘要、指紋及觀察。 | 可能同時記錄離線模擬與真實 API，依各檔說明區分。 |
 | `m2/screenshots/` | 真實功能畫面與明確標示的離線畫面。 | 離線畫面不是模型品質證據。 |
 | `m3/verification/` | PostgreSQL 保存與可靠性開發的檢查紀錄。 | 真實資料庫與模擬模型分開標示，不回填 M2 品質分數。 |
+| `m5/verification/` | MCP server 與 Claude Code、Codex 的連線紀錄。 | 連線與工具清單的觀察，不是分析品質證據。 |
 | `evaluations/` | 五筆固定虛構 GitHub 快照的真實模型執行。 | 不包含真實 GitHub 網路延遲，也不衡量搜尋召回率。 |
 | `live-acceptance/` | 真實模型＋真實 GitHub 的逐次驗收與審閱。 | 保留所有失敗／部分結果；執行完成不等於語意通過。 |
 | `model-comparisons/` | 已結束的固定來源模型實驗。 | 專用程式已移除，不再作為待執行流程。 |

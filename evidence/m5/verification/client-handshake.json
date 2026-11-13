@@ -1,0 +1,59 @@
+{
+  "verified_on_utc": "2026-11-12",
+  "scope": "M5 step one: the local stdio MCP server completes the handshake with real Claude Code and Codex clients and lists analyze_github_issue. No analysis was run from either client.",
+  "clients": {
+    "claude_code": {
+      "version": "2.1.323",
+      "check": "claude mcp list health check",
+      "sequence": [
+        "server/discover with io.modelcontextprotocol/protocolVersion 2026-07-28",
+        "server answered -32601 Method not found",
+        "initialize with protocolVersion 2025-11-25",
+        "server answered protocolVersion 2025-11-25",
+        "notifications/initialized",
+        "tools/list returned analyze_github_issue"
+      ],
+      "negotiated_protocol_version": "2025-11-25",
+      "first_response_seconds": 0.458,
+      "status_shown": "Connected"
+    },
+    "codex": {
+      "version": "0.167.2",
+      "check": "codex exec with no credentials; the session started its MCP servers, then the model request failed with 401 before any tool call",
+      "sequence": [
+        "initialize with protocolVersion 2025-06-18",
+        "server answered protocolVersion 2025-06-18",
+        "notifications/initialized",
+        "tools/list with a progressToken in _meta returned analyze_github_issue"
+      ],
+      "negotiated_protocol_version": "2025-06-18",
+      "first_response_seconds": 1.457,
+      "config_check": "codex mcp get showed tool_timeout_sec: 180 after the key was added; a misspelled key was ignored without an error"
+    }
+  },
+  "checks": {
+    "unittest_total_passed": 369,
+    "offline_run_skipped_without_database": 28,
+    "mcp_tests_passed": 21,
+    "mutations_detected": 7,
+    "mutations": [
+      "the analysis is not cancelled when the call is cancelled",
+      "source excerpts are added to the report",
+      "stdout is not redirected to stderr",
+      "a cancelled call still gets a response",
+      "tool calls run inline and block the reader",
+      "initialize ignores the requested protocol version",
+      "a missing OPENAI_API_KEY is not reported before the analysis starts"
+    ],
+    "pyright_errors": 0,
+    "pyright_command": "pyright --pythonpath .venv/bin/python backend evaluation lessons scripts, plus tests/test_mcp.py"
+  },
+  "providers": "No model or GitHub request was made. The offline tests simulate both services. During the client checks the server read the checkout's .env, but no tool was called; Codex had no credentials, so its own model request failed with 401.",
+  "isolation": "Both clients used configuration directories in a scratch folder (CLAUDE_CONFIG_DIR and CODEX_HOME). The user's ~/.claude.json and ~/.codex/config.toml were checked afterwards and contain no entry from these runs. A relay logged protocol messages only, and no server process remained after either check.",
+  "not_verified": [
+    "A real analysis started from Claude Code or Codex",
+    "How each client shows or truncates the report",
+    "Codex behavior when a call exceeds tool_timeout_sec",
+    "Windows"
+  ]
+}

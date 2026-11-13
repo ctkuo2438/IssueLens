@@ -15,6 +15,7 @@
 - [M2](docs/m2.md) is frozen. The latest scoped acceptance used three project-new cases and still awaits user review. Treat those runs as observed cases and keep the documented limitations. Reopen tuning, paid acceptance runs, or model comparisons only on a new request.
 - [M3](docs/m3.md) has PostgreSQL snapshots, an independent Worker, durable execution checkpoints, bounded retry, and a Trace endpoint. A replacement Worker resumes compatible checkpoints for the same job and keeps retry timing and attempts within the original budgets. Store Trace with the corresponding checkpoint and keep it after the private checkpoint is cleared.
 - [M4](docs/m4.md) starts with opt-in GitHub sign-in and durable ownership by GitHub account ID. Enforce ownership for result, event, Trace, and cancellation routes. Keep account and session data outside the public snapshot.
+- [M5](docs/m5.md) exposes the analysis to Claude Code and Codex as a local stdio MCP server with one tool, `analyze_github_issue`. It wraps the existing agent in memory mode with the operator's own `.env` keys and is not an eighth GitHub tool. Implement the MCP adapter ourselves on JSON-RPC over stdio without an MCP SDK, keep stdout for protocol messages only, and mark returned reports as untrusted GitHub-derived data.
 - Preserve the public `JobSnapshot` contract. Keep credentials, settings, headers, raw upstream errors, and private model or tool replay state out of public snapshots and evidence. Blank `DATABASE_URL` selects memory mode; a configured database failure must surface explicitly.
 
 ## Development and verification
@@ -26,6 +27,6 @@
 
 ## Docs and evidence
 
-- Keep [README](README.md) short. Maintain one current guide per milestone in [M1](docs/m1.md), [M2](docs/m2.md), [M3](docs/m3.md), and [M4](docs/m4.md). Put exercises, limits, and detailed results in the relevant guide. Use this file for lasting instructions and the current scope.
+- Keep [README](README.md) short. Maintain one current guide per milestone in [M1](docs/m1.md), [M2](docs/m2.md), [M3](docs/m3.md), [M4](docs/m4.md), and [M5](docs/m5.md). Put exercises, limits, and detailed results in the relevant guide. Use this file for lasting instructions and the current scope.
 - Preserve original cases, manifests, raw reports, review status, screenshots, and historical fingerprints. Link new evidence from the [evidence index](evidence/README.md). The [manifest](evidence/manifest.json) maps historical paths.
-- Store verification in `evidence/m1/`, `evidence/m2/verification/`, or `evidence/m3/verification/` and M2 screenshots in `evidence/m2/screenshots/`. Keep the existing timestamped roots for evaluations, live acceptance, and model comparisons.
+- Store verification in `evidence/m1/`, `evidence/m2/verification/`, `evidence/m3/verification/`, or `evidence/m5/verification/` and M2 screenshots in `evidence/m2/screenshots/`. Keep the existing timestamped roots for evaluations, live acceptance, and model comparisons.

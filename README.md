@@ -14,6 +14,7 @@
 | [M2：Issue 調查與草稿](docs/m2.md) | 七個工具、模型與預算、Context Builder、答案修正、草稿編輯、評估、最新驗收與已知限制。 |
 | [M3：可靠性與持久化](docs/m3.md) | PostgreSQL 分析紀錄、獨立 Worker、執行檢查點、有界重試與 Trace。 |
 | [M4：公開試用](docs/m4.md) | GitHub 登入、分析存取權限與雙帳號驗收。 |
+| [M5：在 Claude Code 與 Codex 中使用](docs/m5.md) | 本機 MCP server、`analyze_github_issue` 工具、設定與協定版本。 |
 
 原始報告、驗證摘要與畫面由 [evidence 證據索引](evidence/README.md)分類整理；功能開發歷程見 [M2 歷史索引](docs/m2.md#history)，舊輸出保持原樣。
 
@@ -44,6 +45,8 @@ M1 基本流程已完成。M2 功能保持凍結，最新三個不同 repo 的�
 M3 已完成 PostgreSQL 分析紀錄、獨立 Worker、執行檢查點、有界重試與 Trace。替換 Worker 後可沿用已保存的回合，並用原任務 ID 查詢模型與工具嘗試。[查詢 Trace](docs/m3.md#trace) · [M3 驗證](docs/m3.md#檢查與本次驗證)
 
 M4 已接入可設定的 GitHub 登入，登入後建立的分析由帳號持有。[OAuth 設定與驗收](docs/m4.md)
+
+M5 第一步讓 Claude Code 與 Codex 透過本機 MCP server 呼叫 IssueLens 分析 issue。兩個客戶端已完成連線並取得工具清單，尚未從客戶端實際執行分析。[設定與驗證](docs/m5.md)
 
 ## 保留的入門課程
 
