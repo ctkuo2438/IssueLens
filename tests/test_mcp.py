@@ -20,9 +20,11 @@ import httpx
 from backend.app.agent import AgentRun
 from backend.app.github import REPOSITORY_NOT_PUBLIC
 from backend.app.mcp.__main__ import load_settings
-from backend.app.mcp.analysis_tool import NOTICE, TOOL_NAME, IssueAnalysisTool
+from backend.app.mcp.analysis_tool import (
+    MAX_PROGRESS_CHARACTERS, NOTICE, TOOL_NAME, IssueAnalysisTool, progress_message,
+)
 from backend.app.mcp.protocol import (
-    INVALID_PARAMS, INVALID_REQUEST, METHOD_NOT_FOUND, PARSE_ERROR, McpServer, Tool, ToolResult,
+    INVALID_PARAMS, INVALID_REQUEST, METHOD_NOT_FOUND, PARSE_ERROR, McpServer, Progress, Tool, ToolResult,
 )
 from test_mvp import ISSUE, SETTINGS, OfflineEncoding, final_content, github_response, simulated_response, tool_call
 
@@ -55,8 +57,10 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
         self.sent = []
         self.started, self.release = asyncio.Event(), asyncio.Event()
         self.cancelled = False
+        self.saved_progress: Progress = lambda message: None
 
-        async def wait_and_echo(arguments):
+        async def wait_and_echo(arguments, progress):
+            self.saved_progress = progress
             self.started.set()
             try:
                 await self.release.wait()
@@ -65,14 +69,21 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
                 raise
             return ToolResult(json.dumps(arguments))
 
-        async def fail(arguments):
+        async def fail(arguments, progress):
             raise RuntimeError("SECRET_CANARY from an upstream response")
+
+        async def report(arguments, progress):
+            self.saved_progress = progress
+            progress("Reading the issue.")
+            progress("Searching similar issues.")
+            return ToolResult("done")
 
         self.server = McpServer(
             name="issuelens", title="IssueLens", version="0.1.0", instructions="Offline instructions.",
             tools=[
                 Tool("echo", "Echo", "Echo the arguments.", {"type": "object"}, wait_and_echo),
                 Tool("fail", "Fail", "Always fail.", {"type": "object"}, fail),
+                Tool("report", "Report", "Report progress.", {"type": "object"}, report),
             ],
             send=self.sent.append,
         )
@@ -83,8 +94,11 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
             message["params"] = params
         await self.server.receive(frame(message))
 
-    async def call(self, name, arguments, request_id):
-        await self.request("tools/call", {"name": name, "arguments": arguments}, request_id)
+    async def call(self, name, arguments, request_id, meta=None):
+        params = {"name": name, "arguments": arguments}
+        if meta is not None:
+            params["_meta"] = meta
+        await self.request("tools/call", params, request_id)
         return self.server.calls.get(request_id)
 
     async def test_initialize_keeps_a_supported_version_and_offers_the_newest_otherwise(self):
@@ -113,7 +127,7 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
         await self.request("tools/list", {}, 2)
         self.assertEqual(self.sent[0], {"jsonrpc": "2.0", "id": 1, "result": {}})
         tools = self.sent[1]["result"]["tools"]
-        self.assertEqual([tool["name"] for tool in tools], ["echo", "fail"])
+        self.assertEqual([tool["name"] for tool in tools], ["echo", "fail", "report"])
         self.assertEqual(set(tools[0]), {"name", "title", "description", "inputSchema", "annotations"})
 
     async def test_malformed_messages_get_json_rpc_errors(self):
@@ -200,6 +214,38 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("SECRET_CANARY", json.dumps(self.sent) + "".join(logs.output))
         self.assertIn("RuntimeError", "".join(logs.output))
 
+    async def test_progress_is_sent_only_while_the_call_runs(self):
+        # Codex sends 0 as a token, so a falsy token must still work.
+        task = await self.call("report", {}, 1, meta={"progressToken": 0})
+        assert task is not None
+        await task
+        self.saved_progress("Too late.")
+        self.assertEqual(self.sent, [
+            {"jsonrpc": "2.0", "method": "notifications/progress",
+             "params": {"progressToken": 0, "progress": 1, "message": "Reading the issue."}},
+            {"jsonrpc": "2.0", "method": "notifications/progress",
+             "params": {"progressToken": 0, "progress": 2, "message": "Searching similar issues."}},
+            {"jsonrpc": "2.0", "id": 1, "result": {"content": [{"type": "text", "text": "done"}], "isError": False}},
+        ])
+
+    async def test_progress_needs_a_valid_token(self):
+        for meta in [{}, {"progressToken": None}, {"progressToken": True}, {"progressToken": {"id": 1}}, "token"]:
+            with self.subTest(meta=meta):
+                self.sent.clear()
+                task = await self.call("report", {}, 1, meta=meta)
+                assert task is not None
+                await task
+                self.assertEqual([message.get("method") for message in self.sent], [None])
+
+    async def test_cancelled_call_sends_no_more_progress(self):
+        task = await self.call("echo", {}, 1, meta={"progressToken": "call-1"})
+        assert task is not None
+        await self.started.wait()
+        await self.server.receive(frame({"jsonrpc": "2.0", "method": "notifications/cancelled", "params": {"requestId": 1}}))
+        await asyncio.gather(task, return_exceptions=True)
+        self.saved_progress("Too late.")
+        self.assertEqual(self.sent, [])
+
     async def test_close_cancels_in_flight_calls(self):
         task = await self.call("echo", {}, 1)
         await self.started.wait()
@@ -212,6 +258,7 @@ class ProtocolTests(unittest.IsolatedAsyncioTestCase):
 
 class AnalysisToolTests(unittest.IsolatedAsyncioTestCase):
     async def run_tool(self, arguments, *, settings=SETTINGS, handler=github_response, model=None):
+        self.progress = []
         github = httpx.AsyncClient(base_url="https://api.github.com", transport=httpx.MockTransport(handler))
         # A list gives one response per request; a function replaces the model call.
         self.create = AsyncMock(side_effect=model or [
@@ -226,7 +273,7 @@ class AnalysisToolTests(unittest.IsolatedAsyncioTestCase):
             patch("backend.app.agent.tiktoken.get_encoding", return_value=OfflineEncoding()),
             patch.object(AgentRun, "required_lookup", return_value=None),
         ):
-            return await self.analysis.tool().run(arguments)
+            return await self.analysis.tool().run(arguments, self.progress.append)
 
     async def test_report_is_untrusted_json_with_source_urls_and_no_excerpts(self):
         def handler(request):
@@ -262,7 +309,7 @@ class AnalysisToolTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(missing_key.is_error)
         self.assertIn("OPENAI_API_KEY", missing_key.text)
         invalid = IssueAnalysisTool(None, "Agent limits are outside the supported local development range.")
-        result = await invalid.tool().run({"issue_url": ISSUE_URL})
+        result = await invalid.tool().run({"issue_url": ISSUE_URL}, self.progress.append)
         self.assertEqual(result, ToolResult(
             "IssueLens is not configured. Agent limits are outside the supported local development range.",
             is_error=True,
@@ -283,6 +330,35 @@ class AnalysisToolTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((report["status"], report["error"]), ("failed", REPOSITORY_NOT_PUBLIC))
         self.assertEqual(report["sources"], [])
         self.assertEqual(self.create.await_count, 0)
+
+    async def test_progress_follows_the_activity_log(self):
+        responses = iter([simulated_response([tool_call("get_issue")]), simulated_response(content=final_content())])
+
+        async def model(**kwargs):
+            # Yield like a real network request, so the reporter can run between steps.
+            await asyncio.sleep(0)
+            return next(responses)
+
+        await self.run_tool({"issue_url": ISSUE_URL}, model=model)
+        (job,) = self.analysis.manager.jobs.values()  # type: ignore[union-attr]
+        messages = [event.message for event in job.snapshot.events]
+        self.assertEqual(self.progress[0], "Analysis queued.")
+        self.assertEqual(self.progress[-1], messages[-1])
+        self.assertTrue(set(self.progress) <= set(messages))
+        # Events emitted together are reported once, so there can be fewer reports than events.
+        self.assertLessEqual(len(self.progress), len(messages))
+        self.assertGreater(len(self.progress), 2)
+
+    async def test_errors_before_the_analysis_report_no_progress(self):
+        result = await self.run_tool({"issue_url": "https://github.com/example/project/pull/42"})
+        self.assertTrue(result.is_error)
+        self.assertEqual(self.progress, [])
+
+    def test_long_progress_messages_are_shortened(self):
+        self.assertEqual(progress_message("Short."), "Short.")
+        shortened = progress_message("Calling search_issues with " + "x" * 400)
+        self.assertEqual(len(shortened), MAX_PROGRESS_CHARACTERS)
+        self.assertTrue(shortened.endswith("..."))
 
     async def test_cancelling_the_call_cancels_the_analysis(self):
         model_started, never = asyncio.Event(), asyncio.Event()
