@@ -54,4 +54,4 @@ M5 第一步讓 Claude Code 與 Codex 透過本機 MCP server 呼叫 IssueLens �
 uv run --locked python -W error::RuntimeWarning -m unittest discover -s tests -q
 ```
 
-離線測試使用模擬的 GitHub 與模型回應。未設定測試資料庫時會跳過 15 項 PostgreSQL 檢查。[M3 資料庫整合檢查](docs/m3.md#檢查與本次驗證)／[M4 登入驗收](docs/m4.md#兩個帳號驗收)／[M2 模型評估](docs/m2.md#verification)
+離線測試使用模擬的 GitHub 與模型回應。未設定測試資料庫時會跳過 28 項 PostgreSQL 檢查。[M3 資料庫整合檢查](docs/m3.md#檢查與本次驗證)／[M4 登入驗收](docs/m4.md#兩個帳號驗收)／[M2 模型評估](docs/m2.md#verification)
