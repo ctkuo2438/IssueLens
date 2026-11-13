@@ -4,6 +4,8 @@
 
 ## 先看最新結果
 
+M5 Codex 真實驗收從 Codex 0.167.2 分析 `pallets/flask#6146`，使用真實的 OpenAI 與 GitHub。工具呼叫約 20 秒完成，IssueLens 送出 12 則進度通知，Codex 正確轉述 `partial` 報告與 7 個來源，沒有執行任何指令。`codex exec --json` 不顯示進度；報告內容尚未經人工審閱。[驗收摘要](m5/verification/codex-live/20261113T031334Z/summary.json)
+
 M5 第一步的本機 MCP server 已和真實的 Claude Code 2.1.323、Codex 0.167.2 完成握手，兩者都取得 `analyze_github_issue`。Claude Code 先試 2026-07-28 的 `server/discover`，再退回 `2025-11-25`；Codex 直接使用 `2025-06-18`。兩個客戶端都使用暫存設定，沒有執行分析，也沒有呼叫模型或 GitHub。[客戶端連線驗證](m5/verification/client-handshake.json)
 
 M3 無法讀取紀錄的驗收使用暫時的 PostgreSQL 叢集。一筆快照或 Trace 已無法通過驗證的排隊紀錄，修正前會讓 Worker 停止；修正後標為 `failed`，原始內容另存於 `incompatible_record`，之後排入的分析照常完成。啟動時遇到無法讀取的中斷紀錄也不再失敗。未呼叫模型或 GitHub。[無法讀取紀錄驗證](m3/verification/incompatible-records.json)

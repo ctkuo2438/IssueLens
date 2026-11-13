@@ -1,0 +1,127 @@
+{
+  "started_utc": "20261113T031334Z",
+  "scope": "A real analysis started from Codex through the local IssueLens MCP server. It checks the integration (handshake, tool call, progress, timeout, report delivery), not analysis quality.",
+  "issue": "https://github.com/pallets/flask/issues/6146",
+  "issue_choice": "The web app's built-in example, already run live in M3, so this run isolates the Codex integration.",
+  "client": {
+    "codex_version": "0.167.2",
+    "command": "codex exec --skip-git-repo-check --ephemeral --json",
+    "host_model": "the user's default Codex model and reasoning effort (gpt-6-astra / max)",
+    "prompt": "Use the issuelens MCP tool analyze_github_issue to analyze https://github.com/pallets/flask/issues/6146. Do not run shell commands or read local files. After the tool returns, reply with the report status, a two-sentence summary, the missing information, and the number of cited sources.",
+    "per_run_overrides": [
+      "mcp_servers.issuelens: command through a logging relay, tool_timeout_sec = 180, default_tools_approval_mode = \"approve\"",
+      "node_repl, computer-use and pocket-notes disabled for this run"
+    ],
+    "not_disabled": "cua_repl, a JavaScript REPL provided by the Codex app, could not be disabled per run; overriding it made the configuration invalid. Codex did not call it.",
+    "user_config_changed": false
+  },
+  "server": {
+    "model": "gpt-5.6",
+    "reasoning_effort": "medium",
+    "settings": "the checkout's .env, as for the web app"
+  },
+  "results": {
+    "codex_exit_code": 0,
+    "codex_wall_seconds": 38,
+    "negotiated_protocol_version": "2025-06-18",
+    "tools_call_progress_token": 1,
+    "tool_call_seconds": 19.949,
+    "progress_notifications": 12,
+    "response_is_error": false,
+    "report_characters": 5542,
+    "report_status": "partial",
+    "report_sources": 7,
+    "issuelens_usage": {
+      "model_requests": 5,
+      "tool_calls": 4,
+      "total_tokens": 20845,
+      "elapsed_seconds": 19.93
+    },
+    "codex_usage": {
+      "input_tokens": 57350,
+      "cached_input_tokens": 50304,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 539,
+      "reasoning_output_tokens": 292
+    },
+    "codex_tool_call_status": "completed",
+    "codex_structured_content": null,
+    "codex_progress_events_in_json_output": 0,
+    "codex_shell_commands": 0
+  },
+  "observations": [
+    "Codex sent progressToken 1 on tools/call and accepted all progress notifications without an error, but codex exec --json emitted no progress events, so non-interactive Codex does not show progress. The interactive Codex UI was not checked.",
+    "The call took about 20 seconds, within Codex's 60-second default; the 180-second setting is still needed for runs near the 90-second budget.",
+    "Codex relayed the report's status, summary, missing information and source count faithfully and ran no commands.",
+    "The analysis was partial: the local context budget omitted one comment excerpt and forced early finalization. These are documented M2 limitations; the MCP server uses the same settings as the web app. The M3 live run of this issue was completed with 8 sources."
+  ],
+  "progress": [
+    {
+      "seconds": 6.932,
+      "progress": 1,
+      "message": "Analysis queued."
+    },
+    {
+      "seconds": 6.933,
+      "progress": 2,
+      "message": "Model: gpt-5.6; reasoning effort: medium; output limit: 2400 tokens including reasoning and visible text."
+    },
+    {
+      "seconds": 8.646,
+      "progress": 3,
+      "message": "Investigation step 1: choosing the next action."
+    },
+    {
+      "seconds": 10.738,
+      "progress": 4,
+      "message": "Calling get_issue with {}."
+    },
+    {
+      "seconds": 10.963,
+      "progress": 5,
+      "message": "Investigation step 2: choosing the next action."
+    },
+    {
+      "seconds": 12.58,
+      "progress": 6,
+      "message": "Calling get_issue_comments with {\"page\":1}."
+    },
+    {
+      "seconds": 12.806,
+      "progress": 7,
+      "message": "Investigation step 3: choosing the next action."
+    },
+    {
+      "seconds": 13.858,
+      "progress": 8,
+      "message": "Calling get_repo_labels with {}."
+    },
+    {
+      "seconds": 14.075,
+      "progress": 9,
+      "message": "Investigation step 4: choosing the next action."
+    },
+    {
+      "seconds": 16.095,
+      "progress": 10,
+      "message": "Calling search_issues with {\"query\":\"Cloudflare hosting\"}."
+    },
+    {
+      "seconds": 16.524,
+      "progress": 11,
+      "message": "Investigation step 5: choosing the next action."
+    },
+    {
+      "seconds": 26.87,
+      "progress": 12,
+      "message": "Analysis partial."
+    }
+  ],
+  "human_review": "pending",
+  "not_verified": [
+    "Claude Code live analysis",
+    "Progress display in the interactive Codex UI",
+    "A call that exceeds tool_timeout_sec",
+    "Windows"
+  ]
+}
