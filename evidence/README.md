@@ -4,6 +4,8 @@
 
 ## 先看最新結果
 
+M5 打包第三步讓 Claude Code 2.1.325 與 Codex 0.169.0 啟動用 `uvx` 從本機 repo 安裝的 `issuelens-mcp`，設定從 `~/.config/issuelens/.env` 讀取，各實際分析一次 `pallets/flask#6146`。兩者都使用 `gpt-5.6`／`medium`、列出完整報告且沒有執行指令；Claude Code 為 `completed`，Codex 因一次搜尋只讀了第一頁而為 `partial`。報告內容尚未經人工審閱。[驗收摘要](m5/verification/installed-live/20261115T205301Z/summary.json)
+
 M5 打包第二步讓安裝版不依賴 checkout：環境變數優先，其餘讀 `~/.config/issuelens/.env`。探測顯示 Claude Code 會傳入 shell 的全部變數，Codex 預設只傳 `HOME`、`PATH` 等 9 個，所以改用家目錄下的檔案。以暫存 HOME 與假金鑰驗證安裝版的四種情況，沒有呼叫模型或 GitHub。[設定驗證](m5/verification/settings.json)
 
 M5 打包第一步讓 IssueLens 可以建置成套件，並提供 `issuelens-mcp` 指令。wheel 只有 `backend/` 的 31 個檔案；在全新的暫存 HOME 用 `uvx` 安裝後完成握手並列出工具。沒有呼叫模型或 GitHub，金鑰讀取留待第二步。[打包驗證](m5/verification/packaging.json)

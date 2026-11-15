@@ -1,0 +1,117 @@
+{
+  "started_utc": "20261115T205301Z",
+  "scope": "Distribution step three: Claude Code and Codex start the installed issuelens-mcp, read settings from ~/.config/issuelens/.env, and each runs one real analysis of pallets/flask#6146. It checks installation and configuration, not analysis quality.",
+  "install": {
+    "command": "uvx --from git+file://<checkout> issuelens-mcp",
+    "source": "commit 6da82a3, the same path others will use with the GitHub URL",
+    "isolation": "uvx builds the package into its own cached environment; a uvx python check showed the installed backend module is outside the checkout and settings_file() is ~/.config/issuelens/.env",
+    "start_times_measured_with_a_scratch_uv_cache": {
+      "first_start_seconds": 4.8,
+      "next_start_seconds": 0.5
+    },
+    "settings_file": "~/.config/issuelens/.env, mode 600, holding OPENAI_API_KEY, GITHUB_TOKEN, OPENAI_MODEL and OPENAI_REASONING_EFFORT copied from the checkout's .env without displaying them"
+  },
+  "codex": {
+    "command": "codex exec --skip-git-repo-check --ephemeral --json, with mcp_servers.issuelens set per run through a logging relay, tool_timeout_sec = 180 and default_tools_approval_mode = \"approve\"; node_repl and pocket-notes disabled for the run; the user's Codex config was not changed",
+    "host_model": "the user's default Codex model and reasoning effort",
+    "prompt": "Use the issuelens MCP tool analyze_github_issue to analyze https://github.com/pallets/flask/issues/6146. Do not run shell commands or read local files. After the tool returns, show me the report: status, summary, known facts with their sources, missing information, label recommendations, the draft reply verbatim, and limitations.",
+    "exit_code": 0,
+    "results": {
+      "negotiated_protocol_version": "2025-06-18",
+      "client_version": "0.169.0",
+      "seconds_to_server_ready": 5.31,
+      "tool_call_seconds": 27.767,
+      "progress_notifications": 16,
+      "model_settings_reported": "Model: gpt-5.6; reasoning effort: medium; output limit: 2400 tokens including reasoning and visible text.",
+      "report_status": "partial",
+      "report_sources": 10,
+      "report_sources_cited": [
+        "S1",
+        "S2",
+        "S3",
+        "S5",
+        "S6",
+        "S7"
+      ],
+      "similar_issues": [
+        4884
+      ],
+      "issuelens_usage": {
+        "model_requests": 7,
+        "tool_calls": 6,
+        "total_tokens": 33809,
+        "elapsed_seconds": 27.76
+      }
+    },
+    "codex_usage": {
+      "input_tokens": 121448,
+      "cached_input_tokens": 104320,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 1468,
+      "reasoning_output_tokens": 447
+    },
+    "codex_shell_commands": 0
+  },
+  "claude_code": {
+    "session": "an interactive claude session in an empty folder, run by the user; the server was added at local scope for that folder through a logging relay, and claude mcp list showed Connected first",
+    "host_model": "claude-opus-5-5, the user's default",
+    "permission_mode": "auto",
+    "prompt": "the same prompt as Codex",
+    "results": {
+      "negotiated_protocol_version": "2025-11-25",
+      "client_version": "2.1.325",
+      "seconds_to_server_ready": 1.025,
+      "tool_call_seconds": 17.44,
+      "progress_notifications": 14,
+      "model_settings_reported": "Model: gpt-5.6; reasoning effort: medium; output limit: 2400 tokens including reasoning and visible text.",
+      "report_status": "completed",
+      "report_sources": 9,
+      "report_sources_cited": [
+        "S1",
+        "S2",
+        "S3",
+        "S5",
+        "S6",
+        "S7",
+        "S8",
+        "S9"
+      ],
+      "similar_issues": [],
+      "issuelens_usage": {
+        "model_requests": 6,
+        "tool_calls": 5,
+        "total_tokens": 26081,
+        "elapsed_seconds": 17.43
+      }
+    },
+    "claude_code_tool_calls": [
+      "ToolSearch",
+      "mcp__issuelens__analyze_github_issue"
+    ],
+    "claude_code_shell_commands": 0,
+    "tool_result_identical_to_server_text": true,
+    "claude_code_turn_seconds": 40.6,
+    "claude_code_usage": {
+      "model_requests": 3,
+      "input_tokens": 8,
+      "cache_read_input_tokens": 98406,
+      "cache_creation_input_tokens": 16062,
+      "output_tokens": 2353
+    }
+  },
+  "observations": [
+    "Both clients started the installed command from uvx and found ~/.config/issuelens/.env through HOME, which Codex passes among its nine default variables. Codex reached a ready server in about 5 seconds, within its 10-second default startup timeout.",
+    "Both runs used gpt-5.6 with medium effort because the settings file sets OPENAI_MODEL and OPENAI_REASONING_EFFORT. Without OPENAI_REASONING_EFFORT the code sends no reasoning setting and the provider default applies, which M2 did not evaluate; the install instructions must include it.",
+    "The Codex run was partial for a different reason than the earlier 12000 runs. One of its two searches (\"Cloudflare hosting\" and \"deploy Flask\") had more results than one page, and IssueLens recorded that only the first page was read; the report does not say which; any run limitation makes the status partial. It also read and compared a related Heroku issue (#4884). No excerpt was omitted. The \"Finalizing with existing evidence\" progress message is the normal closing step and appeared in the completed Claude Code run too.",
+    "The Claude Code run completed with 9 sources and no omitted excerpt.",
+    "Both clients presented the full report when asked: known facts with sources, the label recommendation, the draft reply verbatim and the limitations.",
+    "Claude noted that the draft repeats what the maintainer already asked in S6, which is accurate. It also asked the user to check the donation URL; Claude checked that the URL in the draft appears in the maintainer's S5 comment."
+  ],
+  "human_review": "pending",
+  "not_verified": [
+    "Installing from the GitHub URL, which needs a published repository and may fetch the repository at each start",
+    "A first start on a slow network, which could exceed Codex's 10-second startup timeout",
+    "Claude Code started from an IDE or the desktop app",
+    "Windows"
+  ]
+}
