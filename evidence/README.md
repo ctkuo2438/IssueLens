@@ -4,6 +4,8 @@
 
 ## 先看最新結果
 
+M5 打包第一步讓 IssueLens 可以建置成套件，並提供 `issuelens-mcp` 指令。wheel 只有 `backend/` 的 31 個檔案；在全新的暫存 HOME 用 `uvx` 安裝後完成握手並列出工具。沒有呼叫模型或 GitHub，金鑰讀取留待第二步。[打包驗證](m5/verification/packaging.json)
+
 M5 Context 預算調整把 `AGENT_CONTEXT_TOKENS` 預設從 12,000 改為 24,000，並以真實 OpenAI 與 GitHub 重跑 `pallets/flask#6146`。結果從 `partial` 變成 `completed`，沒有省略任何摘錄，最新的維護者留言 S5 被引用；用量與 12,000 時幾乎相同。這次含預留空間的最大請求是 11,130 個 token，路徑與先前不同，所以不能說 12,000 一定失敗。報告內容尚未經人工審閱。[驗收摘要](m5/verification/context-budget-24000/20261113T220623Z/summary.json)
 
 M5 Claude Code 真實驗收由使用者在 Claude Code 2.1.323 的互動工作階段分析同一個 `pallets/flask#6146`。工具呼叫約 22 秒完成，IssueLens 送出 14 則進度通知，Claude Code 收到的報告與 server 送出的完全相同；Claude 正確轉述 `partial` 報告與 8 個來源，沒有執行任何指令。這次是 auto 權限模式，沒有核准畫面；介面如何顯示進度尚未記錄，報告內容尚未經人工審閱。[驗收摘要](m5/verification/claude-code-live/20261113T202631Z/summary.json)

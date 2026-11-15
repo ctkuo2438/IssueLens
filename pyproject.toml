@@ -17,5 +17,17 @@ dependencies = [
     "uvicorn[standard]>=0.54.0",
 ]
 
-[tool.uv]
-package = false
+[project.scripts]
+issuelens-mcp = "backend.app.mcp.__main__:main"
+
+[build-system]
+requires = ["uv_build>=0.11.32,<0.12"]
+build-backend = "uv_build"
+
+# The importable package is backend/ at the repository root, not under src/.
+[tool.uv.build-backend]
+module-name = "backend"
+module-root = ""
+# Everything under backend/ ships. Keep env files out even if one lands there by mistake;
+# uv applies source exclusions to wheels too.
+source-exclude = ["**/.env", "**/.env.*"]

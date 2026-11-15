@@ -1,10 +1,12 @@
 """Serve IssueLens to Claude Code and Codex over stdio.
 
-Run it from any directory: uv run --directory /path/to/IssueLens --locked python -m backend.app.mcp
+Installed, the issuelens-mcp command starts this server. From a checkout, run it from any
+directory: uv run --directory /path/to/IssueLens --locked issuelens-mcp
 """
 
 import asyncio
 from dataclasses import replace
+from importlib.metadata import version
 import logging
 import os
 import sys
@@ -15,7 +17,8 @@ from backend.app.mcp.analysis_tool import INSTRUCTIONS, IssueAnalysisTool
 from backend.app.mcp.protocol import McpServer, Message, encode
 
 
-VERSION = "0.1.0"
+# The installed distribution is the single source of the version reported to clients.
+VERSION = version("issuelens")
 
 
 def protect_stdout() -> BinaryIO:

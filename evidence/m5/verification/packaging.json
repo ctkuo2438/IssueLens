@@ -1,0 +1,42 @@
+{
+  "verified_on_utc": "2026-11-15",
+  "scope": "Distribution step one: IssueLens builds as a package with an issuelens-mcp command, and the wheel starts the MCP server outside the checkout. No model or GitHub request was made.",
+  "change": [
+    "pyproject.toml: uv_build build backend, module backend at the repository root, issuelens-mcp console script, and env files excluded from builds; package = false removed",
+    "uv.lock: the project is now an editable source instead of a virtual one",
+    "backend/app/mcp/__main__.py: serverInfo.version comes from the installed distribution metadata"
+  ],
+  "build": {
+    "command": "uv build",
+    "uv_version": "0.11.32",
+    "wheel_files": 31,
+    "wheel_contents": "backend/ Python modules and issuelens-0.1.0.dist-info/ only",
+    "sdist_entries": 30,
+    "sdist_contents": "backend/, README.md, pyproject.toml and PKG-INFO",
+    "absent": [".env", "evidence/", "tests/", "frontend/", "__pycache__"],
+    "entry_point": "issuelens-mcp = backend.app.mcp.__main__:main"
+  },
+  "planted_file_check": "In a scratch copy, files planted at backend/.env and backend/app/.env.local were absent from both the wheel and the sdist, while backend/app/notes.txt was included: any other file under backend/ ships.",
+  "clean_install": {
+    "command": "uvx --from <wheel> issuelens-mcp",
+    "environment": "a new scratch HOME, PATH limited to /usr/bin, /bin and /opt/homebrew/bin, no API keys, working directory outside the checkout",
+    "python": "Homebrew Python 3.13 found on PATH; uv did not download a Python",
+    "installed_packages": 38,
+    "uv_cache_megabytes": 126,
+    "negotiated_protocol_version": "2025-11-25",
+    "server_info": {"name": "issuelens", "title": "IssueLens", "version": "0.1.0"},
+    "tools": ["analyze_github_issue"],
+    "tool_call": "A PR URL returned isError with the missing OPENAI_API_KEY message before any model or GitHub request. The message still points to the checkout's .env, which an installed copy does not have; step two replaces it."
+  },
+  "checkout_command": "uv run --directory <checkout> --locked issuelens-mcp completed the handshake from another directory.",
+  "checks": {
+    "unittest_ran": 370,
+    "unittest_skipped_without_database": 28,
+    "pyright_errors": 0
+  },
+  "not_verified": [
+    "Reading keys without a checkout (step two)",
+    "Installing from a Git URL, on a machine without Python 3.13, or on Windows",
+    "Claude Code and Codex launching the installed command"
+  ]
+}
