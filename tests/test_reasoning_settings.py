@@ -27,13 +27,16 @@ class ReasoningSettingsTests(unittest.TestCase):
         with patch.dict(os.environ, values, clear=True), patch.object(config, "load_dotenv"):
             return Settings.from_env()
 
-    def test_unset_or_blank_effort_keeps_provider_default_without_changing_budgets(self):
-        for value in (None, "", "   "):
+    def test_unset_effort_uses_the_evaluated_medium_without_changing_budgets(self):
+        # An installed copy is often configured with only a key, so the default must be the evaluated setting.
+        settings = self.settings({})
+        self.assertEqual((settings.model, settings.reasoning_effort), ("gpt-5.6", "medium"))
+        self.assertEqual((settings.max_iterations, settings.max_tool_calls, settings.runtime_seconds, settings.context_tokens), (8, 15, 90, 24000))
+
+    def test_blank_effort_keeps_the_provider_default(self):
+        for value in ("", "   "):
             with self.subTest(value=value):
-                settings = self.settings({} if value is None else {"OPENAI_REASONING_EFFORT": value})
-                self.assertIsNone(settings.reasoning_effort)
-                self.assertEqual(settings.model, "gpt-5.6")
-                self.assertEqual((settings.max_iterations, settings.max_tool_calls, settings.runtime_seconds, settings.context_tokens), (8, 15, 90, 24000))
+                self.assertIsNone(self.settings({"OPENAI_REASONING_EFFORT": value}).reasoning_effort)
 
     def test_supported_values_are_loaded_with_explicit_none_distinct_from_unset(self):
         for effort in ("none", "low", "medium", "high", "xhigh", "max"):

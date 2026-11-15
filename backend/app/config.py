@@ -63,6 +63,7 @@ class Settings:
     github_token: str = field(default="", repr=False)
     database_url: str = field(default="", repr=False)
     model: str = "gpt-5.6"
+    # Direct construction sends no reasoning setting; from_env applies medium when the variable is unset.
     reasoning_effort: ReasoningEffort = None
     max_iterations: int = 8
     max_tool_calls: int = 15
@@ -80,7 +81,9 @@ class Settings:
     @classmethod
     def from_env(cls) -> "Settings":
         load_dotenv(settings_file())
-        requested_effort = os.getenv("OPENAI_REASONING_EFFORT", "").strip()
+        # Unset uses medium, the effort M2 was evaluated with, as the model defaults to gpt-5.6.
+        # An explicit blank sends no reasoning setting and leaves the provider default.
+        requested_effort = os.getenv("OPENAI_REASONING_EFFORT", "medium").strip()
         # Select a typed SDK value without casting an arbitrary environment string.
         effort = REASONING_EFFORTS.get(requested_effort)
         if requested_effort and effort is None:
