@@ -12,12 +12,14 @@ from pathlib import Path
 import select
 import subprocess
 import sys
+import tempfile
 import unittest
 from unittest.mock import AsyncMock, patch
 
 import httpx
 
 from backend.app.agent import AgentRun
+import backend.app.config as config
 from backend.app.github import REPOSITORY_NOT_PUBLIC
 from backend.app.mcp.__main__ import load_settings
 from backend.app.mcp.analysis_tool import (
@@ -395,6 +397,53 @@ class SettingsTests(unittest.TestCase):
             settings, error = load_settings()
         self.assertIsNone(settings)
         self.assertEqual(error, "Agent limits are outside the supported local development range.")
+
+    def test_a_checkout_reads_its_own_env_file(self):
+        self.assertEqual(config.settings_file(), ROOT / ".env")
+
+    def installed(self, directory: str, environment: dict[str, str]):
+        """Pretend the package lives in site-packages, with no checkout around it, under a scratch home."""
+        site, home = Path(directory, "site-packages"), Path(directory, "home")
+        site.mkdir()
+        return home, (
+            patch.object(config, "ROOT", site), patch.object(Path, "home", return_value=home),
+            patch.dict(os.environ, environment, clear=True),
+        )
+
+    def test_an_installed_copy_reads_the_user_settings_file_after_exported_values(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home, patches = self.installed(directory, {"AGENT_MAX_ITERATIONS": "5"})
+            user_file = home / ".config" / "issuelens" / ".env"
+            user_file.parent.mkdir(parents=True)
+            user_file.write_text("OPENAI_API_KEY=file-key\nAGENT_MAX_ITERATIONS=3\n")
+            with patches[0], patches[1], patches[2]:
+                self.assertEqual(config.settings_file(), user_file)
+                settings, error = load_settings()
+        assert settings is not None
+        self.assertIsNone(error)
+        # The client's environment wins over the file, as an exported variable does for the web app.
+        self.assertEqual((settings.openai_api_key, settings.max_iterations), ("file-key", 5))
+
+    def test_the_missing_key_message_names_the_settings_file_without_the_home_path(self):
+        async def call(settings):
+            tool = IssueAnalysisTool(settings)
+            try:
+                return await tool.run({"issue_url": ISSUE_URL}, lambda message: None)
+            finally:
+                await tool.close()
+
+        with tempfile.TemporaryDirectory() as directory:
+            _, patches = self.installed(directory, {})
+            with patches[0], patches[1], patches[2]:
+                settings, error = load_settings()
+                assert settings is not None
+                result = asyncio.run(call(settings))
+        self.assertTrue(result.is_error)
+        expected = Path("~", ".config", "issuelens", ".env")
+        self.assertEqual(result.text, (
+            f"Set OPENAI_API_KEY in {expected} or in the MCP server's environment, then restart the MCP server."
+        ))
+        self.assertNotIn(directory, result.text)
 
 
 class StdioTests(unittest.TestCase):

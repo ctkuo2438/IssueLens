@@ -35,7 +35,7 @@ def protect_stdout() -> BinaryIO:
 
 
 def load_settings() -> tuple[Settings | None, str | None]:
-    """Read the checkout's .env. A configuration error is reported by the tool, not by exiting."""
+    """Read the environment and settings_file(). A configuration error is reported by the tool, not by exiting."""
     try:
         # Analyses stay in this process's memory, and there is no sign-in, whatever .env sets for the web app.
         return replace(Settings.from_env(), database_url="", github_oauth=None), None

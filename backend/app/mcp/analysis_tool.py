@@ -1,11 +1,12 @@
 """The analyze_github_issue tool: run one bounded analysis and return an untrusted JSON report."""
 
 import asyncio
+from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, Field
 
-from backend.app.config import Settings
+from backend.app.config import Settings, settings_file
 from backend.app.jobs import Job, JobManager, QueueFullError
 from backend.app.mcp.protocol import Progress, Tool, ToolResult
 from backend.app.models import (
@@ -95,6 +96,14 @@ def build_report(snapshot: JobSnapshot) -> IssueReport:
     return report
 
 
+def home_relative(path: Path) -> str:
+    """Show a path under the home directory with ~, so the message does not carry the account name."""
+    try:
+        return str(Path("~") / path.relative_to(Path.home()))
+    except ValueError:
+        return str(path)
+
+
 def progress_message(message: str) -> str:
     """Keep progress short: clients show it as a status line, and the report holds the details."""
     if len(message) <= MAX_PROGRESS_CHARACTERS:
@@ -156,7 +165,8 @@ class IssueAnalysisTool:
             return ToolResult(f"IssueLens is not configured. {self.setup_error}", is_error=True)
         if not self.settings.openai_api_key:
             return ToolResult(
-                "Set OPENAI_API_KEY in the .env file of the IssueLens checkout, then restart the MCP server.",
+                f"Set OPENAI_API_KEY in {home_relative(settings_file())} or in the MCP server's environment, "
+                "then restart the MCP server.",
                 is_error=True,
             )
         issue_url = arguments.get("issue_url")

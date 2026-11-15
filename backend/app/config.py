@@ -17,6 +17,19 @@ REASONING_EFFORTS: dict[str, ReasoningEffort] = {
 }
 
 
+def settings_file() -> Path:
+    """Return the one .env file Settings.from_env reads. Exported variables take precedence.
+
+    A source checkout keeps its own .env. An installed copy has no checkout, so it reads a
+    per-user file. The path is built from the home directory, not XDG_CONFIG_HOME: Codex
+    starts MCP servers with only a few variables such as HOME, and both clients must find
+    the same file.
+    """
+    if (ROOT / "pyproject.toml").is_file():
+        return ROOT / ".env"
+    return Path.home() / ".config" / "issuelens" / ".env"
+
+
 @dataclass(frozen=True)
 class GitHubOAuthConfig:
     client_id: str
@@ -66,7 +79,7 @@ class Settings:
 
     @classmethod
     def from_env(cls) -> "Settings":
-        load_dotenv(ROOT / ".env")
+        load_dotenv(settings_file())
         requested_effort = os.getenv("OPENAI_REASONING_EFFORT", "").strip()
         # Select a typed SDK value without casting an arbitrary environment string.
         effort = REASONING_EFFORTS.get(requested_effort)

@@ -53,6 +53,7 @@ class ReasoningSettingsTests(unittest.TestCase):
     def test_actual_dotenv_file_loads_model_and_effort(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
+            (root / "pyproject.toml").touch()  # Marks a checkout, so its .env is the settings file.
             (root / ".env").write_text("OPENAI_MODEL=gpt-5.6\nOPENAI_REASONING_EFFORT=medium\n")
             with patch.object(config, "ROOT", root), patch.dict(os.environ, {}, clear=True):
                 settings = Settings.from_env()
@@ -62,6 +63,7 @@ class ReasoningSettingsTests(unittest.TestCase):
     def test_exported_effort_keeps_existing_dotenv_precedence(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
+            (root / "pyproject.toml").touch()
             (root / ".env").write_text("OPENAI_REASONING_EFFORT=medium\n")
             with patch.object(config, "ROOT", root), patch.dict(os.environ, {"OPENAI_REASONING_EFFORT": "low"}, clear=True):
                 self.assertEqual(Settings.from_env().reasoning_effort, "low")

@@ -1,0 +1,65 @@
+{
+  "verified_on_utc": "2026-11-15",
+  "scope": "Distribution step two: an installed issuelens-mcp reads settings without a checkout. No model or GitHub request was made.",
+  "client_environment_probe": {
+    "method": "A probe MCP server recorded the names, never the values, of the environment variables it was started with. The parent shell set ISSUELENS_PROBE_PLAIN, ISSUELENS_PROBE_API_KEY, ISSUELENS_PROBE_TOKEN and ISSUELENS_PROBE_SECRET. Both clients used configuration directories in a scratch folder.",
+    "claude_code": {
+      "version": "2.1.323",
+      "trigger": "claude mcp list health check",
+      "default": "The whole shell environment, 110 variables, including the names with KEY, TOKEN and SECRET",
+      "env_flag": "claude mcp add -e NAME=value added NAME on top of the inherited environment; the value is stored in the Claude Code configuration"
+    },
+    "codex": {
+      "version": "0.169.0",
+      "trigger": "codex exec with no credentials; it started the servers, then kept retrying its own model connection and was stopped",
+      "default": [
+        "HOME",
+        "LANG",
+        "LOGNAME",
+        "PATH",
+        "SHELL",
+        "TERM",
+        "TMPDIR",
+        "USER",
+        "__CF_USER_TEXT_ENCODING"
+      ],
+      "env_table": "env = { NAME = \"value\" } added NAME; the value is stored in config.toml",
+      "env_vars_list": "env_vars = [\"ISSUELENS_PROBE_PLAIN\", \"ISSUELENS_PROBE_API_KEY\"] passed those two from the shell, including a name with KEY"
+    },
+    "conclusion": "An exported OPENAI_API_KEY reaches the server from Claude Code but not from Codex unless env_vars lists it. HOME reaches the server from both, so a file under the home directory works for both clients without writing the key into either client's configuration."
+  },
+  "design": {
+    "precedence": "Variables in the server's environment win; anything unset is read from one .env file.",
+    "file_from_a_checkout": "<checkout>/.env, unchanged",
+    "file_when_installed": "~/.config/issuelens/.env",
+    "checkout_detection": "pyproject.toml next to the backend package",
+    "xdg_config_home": "Not used, because Codex does not pass it and the two clients would then read different files",
+    "missing_key_message": "Set OPENAI_API_KEY in ~/.config/issuelens/.env or in the MCP server's environment, then restart the MCP server. The home directory is shown as ~."
+  },
+  "installed_wheel_checks": {
+    "environment": "uvx --from <wheel> issuelens-mcp with a scratch HOME, PATH limited to /usr/bin, /bin and /opt/homebrew/bin, and a working directory outside the checkout. The settings file held a dummy key, so the PR URL used for the call was rejected before any request.",
+    "no_settings_file": "budget 8 requests; the call returned the missing-key message naming ~/.config/issuelens/.env",
+    "settings_file_with_dummy_key_and_AGENT_MAX_ITERATIONS_3": "budget 3 requests; the call passed the key check and returned the issue URL error",
+    "same_file_with_AGENT_MAX_ITERATIONS_5_in_the_environment": "budget 5 requests; the environment won",
+    "checkout_command": "uv run --directory <checkout> --locked issuelens-mcp still read the checkout's .env: budget 8 requests and the issue URL error"
+  },
+  "checks": {
+    "mcp_tests_passed": 30,
+    "unittest_ran": 373,
+    "unittest_skipped_without_database": 28,
+    "pyright_errors": 0,
+    "mutations_detected": 3,
+    "mutations": [
+      "an installed copy still reads the .env next to the package",
+      "the missing-key message shows the full home path",
+      "the settings file overrides exported variables"
+    ],
+    "unittest_passed": 345,
+    "existing_tests_adjusted": "Two tests in test_reasoning_settings.py simulated a checkout with a temporary root that had no pyproject.toml. Under the new rule that root counted as an installed copy, so one test read the settings file under the real home directory and failed. Both roots now contain an empty pyproject.toml."
+  },
+  "not_verified": [
+    "Claude Code or Codex launching the installed command with a real key (step three)",
+    "Claude Code started from an IDE or the desktop app, whose environment may differ from a terminal",
+    "Windows, where the home directory and Codex's default variables differ"
+  ]
+}
