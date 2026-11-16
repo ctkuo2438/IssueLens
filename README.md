@@ -40,7 +40,7 @@ The defaults are `gpt-5.6` with `medium` reasoning effort, and each analysis is 
 **Claude Code**
 
 ```bash
-claude mcp add --scope user issuelens -- uvx --from git+https://github.com/<owner>/IssueLens issuelens-mcp
+claude mcp add --scope user issuelens -- uvx --from git+https://github.com/ctkuo2438/IssueLens issuelens-mcp
 claude mcp list
 ```
 
@@ -49,7 +49,7 @@ claude mcp list
 **Codex**
 
 ```bash
-codex mcp add issuelens -- uvx --from git+https://github.com/<owner>/IssueLens issuelens-mcp
+codex mcp add issuelens -- uvx --from git+https://github.com/ctkuo2438/IssueLens issuelens-mcp
 ```
 
 Then open `~/.codex/config.toml` and add two lines under `[mcp_servers.issuelens]`:
@@ -64,7 +64,7 @@ By default Codex stops a tool call after 60 seconds, but one analysis can run fo
 **First start.** uvx downloads about 38 packages the first time. That took 4.8 seconds on a fast connection, and Codex waits only 10 seconds for a server to start unless `startup_timeout_sec` says otherwise. To fill uv's cache in advance, start the server once with empty input. It exits right away:
 
 ```bash
-uvx --from git+https://github.com/<owner>/IssueLens issuelens-mcp < /dev/null
+uvx --from git+https://github.com/ctkuo2438/IssueLens issuelens-mcp < /dev/null
 ```
 
 ### 3. Ask for an analysis
@@ -87,7 +87,7 @@ An analysis usually takes 20 to 90 seconds. The report's `status` is `completed`
 You need Python 3.13 or later, uv, Node.js 20.9 or later, and npm.
 
 ```bash
-git clone https://github.com/<owner>/IssueLens.git
+git clone https://github.com/ctkuo2438/IssueLens.git
 cd IssueLens
 uv sync --locked
 cp .env.example .env
@@ -141,3 +141,7 @@ The milestone guides are written in Traditional Chinese.
 - **M5**'s installed MCP server analyzed a real issue from both Claude Code and Codex.
 
 The analysis reports are still awaiting human review, and none of these results measure production accuracy. Known limits are listed in [M2](docs/m2.md#known-limits) and [M5](docs/m5.md).
+
+## License
+
+[MIT](LICENSE)

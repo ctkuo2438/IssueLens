@@ -128,6 +128,8 @@ evidence/
 - 已結束的兩次模型實驗與它們的兩份摘要；
 - 搬移對照用的 `manifest.json`，以及 `evaluation/` 中與凍結驗收逐位元組相同的三份協議、案例與選材。
 
-這些檔案在 commit `abf218d` 仍完整存在，例如 `git show abf218d:evidence/manifest.json`，或用 `git restore --source abf218d -- evidence/model-comparisons` 取回整個目錄。各輪的重要觀察摘要在 [M2 歷史證據索引](../docs/m2.md#history)。保留的舊 JSON 可能記載已刪除或搬移前的路徑，作為當時紀錄原樣保留，不改寫內容。
+這些檔案在 commit `619ed99` 仍完整存在，例如 `git show 619ed99:evidence/manifest.json`，或用 `git restore --source 619ed99 -- evidence/model-comparisons` 取回整個目錄。各輪的重要觀察摘要在 [M2 歷史證據索引](../docs/m2.md#history)。保留的舊 JSON 可能記載已刪除或搬移前的路徑，作為當時紀錄原樣保留，不改寫內容。
+
+2026-11-16 公開前改寫了 git 歷史：所有 commit 的作者 email 改成 GitHub 的 noreply 地址，並從 Codex 真實驗收的第一個 commit 移除 Codex 的 4 個工作階段 ID（後來的 commit 本來就已移除），所以全部 commit ID 都變了。文件已改用新 ID；保留的證據仍記載當時的舊 ID，例如安裝版驗收摘要的 `6da82a3` 現在是 `991ce41`。
 
 之後新增證據：完整執行結果放日期目錄，手動驗證摘要與畫面放對應里程碑資料夾，再更新本索引。新的結果取代舊結果時，可以刪除舊的原始輸出，但要在相關文件留下觀察摘要，並註明可從哪個 commit 取回。不要把原始 JSON 合成一份、覆寫保留中的報告，或把人工編輯稿當成模型原稿。
