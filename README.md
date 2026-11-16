@@ -63,7 +63,7 @@ tool_timeout_sec = 180
 
 By default Codex stops a tool call after 60 seconds, but one analysis can run for 90 seconds plus time in the queue. Codex ignores misspelled keys without an error, so run `codex mcp get issuelens` and check that both values appear.
 
-**First start.** The first time, uv clones the repository, downloads about 38 packages, and fetches a Python build if you have no Python 3.13 or later. In a clean environment that took 9.9 seconds, while Codex waits only 10 seconds for a server to start unless `startup_timeout_sec` says otherwise. Later starts took about 1.3 seconds; each one checks GitHub for the tag, and starting without a network still works. To fill uv's cache in advance, start the server once with empty input. It exits right away:
+**First start.** The first time, uv clones the repository, downloads about 38 packages, and fetches a Python build if you have no Python 3.13 or later. In a clean environment that took 10.7 seconds, longer than the 10 seconds Codex waits for a server to start unless `startup_timeout_sec` says otherwise. Later starts took about 1.5 seconds. Each start fetches the tag from GitHub, so it needs a network connection. To fill uv's cache in advance, start the server once with empty input. It exits right away:
 
 ```bash
 uvx --from git+https://github.com/ctkuo2438/IssueLens@v0.1.0 issuelens-mcp < /dev/null
