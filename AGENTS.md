@@ -26,6 +26,6 @@
 
 ## Docs and evidence
 
-- Keep [README](README.md) short. Maintain one current guide per milestone in [M1](docs/m1.md), [M2](docs/m2.md), [M3](docs/m3.md), [M4](docs/m4.md), and [M5](docs/m5.md). Put exercises, limits, and detailed results in the relevant guide. Use this file for lasting instructions and the current scope.
+- Keep [README](README.md) short and in English; it is the entry point for people who install IssueLens without the guides. Maintain one current guide per milestone in [M1](docs/m1.md), [M2](docs/m2.md), [M3](docs/m3.md), [M4](docs/m4.md), and [M5](docs/m5.md). Put exercises, limits, and detailed results in the relevant guide. Use this file for lasting instructions and the current scope.
 - Keep the evidence behind each milestone's current state: cases, raw reports, review status, screenshots, and fingerprints. Old raw output that a newer result supersedes may be removed when the relevant guide keeps its observations and names a commit that still has the files. Never rewrite kept reports. Link new evidence from the [evidence index](evidence/README.md).
 - Store verification in `evidence/m1/`, `evidence/m2/verification/`, `evidence/m3/verification/`, or `evidence/m5/verification/` and M2 screenshots in `evidence/m2/screenshots/`. Keep the existing timestamped roots for evaluations and live acceptance.

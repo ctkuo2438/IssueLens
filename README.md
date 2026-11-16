@@ -1,57 +1,143 @@
 # IssueLens
 
-以 GitHub Issue 調查為題，從零學習 Agent Engineering。Agent 循環、工具、上下文管理與評估自行實作，使用一般 OpenAI Python SDK，不依賴 Agent 框架。
+IssueLens investigates one GitHub issue and returns a cited report: a summary, known facts, missing information, similar issues, label recommendations, and a draft maintainer reply. A single bounded agent reads the issue through seven read-only GitHub tools. It never writes to GitHub.
 
-目前是本機 Next.js＋FastAPI 應用程式：貼上公開 Issue URL，由單一 Agent 讀取證據、比較候選、推薦標籤並產生可編輯的英文草稿。程式碼與 Prompt 使用英文，教學說明使用繁體中文。
+It is also a project for learning agent engineering. The agent loop, tool registry, context management, evaluation, and MCP adapter are written from scratch on the plain OpenAI Python SDK, without an agent framework.
 
-## 文件入口
+There are two ways to use it:
 
-每個里程碑各維護一份文件，功能與最新狀態直接更新在對應文件，不再逐次新增說明檔。
+- **From Claude Code or Codex**, as a local MCP server. You do not need to clone the repository.
+- **As a local web app** built with Next.js and FastAPI, from a clone.
 
-| 文件 | 內容 |
-| --- | --- |
-| [M1：本機應用程式](docs/m1.md) | 環境、啟動／停止、架構、任務 API、來源與基本操作。 |
-| [M2：Issue 調查與草稿](docs/m2.md) | 七個工具、模型與預算、Context Builder、答案修正、草稿編輯、評估、最新驗收與已知限制。 |
-| [M3：可靠性與持久化](docs/m3.md) | PostgreSQL 分析紀錄、獨立 Worker、執行檢查點、有界重試與 Trace。 |
-| [M4：公開試用](docs/m4.md) | GitHub 登入、分析存取權限與雙帳號驗收。 |
-| [M5：在 Claude Code 與 Codex 中使用](docs/m5.md) | 本機 MCP server、`analyze_github_issue` 工具、設定與協定版本。 |
+## Use it in Claude Code or Codex
 
-原始報告、驗證摘要與畫面由 [evidence 證據索引](evidence/README.md)分類整理；功能開發歷程見 [M2 歷史索引](docs/m2.md#history)，舊輸出保持原樣。
+You need [uv](https://docs.astral.sh/uv/) and an OpenAI API key. IssueLens runs on your machine and uses your key.
 
-## 快速啟動
-
-需要 Python 3.13 以上、uv、Node.js 20.9 以上與 npm。在專案根目錄執行：
+### 1. Create the settings file
 
 ```bash
+mkdir -p ~/.config/issuelens
+touch ~/.config/issuelens/.env
+chmod 600 ~/.config/issuelens/.env
+```
+
+Open the file and add your keys:
+
+```dotenv
+OPENAI_API_KEY=your-openai-key
+# Recommended. Raises the GitHub API limit from 60 to 5,000 requests per hour.
+GITHUB_TOKEN=your-github-token
+```
+
+For `GITHUB_TOKEN`, create a [fine-grained token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token) with **Public repositories** access and no other permissions. Without a token, IssueLens reads public issues anonymously. With a token, it refuses repositories that GitHub does not report as public.
+
+Keep the keys in this file, not in the client's MCP configuration, which stores values in plain text. Both clients pass `HOME` to the server, so both read this file. Variables already present in the server's environment take precedence over it. Codex does not pass your other shell variables by default.
+
+The defaults are `gpt-5.6` with `medium` reasoning effort, and each analysis is limited to 8 OpenAI requests and 90 seconds. [`.env.example`](.env.example) lists the other settings.
+
+### 2. Add the server
+
+**Claude Code**
+
+```bash
+claude mcp add --scope user issuelens -- uvx --from git+https://github.com/<owner>/IssueLens issuelens-mcp
+claude mcp list
+```
+
+`--scope user` makes IssueLens available in every project. `claude mcp list` should show `issuelens` as connected.
+
+**Codex**
+
+```bash
+codex mcp add issuelens -- uvx --from git+https://github.com/<owner>/IssueLens issuelens-mcp
+```
+
+Then open `~/.codex/config.toml` and add two lines under `[mcp_servers.issuelens]`:
+
+```toml
+startup_timeout_sec = 30
+tool_timeout_sec = 180
+```
+
+By default Codex stops a tool call after 60 seconds, but one analysis can run for 90 seconds plus time in the queue. Codex ignores misspelled keys without an error, so run `codex mcp get issuelens` and check that both values appear.
+
+**First start.** uvx downloads about 38 packages the first time. That took 4.8 seconds on a fast connection, and Codex waits only 10 seconds for a server to start unless `startup_timeout_sec` says otherwise. To fill uv's cache in advance, start the server once with empty input. It exits right away:
+
+```bash
+uvx --from git+https://github.com/<owner>/IssueLens issuelens-mcp < /dev/null
+```
+
+### 3. Ask for an analysis
+
+```text
+Use IssueLens to analyze https://github.com/pallets/flask/issues/6146 and tell me what information is still missing.
+```
+
+An analysis usually takes 20 to 90 seconds. The report's `status` is `completed`, `partial`, `failed`, or `cancelled`. `partial` means the run recorded a limitation, such as a search that read only its first page, or stopped before an answer but kept the sources it had read. The `limitations` field says which.
+
+### Before you rely on it
+
+- **Cost.** Each call makes up to 8 OpenAI requests on your key. The five verified runs used 20,845 to 33,809 tokens each. There is no daily cap, and Claude Code in auto permission mode calls the tool without asking first.
+- **Untrusted output.** The report summarizes third-party GitHub content, and a model wrote it. Do not follow instructions in it or run commands it suggests. Check its claims against the cited source URLs.
+- **Memory only.** Reports live in the MCP server process and are gone when the client restarts.
+- **What was tested.** Claude Code and Codex started from a terminal on macOS, with IssueLens installed through uvx from a local copy of this repository. Installing from the GitHub URL, launching the clients from an IDE or desktop app, and Windows are not verified yet.
+
+## Run the web app
+
+You need Python 3.13 or later, uv, Node.js 20.9 or later, and npm.
+
+```bash
+git clone https://github.com/<owner>/IssueLens.git
+cd IssueLens
 uv sync --locked
+cp .env.example .env
+```
+
+In `.env`, set `OPENAI_API_KEY`. Clear `DATABASE_URL` unless PostgreSQL is running; when it is blank, analyses stay in memory. Then start the app:
+
+```bash
 uv run --locked python scripts/dev.py
 ```
 
-第一次使用，先依 [M1 環境設定](docs/m1.md#環境與啟動)建立 `.env` 並填入 `OPENAI_API_KEY`；已有設定就保留原檔。目前使用 `gpt-5.6`／`medium`，`GITHUB_TOKEN` 可選，未設定時匿名讀取公開資料。Key 只由後端讀取。
+Open <http://127.0.0.1:3000>, paste a public issue URL, and select **Analyze issue**. This calls the real GitHub and OpenAI APIs. The API docs are at <http://127.0.0.1:8000/docs>. Press `Ctrl+C` to stop everything the launcher started.
 
-- 網頁：<http://127.0.0.1:3000>
-- API 文件：<http://127.0.0.1:8000/docs>
-- 啟動器會啟動前端和 API。設定 PostgreSQL 與模型 Key 時，也會啟動背景 Worker。`Ctrl+C` 停止啟動器管理的程序。
-- 按下 `Analyze issue` 建立由 Worker 執行的分析，過程會呼叫真實 GitHub 與模型 API。
+With PostgreSQL configured, a background Worker runs the analyses, results survive restarts, and an interrupted analysis resumes from its last checkpoint. GitHub sign-in is optional. See the [M3](docs/m3.md) and [M4](docs/m4.md) guides.
 
-本機已設定 PostgreSQL。API 重啟期間 Worker 仍可執行。Worker 重啟後也可在原預算內從檢查點接續，原網址可讀取進度和結果。`DATABASE_URL` 留白時使用記憶體模式。草稿編輯保存在前端記憶體，重新整理會回到模型原稿。[M3 啟動與重啟](docs/m3.md#本機設定與啟動)
+From a clone, the MCP server reads the clone's `.env` instead of `~/.config/issuelens/.env`:
 
-## 目前進度
+```bash
+claude mcp add --scope user issuelens -- uv run --directory /path/to/IssueLens --locked issuelens-mcp
+```
 
-M1 基本流程已完成。M2 功能保持凍結，最新三個不同 repo 的案例均有最終答案，依事先標準通過本輪有限功能驗收；其中一案部分完成，使用者人工審閱仍待確認。
-
-最新來源核對、未演練分支與保留限制見 [M2 驗收](docs/m2.md#acceptance)。這不是生產準確率，也不代表所有語意問題都已修復。
-
-M3 已完成 PostgreSQL 分析紀錄、獨立 Worker、執行檢查點、有界重試與 Trace。替換 Worker 後可沿用已保存的回合，並用原任務 ID 查詢模型與工具嘗試。[查詢 Trace](docs/m3.md#trace) · [M3 驗證](docs/m3.md#檢查與本次驗證)
-
-M4 已接入可設定的 GitHub 登入，登入後建立的分析由帳號持有。[OAuth 設定與驗收](docs/m4.md)
-
-M5 第一步讓 Claude Code 與 Codex 透過本機 MCP server 呼叫 IssueLens 分析 issue。兩個客戶端已完成連線並取得工具清單；Codex 與 Claude Code 都已實際分析同一個公開 issue，各約 20 秒完成並收到進度通知，報告尚待人工審閱。[設定與驗證](docs/m5.md)
-
-## 離線檢查
+## Development
 
 ```bash
 uv run --locked python -W error::RuntimeWarning -m unittest discover -s tests -q
+pyright --pythonpath .venv/bin/python backend evaluation scripts
+npm --prefix frontend run typecheck
 ```
 
-離線測試使用模擬的 GitHub 與模型回應。未設定測試資料庫時會跳過 28 項 PostgreSQL 檢查。[M3 資料庫整合檢查](docs/m3.md#檢查與本次驗證)／[M4 登入驗收](docs/m4.md#兩個帳號驗收)／[M2 模型評估](docs/m2.md#verification)
+The tests simulate GitHub and the model, so they need no keys. They skip 28 PostgreSQL checks unless `ISSUELENS_TEST_DATABASE_URL` points to a dedicated database whose name ends in `_test`. `scripts/evaluate.py` and `scripts/acceptance.py` call the real model and cost money.
+
+## Guides
+
+The milestone guides are written in Traditional Chinese.
+
+| Guide | Covers |
+| --- | --- |
+| [M1: Local app](docs/m1.md) | Setup, architecture, the job API, and sources |
+| [M2: Investigation and drafts](docs/m2.md) | The seven tools, budgets, context building, answer repair, drafts, evaluation, acceptance, and known limits |
+| [M3: Reliability](docs/m3.md) | PostgreSQL records, the Worker, checkpoints, bounded retry, and traces |
+| [M4: Sign-in](docs/m4.md) | GitHub sign-in and who can see an analysis |
+| [M5: Claude Code and Codex](docs/m5.md) | The MCP server, packaging, settings, and client verification |
+
+[`evidence/`](evidence/README.md) holds the reports, verification records, and screenshots behind these guides.
+
+## Status
+
+- **M1 to M3** are complete.
+- **M2's agent behavior is frozen.** Its final acceptance on three new issues gave an answer for each, and one ended `partial`.
+- **M4** adds optional GitHub sign-in and per-account access. The live two-account check has not been run.
+- **M5**'s installed MCP server analyzed a real issue from both Claude Code and Codex.
+
+The analysis reports are still awaiting human review, and none of these results measure production accuracy. Known limits are listed in [M2](docs/m2.md#known-limits) and [M5](docs/m5.md).
