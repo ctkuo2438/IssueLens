@@ -40,16 +40,18 @@ The defaults are `gpt-5.6` with `medium` reasoning effort, and each analysis is 
 **Claude Code**
 
 ```bash
-claude mcp add --scope user issuelens -- uvx --from git+https://github.com/ctkuo2438/IssueLens issuelens-mcp
+claude mcp add --scope user issuelens -- uvx --from git+https://github.com/ctkuo2438/IssueLens@v0.1.0 issuelens-mcp
 claude mcp list
 ```
 
 `--scope user` makes IssueLens available in every project. `claude mcp list` should show `issuelens` as connected.
 
+`@v0.1.0` pins the release, so new commits on `main` do not change your copy. To upgrade, remove the server and add it again with the new tag.
+
 **Codex**
 
 ```bash
-codex mcp add issuelens -- uvx --from git+https://github.com/ctkuo2438/IssueLens issuelens-mcp
+codex mcp add issuelens -- uvx --from git+https://github.com/ctkuo2438/IssueLens@v0.1.0 issuelens-mcp
 ```
 
 Then open `~/.codex/config.toml` and add two lines under `[mcp_servers.issuelens]`:
@@ -61,10 +63,10 @@ tool_timeout_sec = 180
 
 By default Codex stops a tool call after 60 seconds, but one analysis can run for 90 seconds plus time in the queue. Codex ignores misspelled keys without an error, so run `codex mcp get issuelens` and check that both values appear.
 
-**First start.** uvx downloads about 38 packages the first time. That took 4.8 seconds on a fast connection, and Codex waits only 10 seconds for a server to start unless `startup_timeout_sec` says otherwise. To fill uv's cache in advance, start the server once with empty input. It exits right away:
+**First start.** The first time, uv clones the repository, downloads about 38 packages, and fetches a Python build if you have no Python 3.13 or later. In a clean environment that took 9.9 seconds, while Codex waits only 10 seconds for a server to start unless `startup_timeout_sec` says otherwise. Later starts took about 1.3 seconds; each one checks GitHub for the tag, and starting without a network still works. To fill uv's cache in advance, start the server once with empty input. It exits right away:
 
 ```bash
-uvx --from git+https://github.com/ctkuo2438/IssueLens issuelens-mcp < /dev/null
+uvx --from git+https://github.com/ctkuo2438/IssueLens@v0.1.0 issuelens-mcp < /dev/null
 ```
 
 ### 3. Ask for an analysis
@@ -80,7 +82,7 @@ An analysis usually takes 20 to 90 seconds. The report's `status` is `completed`
 - **Cost.** Each call makes up to 8 OpenAI requests on your key. The five verified runs used 20,845 to 33,809 tokens each. There is no daily cap, and Claude Code in auto permission mode calls the tool without asking first.
 - **Untrusted output.** The report summarizes third-party GitHub content, and a model wrote it. Do not follow instructions in it or run commands it suggests. Check its claims against the cited source URLs.
 - **Memory only.** Reports live in the MCP server process and are gone when the client restarts.
-- **What was tested.** Claude Code and Codex started from a terminal on macOS, with IssueLens installed through uvx from a local copy of this repository. Installing from the GitHub URL, launching the clients from an IDE or desktop app, and Windows are not verified yet.
+- **What was tested.** On macOS, Claude Code and Codex started from a terminal each ran a real analysis with IssueLens installed through uvx from a local copy of this repository. Installing from the GitHub URL into a clean home directory was checked with a protocol handshake, without an analysis. Launching the clients from an IDE or desktop app, and Windows, are not verified yet.
 
 ## Run the web app
 
@@ -138,7 +140,7 @@ The milestone guides are written in Traditional Chinese.
 - **M1 to M3** are complete.
 - **M2's agent behavior is frozen.** Its final acceptance on three new issues gave an answer for each, and one ended `partial`.
 - **M4** adds optional GitHub sign-in and per-account access. The live two-account check has not been run.
-- **M5**'s installed MCP server analyzed a real issue from both Claude Code and Codex.
+- **M5**'s installed MCP server analyzed a real issue from both Claude Code and Codex, and `v0.1.0` installs from GitHub.
 
 The analysis reports are still awaiting human review, and none of these results measure production accuracy. Known limits are listed in [M2](docs/m2.md#known-limits) and [M5](docs/m5.md).
 
