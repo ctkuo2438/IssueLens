@@ -82,7 +82,7 @@ An analysis usually takes 20 to 90 seconds. The report's `status` is `completed`
 - **Cost.** Each call makes up to 8 OpenAI requests on your key. The five verified runs used 20,845 to 33,809 tokens each. There is no daily cap, and Claude Code in auto permission mode calls the tool without asking first.
 - **Untrusted output.** The report summarizes third-party GitHub content, and a model wrote it. Do not follow instructions in it or run commands it suggests. Check its claims against the cited source URLs.
 - **Memory only.** Reports live in the MCP server process and are gone when the client restarts.
-- **What was tested.** On macOS, Claude Code and Codex started from a terminal each ran a real analysis with IssueLens installed through uvx from a local copy of this repository. Installing from the GitHub URL into a clean home directory was checked with a protocol handshake, without an analysis. Launching the clients from an IDE or desktop app, and Windows, are not verified yet.
+- **What was tested.** On macOS, Claude Code and Codex started from a terminal each ran a real analysis with IssueLens installed through uvx from a local copy of this repository. With `@v0.1.0` installed from GitHub, a test script also ran a real analysis that ended `completed`. Launching the clients from an IDE or desktop app, and Windows, are not verified yet.
 
 ## Run the web app
 

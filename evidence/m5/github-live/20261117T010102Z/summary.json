@@ -1,0 +1,50 @@
+{
+  "run_utc": "20261117T010102Z",
+  "scope": "One real analysis through the MCP server installed from GitHub at v0.1.0, closing the gap that the GitHub install had only been checked with a handshake. It used the real OpenAI and GitHub APIs and the operator's key. Report content awaits human review.",
+  "install": {
+    "command": "uvx --from git+https://github.com/ctkuo2438/IssueLens@v0.1.0 issuelens-mcp",
+    "installed_commit": "029038b, the commit that tag v0.1.0 points to; backend/, pyproject.toml, uv.lock and LICENSE are unchanged on main since then",
+    "environment": "only HOME (the operator's real home directory) and PATH (the uv directory and system directories), like the nine variables Codex passes; working directory outside the checkout",
+    "settings": "~/.config/issuelens/.env with mode 600 held OPENAI_API_KEY, GITHUB_TOKEN, OPENAI_MODEL=gpt-5.6 and OPENAI_REASONING_EFFORT=medium; no key was in the environment, so the file supplied it",
+    "ready_seconds": 10.4,
+    "ready_note": "Measured with the operator's existing uv cache, which was not reset, so it is not a clean first-start figure; the clean first start in github-install.json took 10.7 seconds."
+  },
+  "client": "A probe script, not Claude Code or Codex. It sent initialize, notifications/initialized and one tools/call with a progress token, then closed stdin.",
+  "protocol_version": "2025-11-25",
+  "server_info": {
+    "name": "issuelens",
+    "title": "IssueLens",
+    "version": "0.1.0"
+  },
+  "tool_call_seconds": 21.9,
+  "progress_notifications": 14,
+  "is_error": false,
+  "report": {
+    "issue_url": "https://github.com/pallets/flask/issues/6146",
+    "status": "completed",
+    "known_facts": 4,
+    "missing_information": 1,
+    "similar_issues_compared": 0,
+    "label_recommendations": [
+      "docs"
+    ],
+    "sources": 9,
+    "limitations": 3,
+    "usage": {
+      "model_requests": 6,
+      "tool_calls": 5,
+      "total_tokens": 26066,
+      "elapsed_seconds": 21.86
+    }
+  },
+  "observations": [
+    "The report is completed with 9 sources: the issue, five comments, the repository labels, and two searches that found no eligible candidates beyond the target.",
+    "Its limitations say the Cloudflare guide, Flask docs, code and releases were not inspected, and that empty searches do not prove there is no duplicate.",
+    "The protocol log holds only probe messages, so it has no client session or call IDs, and the report contains no local paths."
+  ],
+  "human_review": "pending",
+  "not_verified": [
+    "The same install driven by Claude Code or Codex rather than a probe",
+    "Someone outside the project following the README"
+  ]
+}
