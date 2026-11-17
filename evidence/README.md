@@ -1,52 +1,58 @@
-# 驗證證據索引
+# Evidence index
 
-這裡保存 M1／M2／M3／M5 的驗證紀錄、原始模型輸出、來源、審閱與畫面。功能與目前狀態以 [M1](../docs/m1.md)／[M2](../docs/m2.md)／[M3](../docs/m3.md)／[M5](../docs/m5.md) 為準；本索引協助找到證據，不把歷史結果改寫成最新驗收。
+This folder holds the verification records, raw model output, sources, reviews, and screenshots for M1, M2, M3, and M5. The [M1](../docs/m1.md), [M2](../docs/m2.md), [M3](../docs/m3.md), and [M5](../docs/m5.md) guides are the reference for features and current status. This index helps you find the evidence. It does not restate historical results as the latest acceptance.
 
-## 先看最新結果
+## Latest results
 
-M5 打包第五步以 MIT 授權公開 <https://github.com/ctkuo2438/IssueLens> 並標上 `v0.1.0`。推送前檢查全部 commit 沒有金鑰，並改寫歷史，把作者 email 換成 GitHub 的 noreply 地址、移除早期 commit 中的 Codex 工作階段 ID。在全新的 HOME 從 GitHub 安裝：`@v0.1.0` 第一次啟動 10.7 秒，超過 Codex 預設的 10 秒，之後 1.5 秒；每次啟動都會連 GitHub，離線無法啟動。只做握手與工具清單，沒有呼叫模型或 GitHub API。[GitHub 安裝驗證](m5/verification/github-install.json)
+Entries are grouped by milestone, newest first.
 
-M5 打包第三步讓 Claude Code 2.1.325 與 Codex 0.169.0 啟動用 `uvx` 從本機 repo 安裝的 `issuelens-mcp`，設定從 `~/.config/issuelens/.env` 讀取，各實際分析一次 `pallets/flask#6146`。兩者都使用 `gpt-5.6`／`medium`、列出完整報告且沒有執行指令；Claude Code 為 `completed`，Codex 因一次搜尋只讀了第一頁而為 `partial`。報告內容尚未經人工審閱。[驗收摘要](m5/verification/installed-live/20261115T205301Z/summary.json)
+### M5
 
-M5 打包第二步讓安裝版不依賴 checkout：環境變數優先，其餘讀 `~/.config/issuelens/.env`。探測顯示 Claude Code 會傳入 shell 的全部變數，Codex 預設只傳 `HOME`、`PATH` 等 9 個，所以改用家目錄下的檔案。以暫存 HOME 與假金鑰驗證安裝版的四種情況，沒有呼叫模型或 GitHub。[設定驗證](m5/verification/settings.json)
+**Packaging step 5: public release.** IssueLens is public at <https://github.com/ctkuo2438/IssueLens> under the MIT license and tagged `v0.1.0`. Before the push, every commit was checked for keys. The history was rewritten to replace author emails with the GitHub noreply address and to remove Codex session IDs from an early commit. Installing from GitHub into a fresh HOME: the first start with `@v0.1.0` took 10.7 seconds, over the 10-second Codex default, and later starts took 1.5 seconds. Every start contacts GitHub, so the server cannot start offline. The probe ran the handshake, listed the tools, and made one tool call, which stopped at the missing-key check. No model or GitHub API call was made. [GitHub install check](m5/github-install.json)
 
-M5 打包第一步讓 IssueLens 可以建置成套件，並提供 `issuelens-mcp` 指令。wheel 只有 `backend/` 的 31 個檔案；在全新的暫存 HOME 用 `uvx` 安裝後完成握手並列出工具。沒有呼叫模型或 GitHub，金鑰讀取留待第二步。[打包驗證](m5/verification/packaging.json)
+**Packaging step 3: installed version in both clients.** Claude Code 2.1.325 and Codex 0.169.0 each started `issuelens-mcp` installed with `uvx` from the local repository, read settings from `~/.config/issuelens/.env`, and ran one real analysis of `pallets/flask#6146`. Both used `gpt-5.6` / `medium`, showed the full report, and ran no commands. Claude Code's run was `completed`. Codex's run was `partial` because one search read only its first page. The report contents still await human review. [Acceptance summary](m5/installed-live/20261115T205301Z/summary.json)
 
-M5 Context 預算調整把 `AGENT_CONTEXT_TOKENS` 預設從 12,000 改為 24,000，並以真實 OpenAI 與 GitHub 重跑 `pallets/flask#6146`。結果從 `partial` 變成 `completed`，沒有省略任何摘錄，最新的維護者留言 S5 被引用；用量與 12,000 時幾乎相同。這次含預留空間的最大請求是 11,130 個 token，路徑與先前不同，所以不能說 12,000 一定失敗。報告內容尚未經人工審閱。[驗收摘要](m5/verification/context-budget-24000/20261113T220623Z/summary.json)
+**Packaging step 2: settings without a checkout.** The installed version no longer depends on a checkout. Environment variables take precedence, and everything else is read from `~/.config/issuelens/.env`. A probe showed that Claude Code passes all shell variables, while Codex passes only 9 by default, such as `HOME` and `PATH`, so settings moved to a file in the home directory. Four cases of the installed version were verified with a scratch HOME and fake keys. No model or GitHub call was made. [Settings check](m5/settings.json)
 
-M5 Claude Code 真實驗收由使用者在 Claude Code 2.1.323 的互動工作階段分析同一個 `pallets/flask#6146`。工具呼叫約 22 秒完成，IssueLens 送出 14 則進度通知，Claude Code 收到的報告與 server 送出的完全相同；Claude 正確轉述 `partial` 報告與 8 個來源，沒有執行任何指令。這次是 auto 權限模式，沒有核准畫面；介面如何顯示進度尚未記錄，報告內容尚未經人工審閱。[驗收摘要](m5/verification/claude-code-live/20261113T202631Z/summary.json)
+**Packaging step 1: build a package.** IssueLens can be built as a package and provides the `issuelens-mcp` command. The wheel contains only the 31 files from `backend/`. After installing with `uvx` in a fresh scratch HOME, the server completed the handshake and listed its tools. No model or GitHub call was made. Reading keys was left for step 2. [Packaging check](m5/packaging.json)
 
-M5 Codex 真實驗收從 Codex 0.167.2 分析 `pallets/flask#6146`，使用真實的 OpenAI 與 GitHub。工具呼叫約 20 秒完成，IssueLens 送出 12 則進度通知，Codex 正確轉述 `partial` 報告與 7 個來源，沒有執行任何指令。`codex exec --json` 不顯示進度；報告內容尚未經人工審閱。[驗收摘要](m5/verification/codex-live/20261113T031334Z/summary.json)
+**Context budget change.** The `AGENT_CONTEXT_TOKENS` default went from 12,000 to 24,000, and `pallets/flask#6146` was rerun with the real OpenAI and GitHub APIs. The result went from `partial` to `completed`: no excerpt was omitted, and the latest maintainer comment, S5, was cited. Usage was almost the same as at 12,000. The largest request this time, including reserved space, was 11,130 tokens, and the run took a different path from before, so we cannot say that 12,000 would certainly fail. The report contents still await human review. [Acceptance summary](m5/context-budget-24000/20261113T220623Z/summary.json)
 
-M5 第一步的本機 MCP server 已和真實的 Claude Code 2.1.323、Codex 0.167.2 完成握手，兩者都取得 `analyze_github_issue`。Claude Code 先試 2026-07-28 的 `server/discover`，再退回 `2025-11-25`；Codex 直接使用 `2025-06-18`。兩個客戶端都使用暫存設定，沒有執行分析，也沒有呼叫模型或 GitHub。[客戶端連線驗證](m5/verification/client-handshake.json)
+**Claude Code live acceptance.** The user analyzed the same `pallets/flask#6146` in an interactive Claude Code 2.1.323 session. The tool call finished in about 22 seconds, and IssueLens sent 14 progress notifications. The report Claude Code received was identical to the one the server sent. Claude correctly relayed the `partial` report and its 8 sources and ran no commands. The session used auto permission mode, so there was no approval prompt. How the interface displays progress was not recorded. The report contents still await human review. [Acceptance summary](m5/claude-code-live/20261113T202631Z/summary.json)
 
-M3 無法讀取紀錄的驗收使用暫時的 PostgreSQL 叢集。一筆快照或 Trace 已無法通過驗證的排隊紀錄，修正前會讓 Worker 停止；修正後標為 `failed`，原始內容另存於 `incompatible_record`，之後排入的分析照常完成。啟動時遇到無法讀取的中斷紀錄也不再失敗。未呼叫模型或 GitHub。[無法讀取紀錄驗證](m3/verification/incompatible-records.json)
+**Codex live acceptance.** Codex 0.167.2 analyzed `pallets/flask#6146` with the real OpenAI and GitHub APIs. The tool call finished in about 20 seconds, and IssueLens sent 12 progress notifications. Codex correctly relayed the `partial` report and its 7 sources and ran no commands. `codex exec --json` does not show progress. The report contents still await human review. [Acceptance summary](m5/codex-live/20261113T031334Z/summary.json)
 
-M3 資料庫重連驗收使用暫時的 PostgreSQL 叢集，未影響專案資料庫。以預設設定停機 48 秒，期間 API 回傳 503；資料庫恢復後 API 立即回到正常，Worker 在同一個程序內 3.1 秒後就緒。Worker 在分析執行中失去連線時，會重新取得鎖並從檢查點完成同一筆分析；其他儲存錯誤則停止 Worker。兩輪程式碼審查發現的問題與修正也記錄在內。未呼叫模型或 GitHub。[資料庫重連驗證](m3/verification/database-reconnect.json)
+**Step 1: client handshake.** The local MCP server completed a handshake with the real Claude Code 2.1.323 and Codex 0.167.2, and both got `analyze_github_issue`. Claude Code first tried `server/discover` from the 2026-07-28 protocol, then fell back to `2025-11-25`. Codex used `2025-06-18` directly. Both clients used scratch settings. No analysis ran, and no model or GitHub call was made. [Client connection check](m5/client-handshake.json)
 
-M3 Trace 驗收使用真實 PostgreSQL 與 Worker 程序。替換 Worker 後，同一任務 ID 可查到原嘗試、重試關聯與停止原因。工具呼叫途中中斷的測試也確認未保存的耗時留空。模型與 GitHub 回應使用模擬資料。[Trace 驗證](m3/verification/trace.json)
+### M3
 
-M3 有界重試驗收涵蓋模型與 GitHub 的暫時性失敗、預算耗盡和永久錯誤。真實 PostgreSQL 與 Worker 程序驗證替換後遵守已保存的重送時間，並以原任務 ID 完成。模型與 GitHub 回應使用模擬資料。[有界重試驗證](m3/verification/bounded-retry.json)
+**Unreadable records.** The check used a temporary PostgreSQL cluster. Before the fix, a queued record whose snapshot or Trace no longer passed validation stopped the Worker. After the fix, that record is marked `failed`, its original content is saved separately in `incompatible_record`, and analyses queued after it complete normally. Startup also no longer fails on an unreadable interrupted record. No model or GitHub call was made. [Unreadable records check](m3/incompatible-records.json)
 
-M3 Checkpoint 驗收用真實 PostgreSQL 與 Worker 程序，分別在標籤讀取途中正常停止與強制終止 Worker。替換程序接續已保存的模型與工具狀態，以相同任務 ID 完成兩次分析。模型與 GitHub 回應使用模擬資料。[Checkpoint 驗證](m3/verification/checkpoint.json)
+**Database reconnect.** The check used a temporary PostgreSQL cluster and did not touch the project database. With default settings, the database was down for 48 seconds, and the API returned 503 during that time. When the database came back, the API returned to normal right away, and the Worker was ready 3.1 seconds later in the same process. If the Worker loses the connection during an analysis, it reacquires the lock and finishes the same analysis from its checkpoint. Other storage errors stop the Worker. The record also lists the issues found in two rounds of code review and their fixes. No model or GitHub call was made. [Database reconnect check](m3/database-reconnect.json)
 
-M3 背景 Worker 驗收用真實程序與 PostgreSQL 強制重啟 API，同一個 Worker 持續執行分析，新的 API 可接續重播事件並讀回同一筆結果。分析內容使用模擬回應。[背景 Worker 驗證](m3/verification/background-worker.json)
+**Trace.** The check used a real PostgreSQL database and Worker processes. After the Worker was replaced, the same job ID showed the original attempt, the retry link, and the stop reason. A test interrupted during a tool call also confirmed that durations that were not saved stay empty. Model and GitHub responses were simulated. [Trace check](m3/trace.json)
 
-M3 第一步以一筆真實模型與 GitHub 分析，核對重啟後原網址、完整 JSON、8 個來源與 35 筆 Activity 一致。[真實重啟驗收](m3/verification/live-persistence/20261110T220602_439770Z/report.json)／[重啟後畫面](m3/verification/live-persistence/20261110T220602_439770Z/after-restart.jpg)
+**Bounded retry.** The check covered transient model and GitHub failures, budget exhaustion, and permanent errors. With a real PostgreSQL database and Worker processes, it verified that a replacement Worker respects the saved retry time and completes under the original job ID. Model and GitHub responses were simulated. [Bounded retry check](m3/bounded-retry.json)
 
-當時的 280 項檢查與模擬分析另有紀錄。[第一步實作驗證](m3/verification/postgresql.json)
+**Checkpoint.** With a real PostgreSQL database and Worker processes, the check stopped the Worker during a label read, once gracefully and once by force. The replacement process resumed from the saved model and tool state and completed both analyses under the same job ID. Model and GitHub responses were simulated. [Checkpoint check](m3/checkpoint.json)
 
-### M2 凍結驗收
+**Background Worker.** With real processes and PostgreSQL, the check force-restarted the API. The same Worker kept running the analysis, and the new API resumed replaying events and read back the same result. The analysis used simulated responses. [Background Worker check](m3/background-worker.json)
 
-M2 已凍結，以 `gpt-5.6`／`medium`、原預算對 HTTPX #3602、pytest #14560、Ruff #29177 各執行一次。三案都有最終答案，一案部分完成；依事先標準通過本輪有限功能驗收，使用者人工審閱仍待確認。
+**Step 1: live persistence.** One analysis with the real model and GitHub checked that after a restart the original URL, the full JSON, the 8 sources, and the 35 Activity entries were unchanged. [Live restart check](m3/live-persistence/20261110T220602_439770Z/report.json) / [Screen after restart](m3/live-persistence/20261110T220602_439770Z/after-restart.jpg)
 
-- [最新閱讀版：結果、限制與原始草稿](live-acceptance/20261110T065740_115528Z/review.md)
-- [原始 API 執行報告](live-acceptance/20261110T065740_115528Z/report.json)／[助理來源核對](live-acceptance/20261110T065740_115528Z/assistant-review.json)
-- [事先協議](live-acceptance/20261110T065740_115528Z/protocol.json)／[案例標準](live-acceptance/20261110T065740_115528Z/cases.json)／[獨立選材](live-acceptance/20261110T065740_115528Z/selection.json)
+The 280 checks and the simulated analysis from that time are recorded separately. [Step 1 implementation check](m3/postgresql.json)
 
-這輪沒有答案修正、範本或 README 查閱事件；不能將有限通過解讀成所有分支實測、穩定品質或生產準確率。
+### M2 frozen acceptance
 
-## 目錄怎麼分
+M2 is frozen. The acceptance ran once each on HTTPX #3602, pytest #14560, and Ruff #29177 with `gpt-5.6` / `medium` and the original budgets. All three cases have a final answer, and one is partial. Under the predefined criteria, this round's limited functional acceptance passed. User review is still pending.
+
+- [Latest reading version: results, limits, and raw drafts](m2/acceptance/20261110T065740_115528Z/review.md)
+- [Raw API run report](m2/acceptance/20261110T065740_115528Z/report.json) / [Assistant source check](m2/acceptance/20261110T065740_115528Z/assistant-review.json)
+- [Predeclared protocol](m2/acceptance/20261110T065740_115528Z/protocol.json) / [Case criteria](m2/acceptance/20261110T065740_115528Z/cases.json) / [Independent selection](m2/acceptance/20261110T065740_115528Z/selection.json)
+
+This round had no answer repair, template lookup, or README lookup events. Do not read the limited pass as proof that every branch was tested, that quality is stable, or of production accuracy.
+
+## Folder layout
 
 ```text
 evidence/
@@ -55,83 +61,90 @@ evidence/
     verification.json
     live-analysis.jpg
   m2/
-    verification/
+    steps/
     screenshots/
+    evaluations/
+      <UTC timestamp>/
+    acceptance/
+      <UTC timestamp>/
   m3/
-    verification/
+    *.json
+    live-persistence/
+      <UTC timestamp>/
   m5/
-    verification/
-  evaluations/
-    <UTC timestamp>/
-  live-acceptance/
-    <UTC timestamp>/
+    *.json
+    <run>/
+      <UTC timestamp>/
 ```
 
-| 位置 | 保存內容 | 如何判讀 |
+| Location | What it holds | How to read it |
 | --- | --- | --- |
-| [M1 驗證](m1/verification.json)／[畫面](m1/live-analysis.jpg) | 基本流程與單筆真實瀏覽器檢查。 | 功能連線觀察，不是品質基準。 |
-| `m2/verification/` | 各開發步驟的檢查摘要、指紋及觀察。 | 可能同時記錄離線模擬與真實 API，依各檔說明區分。 |
-| `m2/screenshots/` | 真實功能畫面與明確標示的離線畫面。 | 離線畫面不是模型品質證據。 |
-| `m3/verification/` | PostgreSQL 保存與可靠性開發的檢查紀錄。 | 真實資料庫與模擬模型分開標示，不回填 M2 品質分數。 |
-| `m5/verification/` | MCP server 與 Claude Code、Codex 的連線及真實分析紀錄。 | 客戶端整合的觀察，不是分析品質證據。 |
-| `evaluations/` | 五筆固定虛構 GitHub 快照的真實模型執行，目前保留最新一輪。 | 不包含真實 GitHub 網路延遲，也不衡量搜尋召回率。 |
-| `live-acceptance/` | 真實模型＋真實 GitHub 的驗收與審閱，目前保留 M2 凍結驗收。 | 執行完成不等於語意通過。 |
+| [M1 check](m1/verification.json) / [screenshot](m1/live-analysis.jpg) | The basic flow and one real browser check. | An observation that the features connect, not a quality benchmark. |
+| `m2/steps/` | Check summaries, fingerprints, and observations for each development step. | A file may record both offline simulations and real API calls. Each file says which is which. |
+| `m2/screenshots/` | Screens from real feature checks and clearly labeled offline screens. | Offline screens are not evidence of model quality. |
+| `m2/evaluations/` | Real model runs on five fixed fictional GitHub snapshots. Only the latest round is kept. | They include no real GitHub network latency and do not measure search recall. |
+| `m2/acceptance/` | Acceptance runs and reviews with the real model and real GitHub. Only the M2 frozen acceptance is kept. | A completed run is not a semantic pass. |
+| `m3/` | Check records from PostgreSQL persistence and reliability development. `live-persistence/` holds the step 1 live restart check. | Real database results and simulated model output are labeled separately. They do not fill in M2 quality scores. |
+| `m5/` | Records of the MCP server's connections to Claude Code and Codex and of real analyses. Each real run has its own folder, such as `codex-live/<UTC timestamp>/`. | Observations of client integration, not evidence of analysis quality. |
 
-日期目錄使用 UTC；`20261110...` 的本機日期可能仍是 2026-11-09。`scripts/evaluate.py` 與 `scripts/acceptance.py` 仍寫到 `evaluations/` 與 `live-acceptance/` 的新日期目錄。
+Timestamped folders use UTC. A folder named `20261110...` may still be 2026-11-09 in local time. `scripts/evaluate.py` writes new runs to `m2/evaluations/<UTC timestamp>/`, and `scripts/acceptance.py` writes them to `m2/acceptance/<UTC timestamp>/`.
 
-## 固定虛構快照的模型評估
+## Model evaluation on fixed fictional snapshots
 
-| UTC 執行目錄 | 自動結果 | 觀察與入口 |
+| UTC run folder | Automatic result | Observations and link |
 | --- | --- | --- |
-| `20261109T083809_862702Z` | 5／5 | 範本功能後的回歸；固定資料沒有範本，不能驗收範本品質。[報告](evaluations/20261109T083809_862702Z/report.json) |
+| `20261109T083809_862702Z` | 5/5 | Regression after the template feature. The fixed data has no templates, so it cannot accept template quality. [Report](m2/evaluations/20261109T083809_862702Z/report.json) |
 
-這是當時報告的自動清單符合案數，不是同尺度的品質分數，仍待使用者人工審閱。單次五案符合沒有關閉 PNG 案多推 `needs-info` 的波動；較早四輪的結果與共同規則重評見 [M2 歷史證據索引](../docs/m2.md#history)與[共同規則比較](m2/verification/behavior.json)。
+5/5 is the number of cases that matched the automatic checklist in that report. It is not a quality score on a common scale, and it still awaits user review. One run with all five cases matching does not close the variability in which the PNG case recommends an extra `needs-info`. For the four earlier rounds and their re-scoring under common rules, see the [M2 history evidence index](../docs/m2.md#history) and the [common-rule comparison](m2/steps/behavior.json).
 
-## M2 開發驗證摘要
+## M2 development checks
 
-| 主題 | 紀錄 |
+| Topic | Record |
 | --- | --- |
-| 相似 Issue | [similar-issues.json](m2/verification/similar-issues.json) |
-| 標籤推薦 | [labels.json](m2/verification/labels.json) |
-| 五案評估程式 | [evaluation.json](m2/verification/evaluation.json) |
-| 分類／重現歸因 | [behavior.json](m2/verification/behavior.json) |
-| 範本 | [templates.json](m2/verification/templates.json) |
-| 草稿維護者語氣 | [draft-style.json](m2/verification/draft-style.json) |
-| 初版 Context Builder | [context.json](m2/verification/context.json) |
-| 可編輯草稿 | [editable-draft.json](m2/verification/editable-draft.json) |
-| 初次真實驗收 | [live-acceptance.json](m2/verification/live-acceptance.json) |
-| 留言讀取 | [comments.json](m2/verification/comments.json) |
-| PR 標籤用途 | [label-scope.json](m2/verification/label-scope.json) |
-| 標籤文字一致性 | [label-consistency.json](m2/verification/label-consistency.json) |
-| 引用／答案修正 | [answer-repair.json](m2/verification/answer-repair.json) |
-| 草稿歷史歸因首輪／後續 | [draft-grounding.json](m2/verification/draft-grounding.json)／[draft-grounding-final.json](m2/verification/draft-grounding-final.json) |
-| 最低必要查閱 | [required-lookups.json](m2/verification/required-lookups.json) |
-| 草稿動作／關閉狀態 | [draft-status.json](m2/verification/draft-status.json) |
-| 動作規則後真實回歸 | [draft-status-live.json](m2/verification/draft-status-live.json) |
-| 推理設定 | [reasoning-settings.json](m2/verification/reasoning-settings.json) |
+| Similar issues | [similar-issues.json](m2/steps/similar-issues.json) |
+| Label recommendations | [labels.json](m2/steps/labels.json) |
+| Five-case evaluation script | [evaluation.json](m2/steps/evaluation.json) |
+| Classification / reproduction attribution | [behavior.json](m2/steps/behavior.json) |
+| Templates | [templates.json](m2/steps/templates.json) |
+| Maintainer voice in drafts | [draft-style.json](m2/steps/draft-style.json) |
+| First Context Builder | [context.json](m2/steps/context.json) |
+| Editable draft | [editable-draft.json](m2/steps/editable-draft.json) |
+| First live acceptance | [live-acceptance.json](m2/steps/live-acceptance.json) |
+| Comment reads | [comments.json](m2/steps/comments.json) |
+| PR label scope | [label-scope.json](m2/steps/label-scope.json) |
+| Label wording consistency | [label-consistency.json](m2/steps/label-consistency.json) |
+| Citations / answer repair | [answer-repair.json](m2/steps/answer-repair.json) |
+| Draft history attribution, first round / follow-up | [draft-grounding.json](m2/steps/draft-grounding.json) / [draft-grounding-final.json](m2/steps/draft-grounding-final.json) |
+| Minimum required lookups | [required-lookups.json](m2/steps/required-lookups.json) |
+| Draft actions / closed status | [draft-status.json](m2/steps/draft-status.json) |
+| Live regression after the action rules | [draft-status-live.json](m2/steps/draft-status-live.json) |
+| Reasoning settings | [reasoning-settings.json](m2/steps/reasoning-settings.json) |
 
-這些摘要是對應開發當時的測試數與程式指紋。凍結前最新 262 項測試／Pyright 紀錄見 [M2 檢查說明](../docs/m2.md#verification)，不將早期摘要改成新結果。
+These summaries record the test counts and code fingerprints from the time of each development step. For the latest pre-freeze record of 262 tests and Pyright, see [M2 verification](../docs/m2.md#verification). The early summaries are not rewritten as new results.
 
-## 畫面
+## Screenshots
 
-| 畫面 | 類型與來源 |
+| Screenshot | Type and source |
 | --- | --- |
-| [M1 基本分析](m1/live-analysis.jpg) | 真實 GitHub／模型功能檢查。 |
-| [相似 Issue](m2/screenshots/live-comparison.jpg)／[標籤](m2/screenshots/live-labels.jpg)／[範本](m2/screenshots/live-templates.jpg) | 真實功能檢查畫面，非品質基準。 |
-| [YAML 欄位](m2/screenshots/template-yaml-offline.jpg) | 虛構表單、離線元件檢查。 |
-| [草稿桌面](m2/screenshots/editable-draft-offline.jpg)／[手機](m2/screenshots/editable-draft-mobile-offline.jpg) | 虛構資料、模擬模型與互動檢查。 |
+| [M1 basic analysis](m1/live-analysis.jpg) | Real GitHub and model feature check. |
+| [Similar issues](m2/screenshots/live-comparison.jpg) / [Labels](m2/screenshots/live-labels.jpg) / [Templates](m2/screenshots/live-templates.jpg) | Screens from real feature checks, not a quality benchmark. |
+| [YAML fields](m2/screenshots/template-yaml-offline.jpg) | Fictional form, offline component check. |
+| [Draft on desktop](m2/screenshots/editable-draft-offline.jpg) / [on mobile](m2/screenshots/editable-draft-mobile-offline.jpg) | Fictional data, simulated model, and interaction check. |
 
-## 保存方式
+<a id="retention"></a>
+## Retention
 
-工作目錄只保留各里程碑**目前**的證據。2026-11-15 整理時刪除了已被後續結果取代的 80 個檔案：
+The working tree keeps only the **current** evidence for each milestone. A cleanup on 2026-11-15 deleted 80 files that later results had superseded:
 
-- M2 開發期的十輪舊三案真實驗收（Flask #5804、#4032、Werkzeug #2948），保留最後的凍結驗收；
-- 四輪較早的五案評估，保留最新一輪；
-- 已結束的兩次模型實驗與它們的兩份摘要；
-- 搬移對照用的 `manifest.json`，以及 `evaluation/` 中與凍結驗收逐位元組相同的三份協議、案例與選材。
+- Ten older rounds of the three-case live acceptance from M2 development (Flask #5804, #4032, Werkzeug #2948). The final frozen acceptance is kept.
+- Four earlier rounds of the five-case evaluation. The latest round is kept.
+- Two finished model experiments and their two summaries.
+- The `manifest.json` that mapped moved paths, and the three protocol, case, and selection files in `evaluation/` that were byte-for-byte identical to the frozen acceptance copies.
 
-這些檔案在 commit `619ed99` 仍完整存在，例如 `git show 619ed99:evidence/manifest.json`，或用 `git restore --source 619ed99 -- evidence/model-comparisons` 取回整個目錄。各輪的重要觀察摘要在 [M2 歷史證據索引](../docs/m2.md#history)。保留的舊 JSON 可能記載已刪除或搬移前的路徑，作為當時紀錄原樣保留，不改寫內容。
+These files still exist in full in commit `619ed99`, where the old layout is unchanged. For example, run `git show 619ed99:evidence/manifest.json`, or bring back a whole directory with `git restore --source 619ed99 -- evidence/model-comparisons`. `git restore` puts the files back at their old paths. The [M2 history evidence index](../docs/m2.md#history) summarizes the key observations from each round. Kept JSON files may mention deleted paths or paths from before a move. They stay as they were recorded and are not rewritten.
 
-2026-11-16 公開前改寫了 git 歷史：所有 commit 的作者 email 改成 GitHub 的 noreply 地址，並從 Codex 真實驗收的第一個 commit 移除 Codex 的 4 個工作階段 ID（後來的 commit 本來就已移除），所以全部 commit ID 都變了。文件已改用新 ID；保留的證據仍記載當時的舊 ID，例如安裝版驗收摘要的 `6da82a3` 現在是 `991ce41`。
+On 2026-11-16, before the repository went public, the git history was rewritten. Every commit's author email became the GitHub noreply address, and 4 Codex session IDs were removed from the first Codex live acceptance commit (later commits had already removed them). As a result, every commit ID changed. The docs use the new IDs. Kept evidence still records the old IDs from that time. For example, `6da82a3` in the installed-version acceptance summary is now `991ce41`.
 
-之後新增證據：完整執行結果放日期目錄，手動驗證摘要與畫面放對應里程碑資料夾，再更新本索引。新的結果取代舊結果時，可以刪除舊的原始輸出，但要在相關文件留下觀察摘要，並註明可從哪個 commit 取回。不要把原始 JSON 合成一份、覆寫保留中的報告，或把人工編輯稿當成模型原稿。
+Also on 2026-11-16, the directories were moved under their milestone folders: `evidence/m2/verification/` to `evidence/m2/steps/`, `evidence/evaluations/` to `evidence/m2/evaluations/`, `evidence/live-acceptance/` to `evidence/m2/acceptance/`, `evidence/m3/verification/` to `evidence/m3/`, and `evidence/m5/verification/` to `evidence/m5/`. The file contents were not changed, so kept JSON files may still mention the old paths.
+
+To add evidence later, put full run results in a timestamped folder and manual verification summaries and screenshots in the matching milestone folder, then update this index. When a new result supersedes an old one, you may delete the old raw output. Leave a summary of its observations in the relevant doc and note which commit it can be restored from. Do not merge raw JSON files into one, overwrite a kept report, or present a human-edited draft as the model's original output.

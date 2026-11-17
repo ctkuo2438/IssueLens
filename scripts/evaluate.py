@@ -24,7 +24,7 @@ from evaluation.snapshots import Dataset, SnapshotGitHub
 
 
 DATASET_PATH = ROOT / "evaluation" / "cases.json"
-OUTPUT_ROOT = ROOT / "evidence" / "evaluations"
+OUTPUT_ROOT = ROOT / "evidence" / "m2" / "evaluations"
 
 
 async def main() -> Path:

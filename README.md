@@ -123,7 +123,7 @@ The tests simulate GitHub and the model, so they need no keys. They skip 28 Post
 
 ## Guides
 
-The milestone guides are written in Traditional Chinese.
+Each milestone has one guide with its design, verification, limits, and exercises.
 
 | Guide | Covers |
 | --- | --- |

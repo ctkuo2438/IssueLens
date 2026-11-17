@@ -24,7 +24,7 @@ from backend.app.quality import comment_claim_fields, draft_action_claims, draft
 
 CASES_PATH = ROOT / "evaluation/live_acceptance_cases.json"
 SELECTION_PATH = ROOT / "evaluation/live_acceptance_selection.json"
-OUTPUT_ROOT = ROOT / "evidence/live-acceptance"
+OUTPUT_ROOT = ROOT / "evidence/m2/acceptance"
 
 
 class AcceptanceCase(BaseModel):

@@ -3,7 +3,7 @@
 ## Teaching and collaboration
 
 - Teach agent development through the GitHub Issue investigation project. Work on one small, runnable step at a time. Follow the current lesson or milestone and the user's latest scope.
-- Use Traditional Chinese for explanations and teaching notes. Introduce technical terms as needed. Use English for code, comments, docstrings, prompts, errors, printed labels, and test data.
+- Explain and teach in Traditional Chinese in conversation, introducing technical terms as needed. Write everything in the repository in English: README, guides, evidence notes, code, comments, docstrings, prompts, errors, printed labels, and test data.
 - For every task, explain the motivation for the approach, its benefits, and what could be improved or why the current approach is sufficient.
 - For implementation lessons, explain why the step comes now, give a command and observable success criteria, and include a small exercise, limitations, and an interview-relevant tradeoff. End with one concrete next step and its purpose.
 
@@ -20,7 +20,7 @@
 ## Development and verification
 
 - Use `uv` for `.venv`, dependencies, and `uv.lock`. Add dependencies with `uv add`, run Python with `uv run`, and reproduce the environment with `uv sync --locked`. Keep `.venv` and secrets out of version control, and keep `.env.example` free of real credentials. Never dump `.env` or include secrets in logs and reports. Report only whether a credential is configured.
-- Start the app with `uv run --locked python scripts/dev.py`. See [README](README.md) for setup and [M3](docs/m3.md#本機設定與啟動) for PostgreSQL and independent restart commands.
+- Start the app with `uv run --locked python scripts/dev.py`. See [README](README.md) for setup and [M3](docs/m3.md#setup) for PostgreSQL and independent restart commands.
 - Run the relevant offline checks for code changes. The Python suite command is `uv run --locked python -W error::RuntimeWarning -m unittest discover -s tests -q`. For PostgreSQL integration use `ISSUELENS_TEST_DATABASE_URL` with a dedicated database ending in `_test`. Check SDK call types with Pyright when editing API calls, use the SDK type aliases, and serialize responses at the replay boundary.
 - Distinguish simulated checks, real API calls, and user review. Keep review expectations out of model requests, leave human review pending until performed, and record failed, partial, and unrun cases honestly.
 
@@ -28,4 +28,4 @@
 
 - Keep [README](README.md) short and in English; it is the entry point for people who install IssueLens without the guides. Maintain one current guide per milestone in [M1](docs/m1.md), [M2](docs/m2.md), [M3](docs/m3.md), [M4](docs/m4.md), and [M5](docs/m5.md). Put exercises, limits, and detailed results in the relevant guide. Use this file for lasting instructions and the current scope.
 - Keep the evidence behind each milestone's current state: cases, raw reports, review status, screenshots, and fingerprints. Old raw output that a newer result supersedes may be removed when the relevant guide keeps its observations and names a commit that still has the files. Never rewrite kept reports. Link new evidence from the [evidence index](evidence/README.md).
-- Store verification in `evidence/m1/`, `evidence/m2/verification/`, `evidence/m3/verification/`, or `evidence/m5/verification/` and M2 screenshots in `evidence/m2/screenshots/`. Keep the existing timestamped roots for evaluations and live acceptance.
+- Store each milestone's evidence in its own folder: `evidence/m1/`, `evidence/m2/` (`steps/`, `screenshots/`, and the script outputs `evaluations/<UTC timestamp>/` and `acceptance/<UTC timestamp>/`), `evidence/m3/`, and `evidence/m5/`. Put a run with several files in a `<name>/<UTC timestamp>/` folder.
