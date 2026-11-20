@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 import logging
-from typing import Literal, Protocol
+from typing import Literal
 
 import psycopg
 from psycopg.conninfo import conninfo_to_dict
@@ -78,13 +78,6 @@ class StorageConnectionError(StorageError):
 
 class WorkerLockHeld(StorageError):
     """Another session holds the Worker lock, possibly the server's copy of a dropped connection."""
-
-
-class AnalysisStore(Protocol):
-    async def open(self) -> None: ...
-    async def save(self, snapshot: JobSnapshot) -> None: ...
-    async def get(self, job_id: str) -> JobSnapshot | None: ...
-    async def close(self) -> None: ...
 
 
 def interrupted_snapshot(snapshot: JobSnapshot, reason: str = INTERRUPTED) -> JobSnapshot:
@@ -356,15 +349,6 @@ class PostgresAnalysisStore:
                 if isinstance(exc, psycopg.OperationalError) and connection.closed:
                     raise StorageConnectionError(STORAGE_UNAVAILABLE) from None
                 raise StorageError(STORAGE_UNAVAILABLE) from None
-
-    async def save(self, snapshot: JobSnapshot) -> None:
-        async with self._operation() as connection:
-            await connection.execute("""
-                INSERT INTO issuelens_analyses (job_id, snapshot)
-                VALUES (%s, %s)
-                ON CONFLICT (job_id) DO UPDATE
-                SET snapshot = EXCLUDED.snapshot, updated_at = CURRENT_TIMESTAMP
-            """, (snapshot.job_id, Jsonb(snapshot.model_dump(mode="json"))))
 
     async def get(self, job_id: str, *, owner_id: int | None = None) -> JobSnapshot | None:
         async with self._operation() as connection:

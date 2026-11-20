@@ -14,7 +14,7 @@ from backend.app.auth import AuthSession, GitHubAuth, PRIVATE_HEADERS, redact_oa
 from backend.app.config import GITHUB_CALLBACK_PATH, Settings
 from backend.app.jobs import Job, JobManager, PostgresJobQueue, QueueFullError
 from backend.app.models import AnalysisRequest, IssueTarget, JobSnapshot, TERMINAL_STATUSES
-from backend.app.storage import AnalysisStore, POLL_SECONDS, PostgresAnalysisStore, StorageError, STORAGE_UNAVAILABLE
+from backend.app.storage import POLL_SECONDS, PostgresAnalysisStore, StorageError, STORAGE_UNAVAILABLE
 from backend.app.trace import AnalysisTrace
 
 
@@ -22,8 +22,7 @@ ANALYSIS_NOT_FOUND = "Analysis not found. Check the task URL and the configured 
 
 
 def create_app(
-    settings: Settings | None = None, *, store: AnalysisStore | None = None,
-    oauth_transport: httpx.AsyncBaseTransport | None = None,
+    settings: Settings | None = None, *, oauth_transport: httpx.AsyncBaseTransport | None = None,
 ) -> FastAPI:
     """Build the API. Serve it with `uvicorn --factory backend.app.main:create_app`.
 
@@ -33,9 +32,9 @@ def create_app(
     config = settings or Settings.from_env()
     database = (
         PostgresAnalysisStore(config.database_url, auth_enabled=config.github_oauth is not None)
-        if store is None and config.database_url else None
+        if config.database_url else None
     )
-    manager = PostgresJobQueue(config, database) if database is not None else JobManager(config, store)
+    manager = PostgresJobQueue(config, database) if database is not None else JobManager(config)
     auth: GitHubAuth | None = None
     if config.github_oauth is not None:
         if database is None:
@@ -93,7 +92,7 @@ def create_app(
         return {
             "status": "ok", "openai_configured": bool(config.openai_api_key),
             "github_authenticated": bool(config.github_token),
-            "storage": "postgresql" if manager.store is not None else "in-memory", "model": config.model,
+            "storage": "postgresql" if database is not None else "in-memory", "model": config.model,
         }
 
     @app.post("/api/v1/analyses", response_model=JobSnapshot, status_code=status.HTTP_202_ACCEPTED)

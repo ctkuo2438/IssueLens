@@ -16,7 +16,7 @@ from backend.app.github import REPOSITORY_CHECK_FAILED, REPOSITORY_NOT_PUBLIC
 from backend.app.models import (
     AnalysisResult, EventKind, IssueTarget, JobSnapshot, JobStatus, ProgressEvent, TERMINAL_STATUSES,
 )
-from backend.app.storage import AnalysisStore, PostgresAnalysisStore, StorageError
+from backend.app.storage import PostgresAnalysisStore, StorageError
 from backend.app.trace import AnalysisTrace, TraceLog
 
 
@@ -39,7 +39,6 @@ class Job:
     created: float = field(default_factory=time.monotonic)
     changed: asyncio.Event = field(default_factory=asyncio.Event)
     task: asyncio.Task[None] | None = None
-    finalizing: bool = False
     suspended: bool = False
     cancel_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
     trace: TraceLog = field(default_factory=TraceLog)
@@ -63,20 +62,15 @@ def queued_job(target: IssueTarget) -> Job:
 
 
 class JobManager:
-    def __init__(self, settings: Settings, store: AnalysisStore | None = None) -> None:
+    """Run analyses in this process: memory mode, the MCP server, and the Worker's runs."""
+
+    def __init__(self, settings: Settings) -> None:
         self.settings = settings
-        self.store = store
         self.jobs: dict[str, Job] = {}
         self.semaphore = asyncio.Semaphore(settings.concurrent_jobs)
-        self.creation_lock = asyncio.Lock()
 
     async def start(self) -> None:
-        if self.store is not None:
-            await self.store.open()
-
-    async def _save(self, snapshot: JobSnapshot) -> None:
-        if self.store is not None:
-            await self.store.save(snapshot)
+        """Nothing to open: jobs live in this process's memory."""
 
     def _prune_cache(self) -> None:
         now = time.monotonic()
@@ -91,14 +85,11 @@ class JobManager:
                 raise QueueFullError(QUEUE_FULL)
 
     async def create(self, target: IssueTarget) -> Job:
-        async with self.creation_lock:
-            self._prune_cache()
-            job = queued_job(target)
-            # A configured database must accept the job before any paid work starts.
-            await self._save(job.snapshot)
-            self.jobs[job.snapshot.job_id] = job
-            self.schedule(job)
-            return job
+        self._prune_cache()
+        job = queued_job(target)
+        self.jobs[job.snapshot.job_id] = job
+        self.schedule(job)
+        return job
 
     def schedule(
         self, job: Job, *, checkpoint: AgentCheckpoint | None = None, save_checkpoint: CheckpointWriter | None = None,
@@ -110,14 +101,7 @@ class JobManager:
         if job and job.snapshot.status in TERMINAL_STATUSES and time.monotonic() - job.created > self.settings.job_ttl_seconds:
             del self.jobs[job_id]
             job = None
-        if job is not None:
-            return job
-        if self.store is not None:
-            snapshot = await self.store.get(job_id)
-            if snapshot is not None:
-                # Historical reads do not consume active execution/cache capacity.
-                return Job(snapshot)
-        return None
+        return job
 
     async def get_trace(self, job_id: str) -> AnalysisTrace | None:
         job = await self.get(job_id)
@@ -127,23 +111,14 @@ class JobManager:
             job_id=job_id, status=job.snapshot.status, attempts=job.trace.attempts, stop_reason=job.trace.stop_reason,
         )
 
-    async def _finish(self, job: Job, status: JobStatus, result: AnalysisResult | None, error: str | None) -> None:
-        job.finalizing = True
+    def _finish(self, job: Job, status: JobStatus, result: AnalysisResult | None, error: str | None) -> None:
         if status == "cancelled":
             job.trace.stop_reason = "job_cancelled"
             job.trace.finish("cancelled", stop_reason="job_cancelled")
         final = job.snapshot.model_copy(deep=True)
         final.status, final.result, final.error = status, result, error
         final.events.append(ProgressEvent(id=len(final.events) + 1, kind="status", message=f"Analysis {status}."))
-        try:
-            # Publish the terminal snapshot only after its transaction commits.
-            await self._save(final)
-        except StorageError:
-            logger.error("The final analysis snapshot could not be saved.")
-            final.status = "partial" if result is not None else "failed"
-            final.error = "The analysis could not be saved to PostgreSQL. This result is available only in this backend's memory; do not rely on it surviving a restart."
-            final.events[-1] = ProgressEvent(id=len(final.events), kind="warning", message=final.error)
-            final.events.append(ProgressEvent(id=len(final.events) + 1, kind="status", message=f"Analysis {final.status}."))
+        # In PostgreSQL mode, the Worker saves this terminal snapshot after the task ends.
         job.snapshot = final
         job.changed.set()
 
@@ -154,11 +129,8 @@ class JobManager:
         error: str | None = None
         try:
             async with self.semaphore:
-                if job.snapshot.status == "queued":
-                    running = job.snapshot.model_copy(deep=True)
-                    running.status = "running"
-                    await self._save(running)
-                    job.snapshot = running
+                # A Worker's claimed job is already running in PostgreSQL.
+                job.snapshot.status = "running"
                 if checkpoint and checkpoint.finished:
                     result = checkpoint.result
                 else:
@@ -197,10 +169,9 @@ class JobManager:
             if run:
                 result = run.snapshot("The job runtime limit was reached. Further investigation was not completed.")
         except StorageError:
-            if save_checkpoint is not None:
-                raise
-            job.trace.stop_reason = "storage_unavailable"
-            error = "The analysis could not start because PostgreSQL storage is unavailable."
+            # A Worker checkpoint write failed. It is not an analysis result: the Worker
+            # reconnects and resumes from the last checkpoint, or stops.
+            raise
         except (AuthenticationError, RateLimitError, APITimeoutError, APIConnectionError, APIStatusError) as exc:
             if isinstance(exc, AuthenticationError):
                 message = "OpenAI rejected OPENAI_API_KEY. Check the server configuration."
@@ -223,26 +194,23 @@ class JobManager:
             error = "The analysis could not be completed. Check server configuration and try again."
             result = run.snapshot(error) if run else None
             final_status = "partial" if result and result.sources else "failed"
-        await self._finish(job, final_status, result, error)
+        self._finish(job, final_status, result, error)
 
     async def cancel(self, job: Job, *, suspend: bool = False) -> None:
         async with job.cancel_lock:
             if job.task and job.snapshot.status not in TERMINAL_STATUSES:
-                if not job.finalizing:
-                    job.suspended = suspend
-                    job.task.cancel()
+                job.suspended = suspend
+                job.task.cancel()
                 try:
                     await job.task
                 except asyncio.CancelledError:
                     # Cancellation before the coroutine starts bypasses its handler.
                     if not suspend:
-                        await self._finish(job, "cancelled", None, None)
+                        self._finish(job, "cancelled", None, None)
 
     async def close(self) -> None:
         for job in list(self.jobs.values()):
             await self.cancel(job)
-        if self.store is not None:
-            await self.store.close()
 
 
 class PostgresJobQueue:

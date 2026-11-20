@@ -5,7 +5,6 @@ from contextlib import AsyncExitStack, asynccontextmanager, redirect_stdout
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 import io
-import json
 import logging
 import os
 import re
@@ -16,7 +15,6 @@ from uuid import uuid4
 import unittest
 from unittest.mock import AsyncMock, patch
 
-from fastapi.testclient import TestClient
 import httpx
 import psycopg
 from psycopg import sql
@@ -25,50 +23,14 @@ from psycopg.types.json import Jsonb
 from backend.app import config, storage, worker as worker_module
 from backend.app.agent import checkpoint_signature
 from backend.app.config import Settings
-from backend.app.jobs import JobManager, QueueFullError
 from backend.app.main import create_app
 from backend.app.models import JobSnapshot, ProgressEvent, TERMINAL_STATUSES
 from backend.app.storage import (
     INCOMPATIBLE_RECORD, INTERRUPTED, PostgresAnalysisStore, STORAGE_UNAVAILABLE, StorageConnectionError, StorageError, WorkerLockHeld,
-    incompatible_snapshot, interrupted_snapshot,
+    incompatible_snapshot,
 )
 from backend.app.worker import AnalysisWorker
 from test_mvp import SETTINGS, TARGET, offline_result
-
-
-class FakeStore:
-    """JSON copies shared across fake backend lifetimes; this is not PostgreSQL."""
-
-    def __init__(self, records=None):
-        self.records = records if records is not None else {}
-        self.fail_statuses = set()
-        self.fail_reads = False
-        self.block_status = None
-        self.write_started = asyncio.Event()
-        self.allow_write = asyncio.Event()
-
-    async def open(self):
-        for job_id, payload in list(self.records.items()):
-            snapshot = JobSnapshot.model_validate_json(payload)
-            if snapshot.status in {"queued", "running"}:
-                self.records[job_id] = interrupted_snapshot(snapshot).model_dump_json()
-
-    async def save(self, snapshot):
-        if snapshot.status in self.fail_statuses:
-            raise StorageError("SENSITIVE_DATABASE_CANARY")
-        if snapshot.status == self.block_status:
-            self.write_started.set()
-            await self.allow_write.wait()
-        self.records[snapshot.job_id] = snapshot.model_dump_json()
-
-    async def get(self, job_id):
-        if self.fail_reads:
-            raise StorageError("SENSITIVE_DATABASE_CANARY")
-        payload = self.records.get(job_id)
-        return JobSnapshot.model_validate_json(payload) if payload else None
-
-    async def close(self):
-        pass
 
 
 def saved_snapshot(status="completed"):
@@ -123,171 +85,7 @@ class IncompatibleRecordTests(unittest.TestCase):
                 self.assertIsNotNone(retired.created_at.tzinfo)
 
 
-class PersistenceAPITests(unittest.TestCase):
-    def test_results_and_event_replay_survive_a_new_backend_without_a_model_key(self):
-        records = {}
-        run = AsyncMock(return_value=offline_result())
-        with patch("backend.app.jobs.AgentRun.run", new=run):
-            with TestClient(create_app(SETTINGS, store=FakeStore(records))) as client:
-                job_id = client.post("/api/v1/analyses", json={"issue_url": TARGET.url}).json()["job_id"]
-                self.assertIn("event: done", client.get(f"/api/v1/analyses/{job_id}/events").text)
-                original = client.get(f"/api/v1/analyses/{job_id}").json()
-                self.assertEqual(original["status"], "completed")
-            with TestClient(create_app(Settings(), store=FakeStore(records))) as restarted:
-                self.assertEqual(restarted.get(f"/api/v1/analyses/{job_id}").json(), original)
-                replay = restarted.get(f"/api/v1/analyses/{job_id}/events", headers={"Last-Event-ID": "2"})
-                self.assertNotIn("id: 1\n", replay.text)
-                self.assertIn("event: done", replay.text)
-                self.assertEqual(restarted.get("/api/v1/health").json()["storage"], "postgresql")
-                self.assertFalse(restarted.get("/api/v1/health").json()["openai_configured"])
-                self.assertEqual(restarted.delete(f"/api/v1/analyses/{job_id}").json(), original)
-        self.assertEqual(run.await_count, 1)
-        self.assertNotIn(SETTINGS.openai_api_key, json.dumps(records))
-
-    def test_database_rejection_prevents_job_creation_and_paid_work(self):
-        store = FakeStore()
-        store.fail_statuses = {"queued"}
-        with patch("backend.app.jobs.AgentRun.run", new=AsyncMock()) as run:
-            with TestClient(create_app(SETTINGS, store=store)) as client:
-                response = client.post("/api/v1/analyses", json={"issue_url": TARGET.url})
-                self.assertEqual(response.status_code, 503)
-                self.assertNotIn("SENSITIVE_DATABASE_CANARY", response.text)
-                self.assertEqual(client.app.state.manager.jobs, {})
-        run.assert_not_awaited()
-
-    def test_unavailable_reads_are_503_instead_of_missing_records(self):
-        store = FakeStore()
-        store.fail_reads = True
-        with TestClient(create_app(Settings(), store=store)) as client:
-            for suffix in ("", "/events"):
-                response = client.get(f"/api/v1/analyses/{uuid4().hex}{suffix}")
-                self.assertEqual(response.status_code, 503)
-                self.assertNotIn("SENSITIVE_DATABASE_CANARY", response.text)
-
-    def test_cache_expiry_and_eviction_do_not_delete_saved_results(self):
-        store = FakeStore()
-        with patch("backend.app.jobs.AgentRun.run", new=AsyncMock(return_value=offline_result())):
-            with TestClient(create_app(replace(SETTINGS, max_jobs=1, job_ttl_seconds=0), store=store)) as client:
-                first = client.post("/api/v1/analyses", json={"issue_url": TARGET.url}).json()["job_id"]
-                client.get(f"/api/v1/analyses/{first}/events")
-                second = client.post("/api/v1/analyses", json={"issue_url": TARGET.url}).json()["job_id"]
-                client.get(f"/api/v1/analyses/{second}/events")
-                self.assertEqual(client.get(f"/api/v1/analyses/{first}").json()["status"], "completed")
-                self.assertEqual(len(store.records), 2)
-                self.assertLessEqual(len(client.app.state.manager.jobs), 1)
-
-    def test_failed_final_write_is_not_advertised_as_durable_completion(self):
-        records = {}
-        store = FakeStore(records)
-        store.fail_statuses = {"completed"}
-        with patch("backend.app.jobs.AgentRun.run", new=AsyncMock(return_value=offline_result())):
-            with TestClient(create_app(SETTINGS, store=store)) as client:
-                job_id = client.post("/api/v1/analyses", json={"issue_url": TARGET.url}).json()["job_id"]
-                stream = client.get(f"/api/v1/analyses/{job_id}/events").text
-                result = client.get(f"/api/v1/analyses/{job_id}").json()
-                self.assertEqual(result["status"], "partial")
-                self.assertIsNotNone(result["result"]["content"])
-                self.assertIn("available only", result["error"])
-                self.assertNotIn('"status": "completed"', stream)
-            with TestClient(create_app(Settings(), store=FakeStore(records))) as restarted:
-                restored = restarted.get(f"/api/v1/analyses/{job_id}").json()
-                self.assertEqual(restored["status"], "cancelled")
-                self.assertEqual(restored["error"], INTERRUPTED)
-
-    def test_failed_running_write_never_starts_the_agent(self):
-        store = FakeStore()
-        store.fail_statuses = {"running"}
-        with patch("backend.app.jobs.AgentRun.run", new=AsyncMock()) as run:
-            with TestClient(create_app(SETTINGS, store=store)) as client:
-                job_id = client.post("/api/v1/analyses", json={"issue_url": TARGET.url}).json()["job_id"]
-                client.get(f"/api/v1/analyses/{job_id}/events")
-                result = client.get(f"/api/v1/analyses/{job_id}").json()
-                self.assertEqual(result["status"], "failed")
-                self.assertIn("could not start", result["error"])
-        run.assert_not_awaited()
-
-    def test_timeout_and_cancellation_records_survive_restart(self):
-        async def wait(run):
-            run.result = offline_result()
-            await asyncio.sleep(60)
-
-        for action in ("timeout", "cancel"):
-            with self.subTest(action=action):
-                records = {}
-                settings = replace(SETTINGS, runtime_seconds=0.01) if action == "timeout" else SETTINGS
-                with patch("backend.app.jobs.AgentRun.run", new=wait):
-                    with TestClient(create_app(settings, store=FakeStore(records))) as client:
-                        job_id = client.post("/api/v1/analyses", json={"issue_url": TARGET.url}).json()["job_id"]
-                        if action == "cancel":
-                            client.delete(f"/api/v1/analyses/{job_id}")
-                        else:
-                            client.get(f"/api/v1/analyses/{job_id}/events")
-                        original = client.get(f"/api/v1/analyses/{job_id}").json()
-                with TestClient(create_app(Settings(), store=FakeStore(records))) as restarted:
-                    self.assertEqual(restarted.get(f"/api/v1/analyses/{job_id}").json(), original)
-                self.assertEqual(original["status"], "partial" if action == "timeout" else "cancelled")
-
-
 class PersistenceLifecycleTests(unittest.IsolatedAsyncioTestCase):
-    async def test_pending_records_become_terminal_once_without_discarding_evidence(self):
-        for status in ("queued", "running"):
-            original = saved_snapshot(status)
-            records = {original.job_id: original.model_dump_json()}
-            store = FakeStore(records)
-            await store.open()
-            restored = await store.get(original.job_id)
-            self.assertEqual(restored.status, "cancelled")
-            self.assertEqual(restored.result, original.result)
-            self.assertEqual(restored.events[0], original.events[0])
-            self.assertEqual([event.id for event in restored.events], [1, 2, 3])
-            payload = records[original.job_id]
-            await FakeStore(records).open()
-            self.assertEqual(records[original.job_id], payload)
-
-    async def test_completion_is_hidden_until_commit_and_cancellation_waits_for_that_commit(self):
-        store = FakeStore()
-        store.block_status = "completed"
-        manager = JobManager(SETTINGS, store)
-        await manager.start()
-        try:
-            with patch("backend.app.jobs.AgentRun.run", new=AsyncMock(return_value=offline_result())):
-                job = await manager.create(TARGET)
-                await asyncio.wait_for(store.write_started.wait(), timeout=2)
-                self.assertEqual(job.snapshot.status, "running")
-                self.assertFalse(any(event.message == "Analysis completed." for event in job.snapshot.events))
-                cancelling = asyncio.create_task(manager.cancel(job))
-                await asyncio.sleep(0)
-                self.assertFalse(cancelling.done())
-                store.allow_write.set()
-                await cancelling
-                self.assertEqual(job.snapshot.status, "completed")
-                self.assertEqual((await store.get(job.snapshot.job_id)), job.snapshot)
-        finally:
-            store.allow_write.set()
-            await manager.close()
-
-    async def test_concurrent_creates_cannot_exceed_capacity_while_a_save_is_pending(self):
-        store = FakeStore()
-        store.block_status = "queued"
-        manager = JobManager(replace(SETTINGS, max_jobs=1), store)
-        await manager.start()
-        try:
-            async def wait(run):
-                await asyncio.sleep(60)
-
-            with patch("backend.app.jobs.AgentRun.run", new=wait):
-                first = asyncio.create_task(manager.create(TARGET))
-                await asyncio.wait_for(store.write_started.wait(), timeout=2)
-                second = asyncio.create_task(manager.create(TARGET))
-                store.allow_write.set()
-                await first
-                with self.assertRaises(QueueFullError):
-                    await second
-                self.assertEqual(len(manager.jobs), 1)
-        finally:
-            store.allow_write.set()
-            await manager.close()
-
     async def test_malformed_database_url_fails_at_once_without_logging_it(self):
         # An unencoded % makes libpq's parse error repeat the password text.
         store = PostgresAnalysisStore("postgresql://issuelens:SENSITIVE_DATABASE_CANARY%zz@127.0.0.1:1/project_test")
@@ -398,6 +196,15 @@ async def terminate_backends(admin, database_name):
     """, (database_name,))
 
 
+async def insert_snapshot(database_url, snapshot):
+    """Store a fixture record directly, as the API or Worker would have left it."""
+    async with await psycopg.AsyncConnection.connect(database_url, autocommit=True) as connection:
+        await connection.execute(
+            "INSERT INTO issuelens_analyses (job_id, snapshot) VALUES (%s, %s)",
+            (snapshot.job_id, Jsonb(snapshot.model_dump(mode="json"))),
+        )
+
+
 async def drop_client_connections(database_url):
     """Simulate a database restart: the server closes every other connection to this database."""
     async with await psycopg.AsyncConnection.connect(database_url, autocommit=True) as admin:
@@ -444,7 +251,7 @@ class PostgresIntegrationTests(unittest.IsolatedAsyncioTestCase):
         snapshot = saved_snapshot("partial")
         snapshot.result.sources[0].excerpt = "A multiline source.\nThe reporter's exact text includes naïve input."
         self.created_ids.append(snapshot.job_id)
-        await self.store.save(snapshot)
+        await insert_snapshot(self.database_url, snapshot)
         await self.store.close()
         self.store = PostgresAnalysisStore(self.database_url)
         await self.store.open()
@@ -453,7 +260,7 @@ class PostgresIntegrationTests(unittest.IsolatedAsyncioTestCase):
     async def test_api_store_recovers_after_the_server_drops_its_connections(self):
         snapshot = saved_snapshot()
         self.created_ids.append(snapshot.job_id)
-        await self.store.save(snapshot)
+        await insert_snapshot(self.database_url, snapshot)
         await drop_client_connections(self.database_url)
         # The pool checks each connection before use, so even the first request recovers.
         self.assertEqual(await self.store.get(snapshot.job_id), snapshot)
@@ -462,7 +269,7 @@ class PostgresIntegrationTests(unittest.IsolatedAsyncioTestCase):
     async def test_api_recovers_promptly_after_an_outage_longer_than_its_retries(self):
         snapshot = saved_snapshot()
         self.created_ids.append(snapshot.job_id)
-        await self.store.save(snapshot)
+        await insert_snapshot(self.database_url, snapshot)
         async with database_outage(self, self.database_url):
             with self.assertRaises(StorageError):
                 await self.store.get(snapshot.job_id)
@@ -500,7 +307,7 @@ class PostgresIntegrationTests(unittest.IsolatedAsyncioTestCase):
     async def test_api_pool_full_of_stale_connections_recovers_on_the_first_request(self):
         snapshot = saved_snapshot()
         self.created_ids.append(snapshot.job_id)
-        await self.store.save(snapshot)
+        await insert_snapshot(self.database_url, snapshot)
         pool = self.store._pool
         assert pool is not None
         # Hold every connection at once so the pool grows to its limit, then let them go idle.
@@ -515,7 +322,7 @@ class PostgresIntegrationTests(unittest.IsolatedAsyncioTestCase):
     async def test_worker_reconnect_skips_schema_ddl_while_a_write_holds_the_table(self):
         snapshot = saved_snapshot()
         self.created_ids.append(snapshot.job_id)
-        await self.store.save(snapshot)
+        await insert_snapshot(self.database_url, snapshot)
         worker = PostgresAnalysisStore(self.database_url)
         await worker.open(worker=True)
         await worker.close()
@@ -624,8 +431,8 @@ class PostgresIntegrationTests(unittest.IsolatedAsyncioTestCase):
         self.created_ids.extend([running.job_id, queued.job_id])
         try:
             await owner.open(worker=True)
-            await owner.save(running)
-            await self.store.save(queued)
+            await insert_snapshot(self.database_url, running)
+            await insert_snapshot(self.database_url, queued)
             with self.assertRaisesRegex(StorageError, "Another IssueLens Worker"):
                 await replacement.open(worker=True)
             await replacement.open()
@@ -644,21 +451,10 @@ class PostgresIntegrationTests(unittest.IsolatedAsyncioTestCase):
             await owner.close()
             await replacement.close()
 
-    async def test_updating_one_snapshot_preserves_other_analyses(self):
-        first, second = saved_snapshot(), saved_snapshot()
-        self.created_ids.extend([first.job_id, second.job_id])
-        await self.store.save(first)
-        await self.store.save(second)
-        first.result.content.draft_reply = "An updated fixture draft."
-        first.events.append(ProgressEvent(id=2, kind="warning", message="A fixture observation."))
-        await self.store.save(first)
-        self.assertEqual(await self.store.get(first.job_id), first)
-        self.assertEqual(await self.store.get(second.job_id), second)
-
     async def test_untrusted_identifiers_are_parameters_and_missing_records_are_none(self):
         snapshot = saved_snapshot()
         self.created_ids.append(snapshot.job_id)
-        await self.store.save(snapshot)
+        await insert_snapshot(self.database_url, snapshot)
         self.assertIsNone(await self.store.get("'; DROP TABLE issuelens_analyses; --"))
         self.assertEqual(await self.store.get(snapshot.job_id), snapshot)
 
@@ -677,7 +473,7 @@ class PostgresIntegrationTests(unittest.IsolatedAsyncioTestCase):
     async def test_actual_postgres_restores_api_results_and_sse_without_new_agent_work(self):
         snapshot = saved_snapshot()
         self.created_ids.append(snapshot.job_id)
-        await self.store.save(snapshot)
+        await insert_snapshot(self.database_url, snapshot)
         path = f"/api/v1/analyses/{snapshot.job_id}"
         async with api_client(Settings(database_url=self.database_url)) as client:
             self.assertEqual((await client.get(path)).json(), snapshot.model_dump(mode="json"))
@@ -688,6 +484,24 @@ class PostgresIntegrationTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(trace.json(), {
                 "job_id": snapshot.job_id, "status": snapshot.status, "stop_reason": None, "attempts": [],
             })
+
+    async def test_an_outage_is_503_for_reads_streams_and_creates_and_queues_nothing(self):
+        issue_url = f"https://github.com/example/project/issues/{uuid4().int % 10**9 + 1}"
+        missing = f"/api/v1/analyses/{uuid4().hex}"
+        async with api_client(replace(SETTINGS, database_url=self.database_url)) as client:
+            async with database_outage(self, self.database_url):
+                responses = await asyncio.gather(
+                    client.get(missing), client.get(f"{missing}/events"),
+                    client.post("/api/v1/analyses", json={"issue_url": issue_url}),
+                )
+        for response in responses:
+            # A missing record would be 404; an unavailable database must not look like one.
+            self.assertEqual((response.status_code, response.json()), (503, {"detail": STORAGE_UNAVAILABLE}))
+        async with await psycopg.AsyncConnection.connect(self.database_url) as connection:
+            cursor = await connection.execute(
+                "SELECT count(*) FROM issuelens_analyses WHERE snapshot->>'issue_url' = %s", (issue_url,),
+            )
+            self.assertEqual(await cursor.fetchone(), (0,))
 
     async def test_separate_api_connections_share_one_queue_capacity(self):
         first, second = saved_snapshot("queued"), saved_snapshot("queued")
