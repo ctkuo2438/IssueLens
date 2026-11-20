@@ -1,10 +1,11 @@
-"""Share bounded Agent execution across memory mode and the background Worker."""
+"""Run bounded Agent executions and give the API one job interface in either storage mode."""
 
 import asyncio
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 import logging
 import time
+from typing import Protocol
 from uuid import uuid4
 
 from openai import APIConnectionError, APIStatusError, APITimeoutError, AuthenticationError, RateLimitError
@@ -16,7 +17,7 @@ from backend.app.github import REPOSITORY_CHECK_FAILED, REPOSITORY_NOT_PUBLIC
 from backend.app.models import (
     AnalysisResult, EventKind, IssueTarget, JobSnapshot, JobStatus, ProgressEvent, TERMINAL_STATUSES,
 )
-from backend.app.storage import PostgresAnalysisStore, StorageError
+from backend.app.storage import POLL_SECONDS, PostgresAnalysisStore, StorageError
 from backend.app.trace import AnalysisTrace, TraceLog
 
 
@@ -52,13 +53,42 @@ class Job:
         self.changed.set()
 
 
-def queued_job(target: IssueTarget) -> Job:
-    job = Job(JobSnapshot(
-        job_id=uuid4().hex, issue_url=target.url,
-        status="queued", created_at=datetime.now(UTC),
-    ))
-    job.emit("status", "Analysis queued.")
-    return job
+def queued_snapshot(target: IssueTarget) -> JobSnapshot:
+    return JobSnapshot(
+        job_id=uuid4().hex, issue_url=target.url, status="queued", created_at=datetime.now(UTC),
+        events=[ProgressEvent(id=1, kind="status", message="Analysis queued.")],
+    )
+
+
+def has_update(snapshot: JobSnapshot, after: int) -> bool:
+    """Whether a reader that has seen events up to `after` has something new to read."""
+    return snapshot.status in TERMINAL_STATUSES or bool(snapshot.events and snapshot.events[-1].id > after)
+
+
+class JobService(Protocol):
+    """The job operations the API needs, the same in memory and PostgreSQL mode.
+
+    Jobs are found by ID and scoped to `owner_id`, the signed-in GitHub account ID, or
+    None without sign-in; a job owned by someone else is reported as missing. Only the
+    public JobSnapshot leaves the service. `create` raises QueueFullError when full.
+    """
+
+    async def start(self) -> None: ...
+    async def close(self) -> None: ...
+    async def create(self, target: IssueTarget, *, owner_id: int | None) -> JobSnapshot: ...
+    async def get(self, job_id: str, *, owner_id: int | None) -> JobSnapshot | None: ...
+    async def get_trace(self, job_id: str, *, owner_id: int | None) -> AnalysisTrace | None: ...
+    async def cancel(self, job_id: str, *, owner_id: int | None) -> JobSnapshot | None: ...
+
+    async def wait_for_update(
+        self, job_id: str, *, owner_id: int | None, after: int, timeout: float,
+    ) -> JobSnapshot | None:
+        """Return the latest snapshot once it has events after `after` or is terminal.
+
+        Returns by `timeout` seconds even without an update, and may return earlier, so
+        callers check the snapshot again. None means the job can no longer be read.
+        """
+        ...
 
 
 class JobManager:
@@ -68,9 +98,6 @@ class JobManager:
         self.settings = settings
         self.jobs: dict[str, Job] = {}
         self.semaphore = asyncio.Semaphore(settings.concurrent_jobs)
-
-    async def start(self) -> None:
-        """Nothing to open: jobs live in this process's memory."""
 
     def _prune_cache(self) -> None:
         now = time.monotonic()
@@ -86,7 +113,7 @@ class JobManager:
 
     async def create(self, target: IssueTarget) -> Job:
         self._prune_cache()
-        job = queued_job(target)
+        job = Job(queued_snapshot(target))
         self.jobs[job.snapshot.job_id] = job
         self.schedule(job)
         return job
@@ -213,8 +240,66 @@ class JobManager:
             await self.cancel(job)
 
 
+class MemoryJobService:
+    """Memory mode for the API: this process runs the analyses, and there is no sign-in."""
+
+    def __init__(self, settings: Settings) -> None:
+        self.manager = JobManager(settings)
+
+    @staticmethod
+    def _require_no_owner(owner_id: int | None) -> None:
+        # Sign-in requires PostgreSQL, so an owner here means the app was assembled wrongly.
+        if owner_id is not None:
+            raise ValueError("Memory mode has no accounts.")
+
+    async def start(self) -> None:
+        pass
+
+    async def close(self) -> None:
+        await self.manager.close()
+
+    async def create(self, target: IssueTarget, *, owner_id: int | None) -> JobSnapshot:
+        self._require_no_owner(owner_id)
+        return (await self.manager.create(target)).snapshot
+
+    async def get(self, job_id: str, *, owner_id: int | None) -> JobSnapshot | None:
+        self._require_no_owner(owner_id)
+        job = await self.manager.get(job_id)
+        return job.snapshot if job is not None else None
+
+    async def get_trace(self, job_id: str, *, owner_id: int | None) -> AnalysisTrace | None:
+        self._require_no_owner(owner_id)
+        return await self.manager.get_trace(job_id)
+
+    async def cancel(self, job_id: str, *, owner_id: int | None) -> JobSnapshot | None:
+        self._require_no_owner(owner_id)
+        job = await self.manager.get(job_id)
+        if job is None:
+            return None
+        await self.manager.cancel(job)
+        return job.snapshot
+
+    async def wait_for_update(
+        self, job_id: str, *, owner_id: int | None, after: int, timeout: float,
+    ) -> JobSnapshot | None:
+        self._require_no_owner(owner_id)
+        job = await self.manager.get(job_id)
+        if job is None:
+            return None
+        if not has_update(job.snapshot, after):
+            # No await separates this check from the wait, and every change updates the
+            # snapshot before setting the event, so a change cannot be missed. Readers of
+            # the same job may clear the event; a waiter that was already woken stays woken.
+            job.changed.clear()
+            try:
+                await asyncio.wait_for(job.changed.wait(), timeout=timeout)
+            except TimeoutError:
+                pass
+        return job.snapshot
+
+
 class PostgresJobQueue:
-    """API-side job operations. Execution belongs to a separate Worker process."""
+    """PostgreSQL mode for the API: it records requests, and a separate Worker process runs them."""
 
     def __init__(self, settings: Settings, store: PostgresAnalysisStore) -> None:
         self.store = store
@@ -227,26 +312,31 @@ class PostgresJobQueue:
     async def close(self) -> None:
         await self.store.close()
 
-    async def create(self, target: IssueTarget, *, owner_id: int | None = None) -> Job:
-        job = queued_job(target)
+    async def create(self, target: IssueTarget, *, owner_id: int | None) -> JobSnapshot:
+        snapshot = queued_snapshot(target)
         outcome = await self.store.enqueue(
-            job.snapshot, self.capacity, owner_id=owner_id, account_capacity=self.account_capacity,
+            snapshot, self.capacity, owner_id=owner_id, account_capacity=self.account_capacity,
         )
         if outcome == "account_full":
             # One account cannot fill the queue and use up the shared model budget.
             raise AccountLimitError(ACCOUNT_LIMIT.format(limit=self.account_capacity))
         if outcome == "queue_full":
             raise QueueFullError(QUEUE_FULL)
-        return job
+        return snapshot
 
-    async def get(self, job_id: str, *, owner_id: int | None = None) -> Job | None:
-        snapshot = await self.store.get(job_id, owner_id=owner_id)
-        return Job(snapshot) if snapshot is not None else None
+    async def get(self, job_id: str, *, owner_id: int | None) -> JobSnapshot | None:
+        return await self.store.get(job_id, owner_id=owner_id)
 
-    async def get_trace(self, job_id: str, *, owner_id: int | None = None) -> AnalysisTrace | None:
+    async def get_trace(self, job_id: str, *, owner_id: int | None) -> AnalysisTrace | None:
         return await self.store.get_trace(job_id, owner_id=owner_id)
 
-    async def cancel(self, job: Job, *, owner_id: int | None = None) -> None:
-        snapshot = await self.store.request_cancel(job.snapshot.job_id, owner_id=owner_id)
-        if snapshot is not None:
-            job.snapshot = snapshot
+    async def cancel(self, job_id: str, *, owner_id: int | None) -> JobSnapshot | None:
+        return await self.store.request_cancel(job_id, owner_id=owner_id)
+
+    async def wait_for_update(
+        self, job_id: str, *, owner_id: int | None, after: int, timeout: float,
+    ) -> JobSnapshot | None:
+        # The Worker writes from another process, so read again after one poll interval.
+        # Returning after each read lets the caller re-check the session between reads.
+        await asyncio.sleep(min(POLL_SECONDS, timeout))
+        return await self.store.get(job_id, owner_id=owner_id)

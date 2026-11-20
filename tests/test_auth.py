@@ -293,7 +293,7 @@ class PostgresOAuthTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.exchanges, 1)
 
     async def test_a_login_attempt_creates_at_most_one_session_when_callbacks_race(self):
-        store = self.app.state.manager.store
+        store = self.app.state.jobs.store
         user = GitHubUser(id=4104, login="race-fixture")
         attempt = sha256(b"race-fixture-state").hexdigest()
         self.state_hashes.append(attempt)
