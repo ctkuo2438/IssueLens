@@ -1,11 +1,11 @@
 """Run queued analyses in a process independent of the HTTP server."""
 
 import asyncio
-from functools import partial
 import signal
 import time
 
 from backend.app.agent import checkpoint_signature
+from backend.app.checkpoint import AgentCheckpoint, CheckpointWriter
 from backend.app.config import Settings
 from backend.app.jobs import Job, JobManager
 from backend.app.models import TERMINAL_STATUSES
@@ -26,6 +26,13 @@ class AnalysisWorker:
         self.store = PostgresAnalysisStore(settings.database_url)
         self.runner = JobManager(settings)
         self.signature = checkpoint_signature(settings)
+
+    def _checkpoint_writer(self, job: Job) -> CheckpointWriter:
+        async def save(checkpoint: AgentCheckpoint) -> None:
+            # Read job.snapshot at each save: a status change replaces the snapshot object.
+            await self.store.save_running(job.snapshot, checkpoint, trace=job.trace)
+
+        return save
 
     async def _publish(self, active: dict[str, Job]) -> None:
         for job_id, job in list(active.items()):
@@ -103,8 +110,7 @@ class AnalysisWorker:
                             ))
                         active[job.snapshot.job_id] = job
                         self.runner.schedule(
-                            job, checkpoint=claimed.checkpoint,
-                            save_checkpoint=partial(self.store.save_running, job.snapshot, trace=job.trace),
+                            job, checkpoint=claimed.checkpoint, save_checkpoint=self._checkpoint_writer(job),
                         )
 
                     try:

@@ -2,21 +2,18 @@
 
 import asyncio
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
 import logging
 import time
 from typing import Protocol
-from uuid import uuid4
 
 from openai import APIConnectionError, APIStatusError, APITimeoutError, AuthenticationError, RateLimitError
 
+from backend.app import lifecycle
 from backend.app.agent import AgentRun
 from backend.app.checkpoint import AgentCheckpoint, CheckpointWriter
 from backend.app.config import Settings
 from backend.app.github import REPOSITORY_CHECK_FAILED, REPOSITORY_NOT_PUBLIC
-from backend.app.models import (
-    AnalysisResult, EventKind, IssueTarget, JobSnapshot, JobStatus, ProgressEvent, TERMINAL_STATUSES,
-)
+from backend.app.models import AnalysisResult, EventKind, IssueTarget, JobSnapshot, JobStatus, TERMINAL_STATUSES
 from backend.app.storage import POLL_SECONDS, PostgresAnalysisStore, StorageError
 from backend.app.trace import AnalysisTrace, TraceLog
 
@@ -45,19 +42,8 @@ class Job:
     trace: TraceLog = field(default_factory=TraceLog)
 
     def emit(self, kind: EventKind, message: str) -> None:
-        self.snapshot.events.append(ProgressEvent(
-            id=len(self.snapshot.events) + 1,
-            kind=kind,
-            message=message,
-        ))
+        lifecycle.record(self.snapshot, kind, message)
         self.changed.set()
-
-
-def queued_snapshot(target: IssueTarget) -> JobSnapshot:
-    return JobSnapshot(
-        job_id=uuid4().hex, issue_url=target.url, status="queued", created_at=datetime.now(UTC),
-        events=[ProgressEvent(id=1, kind="status", message="Analysis queued.")],
-    )
 
 
 def has_update(snapshot: JobSnapshot, after: int) -> bool:
@@ -113,7 +99,7 @@ class JobManager:
 
     async def create(self, target: IssueTarget) -> Job:
         self._prune_cache()
-        job = Job(queued_snapshot(target))
+        job = Job(lifecycle.queued_snapshot(target))
         self.jobs[job.snapshot.job_id] = job
         self.schedule(job)
         return job
@@ -142,9 +128,8 @@ class JobManager:
         if status == "cancelled":
             job.trace.stop_reason = "job_cancelled"
             job.trace.finish("cancelled", stop_reason="job_cancelled")
-        final = job.snapshot.model_copy(deep=True)
-        final.status, final.result, final.error = status, result, error
-        final.events.append(ProgressEvent(id=len(final.events) + 1, kind="status", message=f"Analysis {status}."))
+        final = lifecycle.finish(job.snapshot, status, error=error)
+        final.result = result
         # In PostgreSQL mode, the Worker saves this terminal snapshot after the task ends.
         job.snapshot = final
         job.changed.set()
@@ -156,8 +141,9 @@ class JobManager:
         error: str | None = None
         try:
             async with self.semaphore:
-                # A Worker's claimed job is already running in PostgreSQL.
-                job.snapshot.status = "running"
+                # A Worker's claim has already started its job in PostgreSQL.
+                if job.snapshot.status == "queued":
+                    job.snapshot = lifecycle.start(job.snapshot)
                 if checkpoint and checkpoint.finished:
                     result = checkpoint.result
                 else:
@@ -313,7 +299,7 @@ class PostgresJobQueue:
         await self.store.close()
 
     async def create(self, target: IssueTarget, *, owner_id: int | None) -> JobSnapshot:
-        snapshot = queued_snapshot(target)
+        snapshot = lifecycle.queued_snapshot(target)
         outcome = await self.store.enqueue(
             snapshot, self.capacity, owner_id=owner_id, account_capacity=self.account_capacity,
         )

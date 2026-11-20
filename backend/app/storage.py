@@ -14,6 +14,7 @@ from psycopg.types.json import Jsonb
 from psycopg_pool import AsyncConnectionPool
 from pydantic import ValidationError
 
+from backend.app import lifecycle
 from backend.app.checkpoint import AgentCheckpoint
 from backend.app.models import GitHubUser, IssueTarget, JobSnapshot, JobStatus, ProgressEvent
 from backend.app.trace import AnalysisTrace, TraceLog
@@ -81,20 +82,17 @@ class WorkerLockHeld(StorageError):
 
 
 def interrupted_snapshot(snapshot: JobSnapshot, reason: str = INTERRUPTED) -> JobSnapshot:
-    """Preserve available evidence and make an abandoned record terminal."""
-    restored = snapshot.model_copy(deep=True)
-    restored.status = "cancelled"
-    restored.error = reason
-    next_id = max((event.id for event in restored.events), default=0) + 1
-    restored.events.extend([
-        ProgressEvent(id=next_id, kind="warning", message=reason),
-        ProgressEvent(id=next_id + 1, kind="status", message="Analysis cancelled after an interruption."),
-    ])
-    return restored
+    """Preserve available evidence and end a run that cannot continue."""
+    return lifecycle.finish(
+        snapshot, "cancelled", error=reason, warning=reason, message="Analysis cancelled after an interruption.",
+    )
 
 
 def incompatible_snapshot(job_id: str, stored: object) -> JobSnapshot:
-    """A terminal snapshot for a stored record that no longer validates, keeping readable fields."""
+    """A terminal snapshot for a stored record that no longer validates, keeping readable fields.
+
+    It replaces the record rather than changing its status, because the old status is unknown.
+    """
     fields = stored if isinstance(stored, dict) else {}
     issue_url, created_at = "", datetime.now(UTC)
     try:
@@ -416,7 +414,7 @@ class PostgresAnalysisStore:
                 return None
             if snapshot.status == "queued":
                 checkpoint = AgentCheckpoint.start(signature)
-                snapshot.status = "running"
+                snapshot = lifecycle.start(snapshot)
                 await self._update(connection, snapshot, "queued", checkpoint)
                 return ClaimedAnalysis(snapshot, checkpoint)
 
@@ -434,7 +432,7 @@ class PostgresAnalysisStore:
                 if checkpoint.tools:
                     snapshot.result.limitations.extend(checkpoint.tools.limitations)
                 snapshot.result.limitations.append("The analysis was cancelled before completion.")
-                self._cancel_snapshot(snapshot)
+                snapshot = lifecycle.finish(snapshot, "cancelled")
                 trace.stop_reason = "job_cancelled"
                 await self._update(connection, snapshot, "running", trace=trace)
                 return None
@@ -453,13 +451,6 @@ class PostgresAnalysisStore:
         async with self._operation() as connection:
             await self._update(connection, snapshot, "running", checkpoint, trace=trace)
 
-    @staticmethod
-    def _cancel_snapshot(snapshot: JobSnapshot) -> None:
-        snapshot.status = "cancelled"
-        snapshot.events.append(ProgressEvent(
-            id=len(snapshot.events) + 1, kind="status", message="Analysis cancelled.",
-        ))
-
     async def request_cancel(self, job_id: str, *, owner_id: int | None = None) -> JobSnapshot | None:
         async with self._operation() as connection, connection.transaction():
             cursor = await connection.execute("""
@@ -471,7 +462,7 @@ class PostgresAnalysisStore:
                 return None
             snapshot = JobSnapshot.model_validate(row[0])
             if snapshot.status == "queued":
-                self._cancel_snapshot(snapshot)
+                snapshot = lifecycle.finish(snapshot, "cancelled")
                 await self._update(connection, snapshot, "queued", trace=TraceLog(stop_reason="job_cancelled"))
             elif snapshot.status == "running":
                 await connection.execute(
