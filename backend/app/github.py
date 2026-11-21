@@ -2,6 +2,8 @@
 
 import base64
 from collections.abc import Awaitable, Callable
+from copy import deepcopy
+from dataclasses import dataclass, field, fields
 import json
 import re
 import time
@@ -69,13 +71,23 @@ def github_rate_limit_delay(response: httpx.Response) -> float | None:
 class EmptyArguments(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
+    def cache_value(self) -> int | str:
+        """The argument that identifies a repeated call. Saved checkpoints hold keys built from it."""
+        return 0
+
 
 class CommentArguments(EmptyArguments):
     page: int = Field(ge=1, le=5)
 
+    def cache_value(self) -> int | str:
+        return self.page
+
 
 class SearchArguments(EmptyArguments):
     query: str = Field(min_length=1, max_length=200)
+
+    def cache_value(self) -> int | str:
+        return self.query
 
     @field_validator("query")
     @classmethod
@@ -90,91 +102,84 @@ class SearchArguments(EmptyArguments):
 class RelatedIssueArguments(EmptyArguments):
     issue_number: int = Field(gt=0)
 
-
-TOOLS: list[FunctionToolParam] = [
-    {
-        "type": "function",
-        "name": "get_issue",
-        "description": "Read the submitted GitHub issue, including its title, body, state, labels, author and comment count. Read this before finalizing an analysis.",
-        "parameters": EmptyArguments.model_json_schema(),
-        "strict": True,
-    },
-    {
-        "type": "function",
-        "name": "get_issue_comments",
-        "description": "Read one page of up to 10 comments on the submitted issue, oldest first. When the target reports comments, read page 1 early before finalizing. Pages range from 1 to 5. Check has_next_page and comment_check for coverage. Unread or failed lookups do not establish that comments are absent.",
-        "parameters": CommentArguments.model_json_schema(),
-        "strict": True,
-    },
-    {
-        "type": "function",
-        "name": "get_repo_readme",
-        "description": "Read the README on the submitted repository's default branch. Use when project context is needed. This does not search for duplicates or read source code.",
-        "parameters": EmptyArguments.model_json_schema(),
-        "strict": True,
-    },
-    {
-        "type": "function",
-        "name": "search_issues",
-        "description": "After reading get_issue, search the same repository's issue titles and bodies using one to six distinctive keyword terms. The server owns repository and issue-only filters. Results are candidates, not confirmed duplicates. Refine the keywords if needed; do not send GitHub qualifiers or URLs.",
-        "parameters": SearchArguments.model_json_schema(),
-        "strict": True,
-    },
-    {
-        "type": "function",
-        "name": "get_related_issue",
-        "description": "Read a candidate issue discovered by search_issues in this run. Use its full source before comparing it with the target. At most five distinct candidate reads are allowed. The server restricts the repository; no arbitrary issue number is accepted.",
-        "parameters": RelatedIssueArguments.model_json_schema(),
-        "strict": True,
-    },
-    {
-        "type": "function",
-        "name": "get_repo_labels",
-        "description": "After reading get_issue, read available active labels and descriptions in the submitted repository. The catalog is bounded and may be partial. Recommend at most three included labels, excluding labels already on the issue and labels scoped to pull requests. Detected PR-only names are listed in excluded_from_issue_recommendations; other descriptions still require judgment. This tool only reads; it does not apply labels.",
-        "parameters": EmptyArguments.model_json_schema(),
-        "strict": True,
-    },
-    {
-        "type": "function",
-        "name": "get_issue_templates",
-        "description": "After get_issue, check this repository's .github/ISSUE_TEMPLATE directory on the default branch. Read up to two Markdown/YAML templates with bounded excerpts. YAML fields distinguish required, optional and unknown status; Markdown headings alone do not establish requirements. Use before judging missing reporting information. Choose the relevant template by issue intent. Coverage may be partial; inherited and legacy templates are not searched. This only reads files.",
-        "parameters": EmptyArguments.model_json_schema(),
-        "strict": True,
-    },
-]
+    def cache_value(self) -> int | str:
+        return self.issue_number
 
 
-class GitHubToolState(BaseModel):
-    """Bounded evidence and tool bookkeeping, without the client or credentials."""
+BeforeRead = Callable[[], Awaitable[None]]
 
-    model_config = ConfigDict(from_attributes=True)
-    sources: dict[str, Source]
-    issue: IssueInfo | None
-    limitations: list[str]
-    cache: dict[str, dict[str, Any]]
-    candidates: dict[int, IssueCandidate]
-    searches: list[IssueSearch]
-    candidate_reads: int
-    search_attempts: list[str]
-    successful_search_queries: set[str]
-    failed_search_queries: set[str]
-    candidate_read_attempts: set[int]
-    failed_candidate_reads: set[int]
-    label_lookup_attempted: bool
-    repo_labels: dict[str, RepositoryLabel]
-    labels_source_id: str | None
-    labels_complete: bool | None
-    issue_templates: list[IssueTemplate]
-    templates_source_id: str | None
-    templates_complete: bool | None
-    comment_attempted_pages: set[int]
-    comment_failed_pages: set[int]
-    comment_pages: dict[int, tuple[list[str], bool]]
+
+@dataclass(frozen=True)
+class ToolCall:
+    """One validated call: its cache key and how to run it."""
+
+    key: str
+    run: Callable[["GitHubTools", BeforeRead | None], Awaitable[dict[str, Any]]]
+
+
+@dataclass(frozen=True)
+class ToolSpec[A: EmptyArguments]:
+    """Everything about one tool: the model's definition, its arguments and the method it runs.
+
+    TOOLS and GitHubTools.execute are built from TOOL_SPECS, so a tool is declared once.
+    """
+
+    name: str
+    description: str
+    arguments: type[A]
+    handler: Callable[["GitHubTools", A, BeforeRead | None], Awaitable[dict[str, Any]]]
+    # Later page reads change comment coverage, so a cached result gets the current check.
+    reports_comment_check: bool = False
+
+    def definition(self) -> FunctionToolParam:
+        return {
+            "type": "function", "name": self.name, "description": self.description,
+            "parameters": self.arguments.model_json_schema(), "strict": True,
+        }
+
+    def parse(self, arguments: str) -> ToolCall:
+        parsed = self.arguments.model_validate_json(arguments)
+        return ToolCall(
+            key=json.dumps([self.name, parsed.cache_value()]),
+            run=lambda tools, before_read: self.handler(tools, parsed, before_read),
+        )
+
+
+@dataclass
+class GitHubToolState:
+    """Bounded evidence and tool bookkeeping, without the client or credentials.
+
+    This is the one list of the tools' state: GitHubTools inherits these fields, and a
+    checkpoint saves and restores exactly them.
+    """
+
+    sources: dict[str, Source] = field(default_factory=dict)
+    issue: IssueInfo | None = None
+    limitations: list[str] = field(default_factory=list)
+    cache: dict[str, dict[str, Any]] = field(default_factory=dict)
+    candidates: dict[int, IssueCandidate] = field(default_factory=dict)
+    searches: list[IssueSearch] = field(default_factory=list)
+    candidate_reads: int = 0
+    search_attempts: list[str] = field(default_factory=list)
+    successful_search_queries: set[str] = field(default_factory=set)
+    failed_search_queries: set[str] = field(default_factory=set)
+    candidate_read_attempts: set[int] = field(default_factory=set)
+    failed_candidate_reads: set[int] = field(default_factory=set)
+    label_lookup_attempted: bool = False
+    repo_labels: dict[str, RepositoryLabel] = field(default_factory=dict)
+    labels_source_id: str | None = None
+    labels_complete: bool | None = None
+    issue_templates: list[IssueTemplate] = field(default_factory=list)
+    templates_source_id: str | None = None
+    templates_complete: bool | None = None
+    comment_attempted_pages: set[int] = field(default_factory=set)
+    comment_failed_pages: set[int] = field(default_factory=set)
+    comment_pages: dict[int, tuple[list[str], bool]] = field(default_factory=dict)
     cooldown_until: float | None = None
     repository_public: bool = False
 
 
-class GitHubTools:
+class GitHubTools(GitHubToolState):
     def __init__(
         self,
         client: httpx.AsyncClient,
@@ -185,45 +190,23 @@ class GitHubTools:
         *,
         require_public: bool = False,
     ) -> None:
+        super().__init__()
         self.client = client
         self.target = target
         self.clip = clip
         # Set for an authenticated client, whose credential may read private repositories.
         self.require_public = require_public
-        self.sources: dict[str, Source] = {}
-        self.issue: IssueInfo | None = None
-        self.limitations: list[str] = []
-        self.cache: dict[str, dict[str, Any]] = {}
-        self.candidates: dict[int, IssueCandidate] = {}
-        self.searches: list[IssueSearch] = []
         self.max_candidates = max_candidates
         self.max_candidate_reads = max_candidate_reads
-        self.candidate_reads = 0
-        self.search_attempts: list[str] = []
-        self.successful_search_queries: set[str] = set()
-        self.failed_search_queries: set[str] = set()
-        self.candidate_read_attempts: set[int] = set()
-        self.failed_candidate_reads: set[int] = set()
-        self.label_lookup_attempted = False
-        self.repo_labels: dict[str, RepositoryLabel] = {}
-        self.labels_source_id: str | None = None
-        self.labels_complete: bool | None = None
-        self.issue_templates: list[IssueTemplate] = []
-        self.templates_source_id: str | None = None
-        self.templates_complete: bool | None = None
-        self.comment_attempted_pages: set[int] = set()
-        self.comment_failed_pages: set[int] = set()
-        self.comment_pages: dict[int, tuple[list[str], bool]] = {}
-        self.cooldown_until: float | None = None
-        self.repository_public = False
 
     def checkpoint(self) -> GitHubToolState:
-        return GitHubToolState.model_validate(self)
+        """A copy of the state for a checkpoint, unaffected by later reads."""
+        return GitHubToolState(**{item.name: deepcopy(getattr(self, item.name)) for item in fields(GitHubToolState)})
 
     def restore(self, state: GitHubToolState) -> None:
-        # Iterating over the validated state preserves the typed evidence objects.
-        for name, value in state:
-            setattr(self, name, value)
+        # The validated state already holds typed evidence objects.
+        for item in fields(GitHubToolState):
+            setattr(self, item.name, getattr(state, item.name))
 
     @property
     def similar_issue_check(self) -> SimilarIssueCheck:
@@ -348,41 +331,19 @@ class GitHubTools:
         return source.model_dump()
 
     async def execute(
-        self, name: str, arguments: str, *, before_candidate_read: Callable[[], Awaitable[None]] | None = None,
+        self, name: str, arguments: str, *, before_candidate_read: BeforeRead | None = None,
     ) -> dict[str, Any]:
-        key_value: int | str
-        if name == "get_issue_comments":
-            key_value = CommentArguments.model_validate_json(arguments).page
-        elif name == "search_issues":
-            key_value = SearchArguments.model_validate_json(arguments).query
-        elif name == "get_related_issue":
-            key_value = RelatedIssueArguments.model_validate_json(arguments).issue_number
-        elif name in {"get_issue", "get_repo_readme", "get_repo_labels", "get_issue_templates"}:
-            EmptyArguments.model_validate_json(arguments)
-            key_value = 0
-        else:
+        spec = TOOL_REGISTRY.get(name)
+        if spec is None:
             raise ToolError("The requested tool is not available.")
-        key = json.dumps([name, key_value])
-        if key in self.cache:
-            cached = self.cache[key]
-            if name in {"get_issue", "get_issue_comments"}:
+        call = spec.parse(arguments)
+        if call.key in self.cache:
+            cached = self.cache[call.key]
+            if spec.reports_comment_check:
                 return {**cached, "comment_check": self.comment_check.model_dump()}
             return cached
-        if name == "get_issue":
-            result = await self.get_issue()
-        elif name == "get_issue_comments":
-            result = await self.get_comments(int(key_value))
-        elif name == "search_issues":
-            result = await self.search_issues(str(key_value))
-        elif name == "get_related_issue":
-            result = await self.get_related_issue(int(key_value), before_read=before_candidate_read)
-        elif name == "get_repo_labels":
-            result = await self.get_repo_labels()
-        elif name == "get_issue_templates":
-            result = await self.get_issue_templates()
-        else:
-            result = await self.get_readme()
-        self.cache[key] = result
+        result = await call.run(self, before_candidate_read)
+        self.cache[call.key] = result
         return result
 
     async def get_issue(self) -> dict[str, Any]:
@@ -696,9 +657,7 @@ class GitHubTools:
             "scope": "Keyword results in this repository only. No candidates does not prove that no duplicate exists.",
         }
 
-    async def get_related_issue(
-        self, number: int, *, before_read: Callable[[], Awaitable[None]] | None = None,
-    ) -> dict[str, Any]:
+    async def get_related_issue(self, number: int, *, before_read: BeforeRead | None = None) -> dict[str, Any]:
         if number not in self.candidates:
             raise ToolError("Read only candidate numbers returned by search_issues in this run.")
         if self.candidate_reads >= self.max_candidate_reads:
@@ -714,7 +673,7 @@ class GitHubTools:
         self.failed_candidate_reads.discard(number)
         return result
 
-    async def _get_related_issue(self, number: int, before_read: Callable[[], Awaitable[None]] | None) -> dict[str, Any]:
+    async def _get_related_issue(self, number: int, before_read: BeforeRead | None) -> dict[str, Any]:
         self.candidate_reads += 1
         if before_read is not None:
             await before_read()
@@ -739,3 +698,54 @@ class GitHubTools:
         candidate.source_id = source["id"]
         return {"candidate": candidate.model_dump(), "source": source,
                 "scope": "Issue title and body only; candidate comments and linked fixes were not read."}
+
+
+# The seven read-only tools, in the order the model sees them.
+TOOL_SPECS = (
+    ToolSpec(
+        name="get_issue",
+        description="Read the submitted GitHub issue, including its title, body, state, labels, author and comment count. Read this before finalizing an analysis.",
+        arguments=EmptyArguments,
+        handler=lambda tools, args, before_read: tools.get_issue(),
+        reports_comment_check=True,
+    ),
+    ToolSpec(
+        name="get_issue_comments",
+        description="Read one page of up to 10 comments on the submitted issue, oldest first. When the target reports comments, read page 1 early before finalizing. Pages range from 1 to 5. Check has_next_page and comment_check for coverage. Unread or failed lookups do not establish that comments are absent.",
+        arguments=CommentArguments,
+        handler=lambda tools, args, before_read: tools.get_comments(args.page),
+        reports_comment_check=True,
+    ),
+    ToolSpec(
+        name="get_repo_readme",
+        description="Read the README on the submitted repository's default branch. Use when project context is needed. This does not search for duplicates or read source code.",
+        arguments=EmptyArguments,
+        handler=lambda tools, args, before_read: tools.get_readme(),
+    ),
+    ToolSpec(
+        name="search_issues",
+        description="After reading get_issue, search the same repository's issue titles and bodies using one to six distinctive keyword terms. The server owns repository and issue-only filters. Results are candidates, not confirmed duplicates. Refine the keywords if needed; do not send GitHub qualifiers or URLs.",
+        arguments=SearchArguments,
+        handler=lambda tools, args, before_read: tools.search_issues(args.query),
+    ),
+    ToolSpec(
+        name="get_related_issue",
+        description="Read a candidate issue discovered by search_issues in this run. Use its full source before comparing it with the target. At most five distinct candidate reads are allowed. The server restricts the repository; no arbitrary issue number is accepted.",
+        arguments=RelatedIssueArguments,
+        handler=lambda tools, args, before_read: tools.get_related_issue(args.issue_number, before_read=before_read),
+    ),
+    ToolSpec(
+        name="get_repo_labels",
+        description="After reading get_issue, read available active labels and descriptions in the submitted repository. The catalog is bounded and may be partial. Recommend at most three included labels, excluding labels already on the issue and labels scoped to pull requests. Detected PR-only names are listed in excluded_from_issue_recommendations; other descriptions still require judgment. This tool only reads; it does not apply labels.",
+        arguments=EmptyArguments,
+        handler=lambda tools, args, before_read: tools.get_repo_labels(),
+    ),
+    ToolSpec(
+        name="get_issue_templates",
+        description="After get_issue, check this repository's .github/ISSUE_TEMPLATE directory on the default branch. Read up to two Markdown/YAML templates with bounded excerpts. YAML fields distinguish required, optional and unknown status; Markdown headings alone do not establish requirements. Use before judging missing reporting information. Choose the relevant template by issue intent. Coverage may be partial; inherited and legacy templates are not searched. This only reads files.",
+        arguments=EmptyArguments,
+        handler=lambda tools, args, before_read: tools.get_issue_templates(),
+    ),
+)
+TOOL_REGISTRY: dict[str, ToolSpec[Any]] = {spec.name: spec for spec in TOOL_SPECS}
+TOOLS: list[FunctionToolParam] = [spec.definition() for spec in TOOL_SPECS]
