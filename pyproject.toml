@@ -39,11 +39,12 @@ dev = [
     "ruff>=0.17.6",
 ]
 
-# C901 limits a function's branches and PLR0915 its statements. A function over either limit
-# is split, or marked "# noqa: <code> - <reason>". RUF100 reports a marker that is no longer
-# needed, so a split function loses its exception.
+# F (pyflakes) reports names that are unused or undefined. C901 limits a function's branches
+# and PLR0915 its statements. A function over either limit is split, or marked
+# "# noqa: <code> - <reason>". RUF100 reports a marker that is no longer needed, so a split
+# function loses its exception. select replaces ruff's broader default rule set.
 [tool.ruff.lint]
-select = ["C901", "PLR0915", "RUF100"]
+select = ["F", "C901", "PLR0915", "RUF100"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 12
