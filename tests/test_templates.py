@@ -113,6 +113,62 @@ class TemplateParserTests(unittest.TestCase):
         self.assertFalse(template.requirements_known)
         self.assertTrue(any("twelve" in note for note in template.notes))
 
+    def test_unusable_markdown_front_matter_keeps_the_file_name(self):
+        for text, notes in (
+            ("# Heading", []),
+            ("---\nname: Never closed\n# Heading", []),
+            ("---\n- a list\n---\n# Heading", []),
+            ("---\nname: [\n---\n# Heading", ["Markdown front matter could not be parsed safely."]),
+        ):
+            with self.subTest(text=text):
+                template = parse_template(f"{DIRECTORY}/feature.md", text, "S1")
+                self.assertEqual((template.name, template.description), ("feature.md", ""))
+                self.assertEqual(template.notes, notes)
+
+    def test_a_form_without_a_body_list_has_unknown_requirements(self):
+        for text in ("name: No body", "name: Text body\nbody: text"):
+            with self.subTest(text=text):
+                template = parse_template("bug.yml", text, "S1")
+                self.assertEqual(template.name, "bug.yml")
+                self.assertEqual(template.fields, [])
+                self.assertEqual(template.notes, ["The YAML file does not contain a supported form body."])
+                self.assertFalse(template.requirements_known)
+
+    def test_unusable_form_elements_are_omitted_with_notes(self):
+        text = (
+            "name: Elements\nbody:\n"
+            "  - just text\n"
+            "  - type: markdown\n    attributes:\n      value: Introduction\n"
+            "  - type: input\n    attributes:\n      description: No label\n"
+            "  - type: input\n    attributes:\n      label: Version\n"
+        )
+        template = parse_template("bug.yml", text, "S1")
+        self.assertEqual([field.label for field in template.fields], ["Version"])
+        self.assertEqual(template.notes, [
+            "An unsupported form element was omitted.", "An input without a supported label was omitted.",
+        ])
+        self.assertFalse(template.requirements_known)
+
+    def test_checkbox_requirements_are_bounded_or_unknown(self):
+        def checkboxes(options: str) -> str:
+            return f"name: Checks\nbody:\n  - type: checkboxes\n    attributes:\n      label: Checks\n      options:{options}\n"
+
+        many = "".join(f"\n        - label: Option {index}\n          required: true" for index in range(7))
+        template = parse_template("bug.yml", checkboxes(many), "S1")
+        self.assertEqual(template.fields[0].required_options, [f"Option {index}" for index in range(6)])
+        self.assertEqual(template.notes, ["Only six required checkbox options were extracted."])
+        for options in (" none", "\n        - label: ''\n          required: true"):
+            with self.subTest(options=options):
+                template = parse_template("bug.yml", checkboxes(options), "S1")
+                self.assertIsNone(template.fields[0].required)
+                self.assertEqual(template.notes, ["Some requirement flags were not valid booleans; their status is unknown."])
+
+    def test_long_text_is_shortened_with_one_note(self):
+        text = f"name: {'N' * 130}\nbody:\n  - type: input\n    attributes:\n      label: {'L' * 130}\n"
+        template = parse_template("bug.yml", text, "S1")
+        self.assertEqual((len(template.name), len(template.fields[0].label)), (120, 120))
+        self.assertEqual(template.notes, ["Some extracted text was shortened; review the original template."])
+
 
 class TemplateToolTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
@@ -225,6 +281,35 @@ class TemplateToolTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(result["templates"][0]["requirements_known"])
         self.assertFalse(result["complete"])
         self.assertEqual(result["sources"][0]["excerpt"], "body: [")
+
+    async def test_a_listing_that_is_not_a_list_is_rejected(self):
+        self.server.entries = {"message": "Not a directory."}
+        with self.assertRaisesRegex(ToolError, "unexpected issue template directory"):
+            await self.tools.execute("get_issue_templates", "{}")
+        self.assertIsNone(self.tools.templates_source_id)
+
+    async def test_an_entry_that_is_not_an_object_makes_the_lookup_partial(self):
+        self.server.entries = ["not an entry", self.server.metadata("bug-report.yml")]
+        result = await self.tools.execute("get_issue_templates", "{}")
+        self.assertEqual([item["format"] for item in result["templates"]], ["form"])
+        self.assertFalse(result["complete"])
+
+    async def test_a_listing_of_a_thousand_entries_may_be_truncated(self):
+        self.server.entries = [self.server.metadata("bug-report.yml")] + [
+            {"name": f"notes-{index}.txt", "path": f"{DIRECTORY}/notes-{index}.txt", "type": "file"} for index in range(999)
+        ]
+        result = await self.tools.execute("get_issue_templates", "{}")
+        self.assertEqual(len(result["templates"]), 1)
+        self.assertFalse(result["complete"])
+        self.assertIn("may be limited to 1,000 entries", result["lookup"]["excerpt"])
+
+    async def test_content_larger_than_its_listed_size_is_rejected(self):
+        self.server.files = {"huge.yml": "x" * 32_769}
+        self.server.entries = [{**self.server.metadata("huge.yml"), "size": 100}]
+        result = await self.tools.execute("get_issue_templates", "{}")
+        self.assertEqual(result["templates"], [])
+        self.assertFalse(result["complete"])
+        self.assertIn("huge.yml: The template exceeds the 32 KiB file limit.", result["lookup"]["excerpt"])
 
 
 class TemplateIntegrationTests(unittest.TestCase):
