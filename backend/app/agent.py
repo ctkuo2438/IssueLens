@@ -2,6 +2,7 @@
 
 import asyncio
 from collections.abc import Callable
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 import hashlib
 import json
@@ -10,7 +11,9 @@ from typing import Any, Literal, cast
 
 import httpx
 from openai import APIConnectionError, APIStatusError, AsyncOpenAI
-from openai.types.responses import ResponseInputParam, ResponseTextConfigParam, ToolChoiceFunctionParam
+from openai.types.responses import (
+    Response, ResponseFunctionToolCall, ResponseInputParam, ResponseTextConfigParam, ToolChoiceFunctionParam,
+)
 from openai.types.responses.response_create_params import ResponseCreateParamsNonStreaming
 from pydantic import ValidationError
 import tiktoken
@@ -19,11 +22,13 @@ from backend.app.agent_prompt import INSTRUCTIONS
 from backend.app.analysis_validation import validate_analysis
 from backend.app.checkpoint import AgentCheckpoint, CheckpointWriter, PendingTools, ScheduledRetry
 from backend.app.config import Settings
-from backend.app.context import ContextBuilder
+from backend.app.context import BuiltContext, ContextBuilder
 from backend.app.github import (
     CommentArguments, GitHubTools, RepositoryNotPublicError, SearchArguments, TOOLS, ToolError, TransientToolError,
 )
-from backend.app.models import AnalysisContent, AnalysisResult, EventKind, IssueTarget, RejectedAnswer
+from backend.app.models import (
+    AnalysisContent, AnalysisResult, ContextBuildReport, EventKind, IssueTarget, RejectedAnswer,
+)
 from backend.app.retry import TransientFailure, openai_transient_failure
 from backend.app.trace import TraceLog
 
@@ -40,6 +45,7 @@ RETRY_BUDGET_NAMES = {
     "tool_call_budget": "tool-call budget",
     "candidate_read_budget": "candidate-read budget",
 }
+Clip = Callable[[str, int], tuple[str, bool]]
 
 
 def checkpoint_signature(settings: Settings) -> str:
@@ -53,6 +59,26 @@ def checkpoint_signature(settings: Settings) -> str:
         "max_output_tokens": MAX_OUTPUT_TOKENS,
     }
     return hashlib.sha256(json.dumps(contract, sort_keys=True).encode()).hexdigest()
+
+
+@dataclass(frozen=True)
+class RequestPlan:
+    """What one model request may do, decided from the evidence collected so far."""
+
+    iteration: int
+    repairing: bool
+    at_limit: bool
+    closing_for_repairs: bool
+    require_comments: bool
+    required_action: str | None
+    action_instruction: str
+    tool_choice: Literal["auto", "none"] | ToolChoiceFunctionParam
+    instructions: str
+    future_reserve: int
+    minimum_future_reserve: int
+    # Set when the context budget cannot reserve room for more tools, so the request
+    # becomes a final answer from existing evidence.
+    finalizing_for_context: bool = False
 
 
 class AgentRun:
@@ -184,6 +210,63 @@ class AgentRun:
         if pending_search:
             reserve += PENDING_LOOKUP_RESERVE_TOKENS
         return reserve
+
+    def plan_request(self, iteration: int, repair_feedback: str | None) -> RequestPlan:
+        """Decide what the next model request may do. It reads the run's state and changes nothing."""
+        assert self.tools is not None
+        repairing = repair_feedback is not None
+        at_limit = (
+            iteration == self.settings.max_iterations
+            or self.result.usage.tool_calls >= self.settings.max_tool_calls
+        )
+        needs_first_page = bool(
+            self.tools.issue and self.tools.issue.comment_count > 0
+            and 1 not in self.tools.comment_attempted_pages
+        )
+        # Repair regenerates from the same evidence checkpoint. Pending
+        # lookups stay incomplete rather than reopening investigation.
+        lookup = None if repairing else self.required_lookup()
+        closing_for_repairs = bool(
+            not repairing and self.settings.max_iterations >= 6
+            and iteration >= self.settings.max_iterations - FINAL_REPAIR_REQUESTS
+            and self.tools.issue and self.tools.labels_source_id and self.tools.searches
+            and not needs_first_page
+            and lookup is None
+        )
+        require_comments = needs_first_page and not at_limit and not repairing
+        required_action = "get_issue_comments" if require_comments else lookup[0] if lookup and not at_limit else None
+        action_instruction = (
+            "The required next action is get_issue_comments with page=1."
+            if require_comments else f"The required next action is {lookup[0]}. {lookup[1]}"
+            if lookup and not at_limit else ""
+        )
+        tool_choice: Literal["auto", "none"] | ToolChoiceFunctionParam = "none" if at_limit or repairing or closing_for_repairs else "auto"
+        if required_action:
+            tool_choice = {"type": "function", "name": required_action}
+        instructions = (
+            f"{INSTRUCTIONS}\nThis is model request {iteration} of {self.settings.max_iterations}. "
+            "Use the remaining requests carefully. Finalize before the last request "
+            "when possible, leaving room to correct validation errors.\n"
+            f"Current server-owned comment_check: {self.tools.comment_check.model_dump_json()}. "
+            f"Analysis date (UTC): {self.result.analysis_date}. "
+            f"Current citation_requirements: {json.dumps(self.citation_requirements())}. "
+            + action_instruction
+            + (f"\nFinal-answer repair feedback: {repair_feedback}" if repairing else "")
+            + ("\nCore checks are available. Return final JSON now, leaving the remaining requests for validation repair." if closing_for_repairs else "")
+        )
+        future_reserve = self.future_context_reserve() if not repairing and tool_choice != "none" else 0
+        minimum_future_reserve = 0
+        if future_reserve:
+            minimum_future_reserve = (
+                CANDIDATE_RESERVE_TOKENS if required_action == "get_related_issue"
+                else CONTINUATION_RESERVE_TOKENS
+            )
+        return RequestPlan(
+            iteration=iteration, repairing=repairing, at_limit=at_limit, closing_for_repairs=closing_for_repairs,
+            require_comments=require_comments, required_action=required_action,
+            action_instruction=action_instruction, tool_choice=tool_choice, instructions=instructions,
+            future_reserve=future_reserve, minimum_future_reserve=minimum_future_reserve,
+        )
 
 
     async def _save_execution_state(
@@ -406,6 +489,87 @@ class AgentRun:
         return result
 
     async def _investigate(self) -> AnalysisResult:
+        """Run the bounded loop: plan a request, fit it in context, send it, then answer or use tools."""
+        checkpoint = self.checkpoint
+        self._announce_start()
+        # This tokenizer estimates the serialized request, with a margin for protocol overhead.
+        # It is a conservative local guard, not the provider's exact billing token count.
+        encoding = await asyncio.to_thread(tiktoken.get_encoding, "o200k_base")
+
+        def clip(text: str, budget: int) -> tuple[str, bool]:
+            tokens = encoding.encode(text, disallowed_special=())
+            return encoding.decode(tokens[:budget]), len(tokens) > budget
+
+        context = ContextBuilder(
+            lambda text: len(encoding.encode(text, disallowed_special=())), self.settings.context_tokens,
+        )
+        history = self._starting_history(context)
+        text_format: ResponseTextConfigParam = {"format": {
+            "type": "json_schema", "name": "issue_analysis",
+            "schema": AnalysisContent.model_json_schema(), "strict": True,
+        }}
+        repair_feedback = checkpoint.repair_feedback if checkpoint else None
+        model_retry = checkpoint.retry if checkpoint and checkpoint.pending_tools is None else None
+        async with (
+            self._github_client() as github,
+            AsyncOpenAI(api_key=self.settings.openai_api_key, timeout=35, max_retries=0) as client,
+        ):
+            stopped = await self._start_tools(github, clip, context, history, model_retry)
+            if stopped is not None:
+                return stopped
+            for iteration in range(self.result.usage.model_requests + 1, self.settings.max_iterations + 1):
+                if model_retry is not None:
+                    await self._wait_for_retry(model_retry)
+                plan = self.plan_request(iteration, repair_feedback)
+                built, plan = self._fit_context(context, history, plan, text_format)
+                stopped = self._report_context(built.report, iteration)
+                if stopped is not None:
+                    return stopped
+                history = built.history
+                self._announce_request(plan)
+                self.result.usage.model_requests += 1
+                request = self._model_request(plan, history, text_format)
+                self.trace.begin("model", "responses.create", self.result.usage.model_requests, model_retry)
+                await self._save_execution_state(
+                    context, history, repair_feedback=repair_feedback, in_flight="model", retry=model_retry,
+                )
+                if model_retry is not None and self._remaining_seconds() <= 0:
+                    raise TimeoutError
+                built.report.sent = True
+                try:
+                    response = await client.responses.create(**request)
+                except (APIConnectionError, APIStatusError) as exc:
+                    model_retry = self._retry_model_request(exc, model_retry, iteration)
+                    if model_retry is None:
+                        raise
+                    await self._save_execution_state(context, history, repair_feedback=repair_feedback, retry=model_retry)
+                    continue
+                if model_retry is not None:
+                    self.emit("status", "OpenAI returned a response to the retry.")
+                    model_retry = None
+                if response.usage:
+                    self.result.usage.total_tokens += response.usage.total_tokens
+                calls = [item for item in response.output if item.type == "function_call"]
+                stopped = self._stop_on_response(response, calls, plan)
+                if stopped is not None:
+                    return stopped
+                if calls:
+                    await self._use_tools(context, history, response, calls, plan)
+                    continue
+                try:
+                    content = self._validated_answer(response, plan, context)
+                except (ValidationError, ValueError) as exc:
+                    repair_feedback = self._reject_answer(exc, response, plan, context, clip)
+                    await self._save_execution_state(context, history, repair_feedback=repair_feedback)
+                    continue
+                self.result.content = content
+                self.trace.finish("succeeded", reason="The final answer passed validation.")
+                return self.snapshot(stop_reason="final_answer")
+            return self.snapshot(
+                "The iteration limit was reached without a valid final analysis.", stop_reason="model_request_budget",
+            )
+
+    def _announce_start(self) -> None:
         checkpoint = self.checkpoint
         if not self.result.usage.model_requests:
             self.emit(
@@ -418,333 +582,299 @@ class AgentRun:
                 f"The previous Worker stopped before saving a {checkpoint.in_flight} response. "
                 "The interrupted attempt counts toward the job budget."
             ))
-        # This tokenizer estimates the serialized request, with a margin for protocol overhead.
-        # It is a conservative local guard, not the provider's exact billing token count.
-        encoding = await asyncio.to_thread(tiktoken.get_encoding, "o200k_base")
 
-        def clip(text: str, budget: int) -> tuple[str, bool]:
-            tokens = encoding.encode(text, disallowed_special=())
-            return encoding.decode(tokens[:budget]), len(tokens) > budget
-
-        context = ContextBuilder(
-            lambda text: len(encoding.encode(text, disallowed_special=())), self.settings.context_tokens,
-        )
-        headers = {"Accept": "application/vnd.github+json", "User-Agent": "IssueLens-Local-MVP"}
-        if self.settings.github_token:
-            headers["Authorization"] = f"Bearer {self.settings.github_token}"
+    def _starting_history(self, context: ContextBuilder) -> ResponseInputParam:
+        """The task message, or the checkpoint's model-visible history with its context state."""
+        checkpoint = self.checkpoint
         history: ResponseInputParam = [{
             "role": "user", "content": f"Investigate this GitHub issue and draft a maintainer reply: {self.target.url}",
         }]
-        text_format: ResponseTextConfigParam = {"format": {
-            "type": "json_schema", "name": "issue_analysis",
-            "schema": AnalysisContent.model_json_schema(), "strict": True,
-        }}
-        repair_feedback = checkpoint.repair_feedback if checkpoint else None
-        model_retry = checkpoint.retry if checkpoint and checkpoint.pending_tools is None else None
         if checkpoint and checkpoint.history:
             if checkpoint.history[0] != history[0]:
                 raise ValueError("The checkpoint does not belong to the requested issue.")
             history = cast(ResponseInputParam, checkpoint.history)
             context.restore(checkpoint.context, history)
-        async with (
-            httpx.AsyncClient(
-                base_url="https://api.github.com", headers=headers, timeout=12,
-                follow_redirects=False, transport=self.github_transport,
-            ) as github,
-            AsyncOpenAI(api_key=self.settings.openai_api_key, timeout=35, max_retries=0) as client,
-        ):
-            # A server credential may read private repositories; anonymous reads cannot.
-            require_public = bool(self.settings.github_token)
-            self.tools = GitHubTools(
-                github, self.target, clip, self.settings.max_candidates, self.settings.max_candidate_reads,
-                require_public=require_public,
+        return history
+
+    def _github_client(self) -> httpx.AsyncClient:
+        headers = {"Accept": "application/vnd.github+json", "User-Agent": "IssueLens-Local-MVP"}
+        if self.settings.github_token:
+            headers["Authorization"] = f"Bearer {self.settings.github_token}"
+        return httpx.AsyncClient(
+            base_url="https://api.github.com", headers=headers, timeout=12,
+            follow_redirects=False, transport=self.github_transport,
+        )
+
+    async def _start_tools(
+        self, github: httpx.AsyncClient, clip: Clip, context: ContextBuilder, history: ResponseInputParam,
+        model_retry: ScheduledRetry | None,
+    ) -> AnalysisResult | None:
+        """Create the tools and finish what a checkpoint left in progress.
+
+        Returns the run's result when it ends before the next model request.
+        """
+        checkpoint = self.checkpoint
+        # A server credential may read private repositories; anonymous reads cannot.
+        require_public = bool(self.settings.github_token)
+        self.tools = GitHubTools(
+            github, self.target, clip, self.settings.max_candidates, self.settings.max_candidate_reads,
+            require_public=require_public,
+        )
+        if checkpoint and checkpoint.tools:
+            self.tools.restore(checkpoint.tools)
+        if require_public:
+            refusal = await self._confirm_public_repository()
+            if refusal is not None:
+                return refusal
+        if checkpoint and checkpoint.pending_tools:
+            await self._complete_tool_round(
+                context, history, checkpoint.pending_tools,
+                retry=checkpoint.retry, retry_interrupted=checkpoint.in_flight == "tool",
             )
-            if checkpoint and checkpoint.tools:
-                self.tools.restore(checkpoint.tools)
-            if require_public:
-                refusal = await self._confirm_public_repository()
-                if refusal is not None:
-                    return refusal
-            if checkpoint and checkpoint.pending_tools:
-                await self._complete_tool_round(
-                    context, history, checkpoint.pending_tools,
-                    retry=checkpoint.retry, retry_interrupted=checkpoint.in_flight == "tool",
-                )
-            if model_retry is not None and checkpoint and checkpoint.in_flight == "model":
-                message = f"The Worker stopped during the OpenAI retry after {model_retry.reason}. The retry was exhausted."
-                self.emit("warning", message)
-                return self.snapshot(message, stop_reason="retry_exhausted")
-            for iteration in range(self.result.usage.model_requests + 1, self.settings.max_iterations + 1):
-                if model_retry is not None:
-                    await self._wait_for_retry(model_retry)
-                repairing = repair_feedback is not None
-                at_limit = (
-                    iteration == self.settings.max_iterations
-                    or self.result.usage.tool_calls >= self.settings.max_tool_calls
-                )
-                needs_first_page = bool(
-                    self.tools.issue and self.tools.issue.comment_count > 0
-                    and 1 not in self.tools.comment_attempted_pages
-                )
-                # Repair regenerates from the same evidence checkpoint. Pending
-                # lookups stay incomplete rather than reopening investigation.
-                lookup = None if repairing else self.required_lookup()
-                closing_for_repairs = bool(
-                    not repairing and self.settings.max_iterations >= 6
-                    and iteration >= self.settings.max_iterations - FINAL_REPAIR_REQUESTS
-                    and self.tools.issue and self.tools.labels_source_id and self.tools.searches
-                    and not needs_first_page
-                    and lookup is None
-                )
-                require_comments = needs_first_page and not at_limit and not repairing
-                required_action = "get_issue_comments" if require_comments else lookup[0] if lookup and not at_limit else None
-                action_instruction = (
-                    "The required next action is get_issue_comments with page=1."
-                    if require_comments else f"The required next action is {lookup[0]}. {lookup[1]}"
-                    if lookup and not at_limit else ""
-                )
-                tool_choice: Literal["auto", "none"] | ToolChoiceFunctionParam = "none" if at_limit or repairing or closing_for_repairs else "auto"
-                if required_action:
-                    tool_choice = {"type": "function", "name": required_action}
-                request_instructions = (
-                    f"{INSTRUCTIONS}\nThis is model request {iteration} of {self.settings.max_iterations}. "
-                    "Use the remaining requests carefully. Finalize before the last request "
-                    "when possible, leaving room to correct validation errors.\n"
-                    f"Current server-owned comment_check: {self.tools.comment_check.model_dump_json()}. "
-                    f"Analysis date (UTC): {self.result.analysis_date}. "
-                    f"Current citation_requirements: {json.dumps(self.citation_requirements())}. "
-                    + action_instruction
-                    + (f"\nFinal-answer repair feedback: {repair_feedback}" if repairing else "")
-                    + ("\nCore checks are available. Return final JSON now, leaving the remaining requests for validation repair." if closing_for_repairs else "")
-                )
-                future_reserve = self.future_context_reserve() if not repairing and tool_choice != "none" else 0
-                minimum_future_reserve = 0
-                if future_reserve:
-                    minimum_future_reserve = (
-                        CANDIDATE_RESERVE_TOKENS if required_action == "get_related_issue"
-                        else CONTINUATION_RESERVE_TOKENS
-                    )
-                built = context.build(
-                    history, instructions=request_instructions, tools=TOOLS, text_format=text_format,
-                    request_number=iteration, focus=self.tools.issue.title if self.tools.issue else "",
-                    repair_reserve_tokens=0 if repairing else REPAIR_RESERVE_TOKENS,
-                    future_reserve_tokens=future_reserve,
-                    minimum_future_reserve_tokens=minimum_future_reserve,
-                )
-                built.report.phase = "repair" if repairing else "investigation"
-                self.result.context_builds.append(built.report)
-                finalizing_for_context = False
-                if not built.report.fits and not repairing:
-                    # Stop tool planning when the remaining space cannot accommodate
-                    # its reserves. Retry only as a final answer from existing evidence.
-                    finalizing_for_context = True
-                    if built.report.future_reserve_minimum_tokens:
-                        limitation = (
-                            f"Finalizing early: at least {built.report.future_reserve_minimum_tokens} tokens for future evidence "
-                            "and loop growth could not be reserved within the local context budget. "
-                            "No further tool calls are allowed; pending checks remain incomplete."
-                        )
-                        self.result.limitations.append(limitation)
-                        self.emit("warning", limitation)
-                    require_comments = False
-                    required_action = None
-                    tool_choice = "none"
-                    if action_instruction:
-                        request_instructions = request_instructions.replace(action_instruction, "")
-                    built = context.build(
-                        history, instructions=request_instructions, tools=TOOLS, text_format=text_format,
-                        request_number=iteration, focus=self.tools.issue.title if self.tools.issue else "",
-                        repair_reserve_tokens=REPAIR_RESERVE_TOKENS,
-                    )
-                    self.result.context_builds.append(built.report)
-                    if not built.report.fits:
-                        built = context.build(
-                            history, instructions=request_instructions, tools=TOOLS, text_format=text_format,
-                            request_number=iteration, focus=self.tools.issue.title if self.tools.issue else "",
-                        )
-                        self.result.context_builds.append(built.report)
-                        if built.report.fits:
-                            limitation = "Finalization used the remaining context without a full repair reserve; another correction may not fit."
-                            self.result.limitations.append(limitation)
-                            self.emit("warning", limitation)
-                report = built.report
-                omitted = [item.source_id for item in report.sources if item.action == "omitted"]
-                self.emit("status", (
-                    f"Context request {iteration}: estimated {report.estimated_tokens}/{report.budget_tokens} "
-                    f"input tokens including {report.margin_tokens} margin; "
-                    f"{report.repair_reserve_tokens} tokens reserved for repair feedback; "
-                    f"{report.future_reserve_tokens}/{report.future_reserve_target_tokens} tokens reserved for future evidence "
-                    f"and loop growth (minimum {report.future_reserve_minimum_tokens}); "
-                    f"{len(omitted)} excerpts omitted; {len(report.reused_call_ids)} repeated results reused."
-                ))
-                if not report.fits:
-                    self.emit("warning", "The local context budget cannot fit protected evidence and replay history; no model request was sent.")
-                    return self.snapshot(
-                        "The local context budget was reached: protected evidence and unchanged replay history "
-                        "could not fit. Newly fetched evidence in this build was not sent to the model.",
-                        stop_reason="context_budget",
-                    )
-                if omitted:
-                    limitation = (
-                        f"Context Builder omitted fetched excerpts from model input: {', '.join(omitted)}. "
-                        "Retrieved excerpts remain available in Sources; omitted content was not reviewed by the model."
-                    )
-                    self.result.limitations.append(limitation)
-                    self.emit("warning", limitation)
-                history = built.history
-                if at_limit:
-                    self.result.limitations.append("The agent reached its investigation budget; additional checks were not performed.")
-                self.emit("model", (
-                    f"Answer repair step {iteration}: regenerating from unchanged evidence; tools disabled."
-                    if repairing else f"Investigation step {iteration}: choosing the next action."
-                ))
-                if closing_for_repairs:
-                    self.emit("status", f"Finalizing with existing evidence; reserving up to {self.settings.max_iterations - iteration} requests for validation repair.")
-                self.result.usage.model_requests += 1
-                request: ResponseCreateParamsNonStreaming = {
-                    "model": self.settings.model,
-                    "instructions": request_instructions,
-                    "input": list(history),
-                    "tools": TOOLS,
-                    "tool_choice": tool_choice,
-                    "parallel_tool_calls": False,
-                    "text": text_format,
-                    "include": ["reasoning.encrypted_content"],
-                    "max_output_tokens": MAX_OUTPUT_TOKENS,
-                    "store": False,
-                }
-                if self.settings.reasoning_effort is not None:
-                    request["reasoning"] = {"effort": self.settings.reasoning_effort}
-                self.trace.begin("model", "responses.create", self.result.usage.model_requests, model_retry)
-                await self._save_execution_state(
-                    context, history, repair_feedback=repair_feedback, in_flight="model", retry=model_retry,
-                )
-                if model_retry is not None and self._remaining_seconds() <= 0:
-                    raise TimeoutError
-                report.sent = True
-                try:
-                    response = await client.responses.create(**request)
-                except (APIConnectionError, APIStatusError) as exc:
-                    failure = openai_transient_failure(exc)
-                    if failure is None:
-                        reason = (
-                            f"OpenAI returned HTTP {exc.status_code}." if isinstance(exc, APIStatusError)
-                            else "Could not connect to OpenAI."
-                        )
-                        self.trace.finish("failed", reason=reason, stop_reason="non_retryable_failure")
-                        self.trace.stop_reason = "model_request_failed"
-                        raise
-                    model_retry = self._plan_retry(
-                        "the OpenAI model request", failure, model_retry,
-                        exhausted_budget="model_request_budget" if iteration == self.settings.max_iterations else None,
-                        stops_analysis=True,
-                    )
-                    if model_retry is None:
-                        raise
-                    await self._save_execution_state(context, history, repair_feedback=repair_feedback, retry=model_retry)
-                    continue
-                if model_retry is not None:
-                    self.emit("status", "OpenAI returned a response to the retry.")
-                    model_retry = None
-                if response.usage:
-                    self.result.usage.total_tokens += response.usage.total_tokens
-                if response.status != "completed":
-                    if response.incomplete_details and response.incomplete_details.reason == "max_output_tokens":
-                        self.trace.finish("incomplete", stop_reason="max_output_tokens")
-                        return self.snapshot(
-                            f"The model response was incomplete: max_output_tokens reached {MAX_OUTPUT_TOKENS}. "
-                            "This output limit includes reasoning and visible text; no final analysis was accepted.",
-                            stop_reason="max_output_tokens",
-                        )
-                    failed = response.status == "failed"
-                    stop_reason = "model_response_failed" if failed else "model_response_incomplete"
-                    self.trace.finish("failed" if failed else "incomplete", stop_reason=stop_reason)
-                    return self.snapshot(
-                        "The model response was incomplete; no final analysis was accepted.",
-                        stop_reason=stop_reason,
-                    )
-                calls = [item for item in response.output if item.type == "function_call"]
-                if calls and finalizing_for_context:
-                    self.trace.finish("rejected", stop_reason="tool_use_closed")
-                    return self.snapshot(
-                        "The model requested a tool during context-budget finalization; no tool was executed.",
-                        stop_reason="context_budget",
-                    )
-                if required_action:
-                    self.emit("status", f"Required lookup before finalization: {required_action}.")
-                if calls and repairing:
-                    self.trace.finish("rejected", stop_reason="tool_use_closed")
-                    return self.snapshot(
-                        "The model requested a tool during final-answer repair; no tool was executed.",
-                        stop_reason="tool_use_closed",
-                    )
-                if not calls:
-                    if self.tools.issue is None:
-                        self.trace.finish("rejected", stop_reason="target_issue_unavailable")
-                        return self.snapshot(
-                            "The model finished without successfully reading the target issue.",
-                            stop_reason="target_issue_unavailable",
-                        )
-                    try:
-                        if required_action:
-                            raise ValueError(f"Complete {required_action} before finalizing. {action_instruction}")
-                        content = AnalysisContent.model_validate_json(response.output_text)
-                        validate_analysis(content, self.tools, context.visible_source_ids)
-                    except (ValidationError, ValueError) as exc:
-                        self.trace.finish(
-                            "rejected", reason="The response did not pass final-answer validation.",
-                            stop_reason="model_request_budget" if iteration == self.settings.max_iterations else None,
-                        )
-                        detail = "Follow the required analysis JSON schema." if isinstance(exc, ValidationError) else str(exc)
-                        next_step = "No correction budget remains."
-                        if iteration < self.settings.max_iterations:
-                            next_step = "Retrying the required lookup." if required_action else "Requesting a correction."
-                        self.emit("warning", f"The answer failed validation: {detail} {next_step}")
-                        # Retry from the same evidence checkpoint, not as a continuation of
-                        # the rejected response. Its text is audit data, never new evidence.
-                        repair_feedback = clip(
-                            f"{detail} Available IDs: {sorted(context.visible_source_ids)}. "
-                            "Regenerate consistent final JSON from the supplied evidence.",
-                            REPAIR_RESERVE_TOKENS - 24,
-                        )[0]
-                        # Count the escaped instruction suffix, including its heading.
-                        while context.count_tokens(json.dumps(
-                            f"\nFinal-answer repair feedback: {repair_feedback}", ensure_ascii=False,
-                        )) > REPAIR_RESERVE_TOKENS:
-                            repair_feedback = clip(repair_feedback, max(0, context.count_tokens(repair_feedback) - 16))[0]
-                        self.result.rejected_answers.append(RejectedAnswer(
-                            request_number=iteration, reason=detail, output_text=response.output_text,
-                            output_sha256=hashlib.sha256(json.dumps({
-                                "output": [item.to_dict() for item in response.output],
-                                "output_text": response.output_text,
-                            }, sort_keys=True).encode()).hexdigest(),
-                            feedback=repair_feedback,
-                        ))
-                        if required_action:
-                            # A premature answer violates tool selection. Retry the
-                            # required lookup as investigation, not final-answer repair.
-                            repair_feedback = None
-                        await self._save_execution_state(context, history, repair_feedback=repair_feedback)
-                        continue
-                    self.result.content = content
-                    self.trace.finish("succeeded", reason="The final answer passed validation.")
-                    return self.snapshot(stop_reason="final_answer")
-                if closing_for_repairs or at_limit:
-                    self.trace.finish(
-                        "rejected", reason="The response requested a tool while tool use was closed.",
-                        stop_reason="model_request_budget" if iteration == self.settings.max_iterations else None,
-                    )
-                else:
-                    self.trace.finish("succeeded", reason="The response requested tool calls.")
-                # Continue tool planning with every original SDK output item intact,
-                # including encrypted reasoning and function-call linkage.
-                history.extend(cast(ResponseInputParam, [item.to_dict() for item in response.output]))
-                pending = PendingTools(
-                    calls=calls, required_action=required_action, require_comments=require_comments,
-                    closing_for_repairs=closing_for_repairs, at_limit=at_limit,
-                )
-                await self._save_execution_state(context, history, pending_tools=pending)
-                await self._complete_tool_round(context, history, pending)
+        if model_retry is not None and checkpoint and checkpoint.in_flight == "model":
+            message = f"The Worker stopped during the OpenAI retry after {model_retry.reason}. The retry was exhausted."
+            self.emit("warning", message)
+            return self.snapshot(message, stop_reason="retry_exhausted")
+        return None
+
+    def _fit_context(
+        self, context: ContextBuilder, history: ResponseInputParam, plan: RequestPlan,
+        text_format: ResponseTextConfigParam,
+    ) -> tuple[BuiltContext, RequestPlan]:
+        """Build the request input within the local context budget.
+
+        When the reserves for more tool use do not fit, the plan becomes a final answer
+        from existing evidence, built first with a repair reserve and then without one.
+        """
+        assert self.tools is not None
+        focus = self.tools.issue.title if self.tools.issue else ""
+        built = context.build(
+            history, instructions=plan.instructions, tools=TOOLS, text_format=text_format,
+            request_number=plan.iteration, focus=focus,
+            repair_reserve_tokens=0 if plan.repairing else REPAIR_RESERVE_TOKENS,
+            future_reserve_tokens=plan.future_reserve,
+            minimum_future_reserve_tokens=plan.minimum_future_reserve,
+        )
+        built.report.phase = "repair" if plan.repairing else "investigation"
+        self.result.context_builds.append(built.report)
+        if built.report.fits or plan.repairing:
+            return built, plan
+        # Stop tool planning when the remaining space cannot accommodate
+        # its reserves. Retry only as a final answer from existing evidence.
+        if built.report.future_reserve_minimum_tokens:
+            limitation = (
+                f"Finalizing early: at least {built.report.future_reserve_minimum_tokens} tokens for future evidence "
+                "and loop growth could not be reserved within the local context budget. "
+                "No further tool calls are allowed; pending checks remain incomplete."
+            )
+            self.result.limitations.append(limitation)
+            self.emit("warning", limitation)
+        instructions = plan.instructions
+        if plan.action_instruction:
+            instructions = instructions.replace(plan.action_instruction, "")
+        plan = replace(
+            plan, require_comments=False, required_action=None, tool_choice="none", instructions=instructions,
+            finalizing_for_context=True,
+        )
+        built = context.build(
+            history, instructions=plan.instructions, tools=TOOLS, text_format=text_format,
+            request_number=plan.iteration, focus=focus, repair_reserve_tokens=REPAIR_RESERVE_TOKENS,
+        )
+        self.result.context_builds.append(built.report)
+        if not built.report.fits:
+            built = context.build(
+                history, instructions=plan.instructions, tools=TOOLS, text_format=text_format,
+                request_number=plan.iteration, focus=focus,
+            )
+            self.result.context_builds.append(built.report)
+            if built.report.fits:
+                limitation = "Finalization used the remaining context without a full repair reserve; another correction may not fit."
+                self.result.limitations.append(limitation)
+                self.emit("warning", limitation)
+        return built, plan
+
+    def _report_context(self, report: ContextBuildReport, iteration: int) -> AnalysisResult | None:
+        """Report what the request input holds. Returns the run's result when nothing fits."""
+        omitted = [item.source_id for item in report.sources if item.action == "omitted"]
+        self.emit("status", (
+            f"Context request {iteration}: estimated {report.estimated_tokens}/{report.budget_tokens} "
+            f"input tokens including {report.margin_tokens} margin; "
+            f"{report.repair_reserve_tokens} tokens reserved for repair feedback; "
+            f"{report.future_reserve_tokens}/{report.future_reserve_target_tokens} tokens reserved for future evidence "
+            f"and loop growth (minimum {report.future_reserve_minimum_tokens}); "
+            f"{len(omitted)} excerpts omitted; {len(report.reused_call_ids)} repeated results reused."
+        ))
+        if not report.fits:
+            self.emit("warning", "The local context budget cannot fit protected evidence and replay history; no model request was sent.")
             return self.snapshot(
-                "The iteration limit was reached without a valid final analysis.", stop_reason="model_request_budget",
+                "The local context budget was reached: protected evidence and unchanged replay history "
+                "could not fit. Newly fetched evidence in this build was not sent to the model.",
+                stop_reason="context_budget",
             )
+        if omitted:
+            limitation = (
+                f"Context Builder omitted fetched excerpts from model input: {', '.join(omitted)}. "
+                "Retrieved excerpts remain available in Sources; omitted content was not reviewed by the model."
+            )
+            self.result.limitations.append(limitation)
+            self.emit("warning", limitation)
+        return None
+
+    def _announce_request(self, plan: RequestPlan) -> None:
+        if plan.at_limit:
+            self.result.limitations.append("The agent reached its investigation budget; additional checks were not performed.")
+        self.emit("model", (
+            f"Answer repair step {plan.iteration}: regenerating from unchanged evidence; tools disabled."
+            if plan.repairing else f"Investigation step {plan.iteration}: choosing the next action."
+        ))
+        if plan.closing_for_repairs:
+            self.emit("status", f"Finalizing with existing evidence; reserving up to {self.settings.max_iterations - plan.iteration} requests for validation repair.")
+
+    def _model_request(
+        self, plan: RequestPlan, history: ResponseInputParam, text_format: ResponseTextConfigParam,
+    ) -> ResponseCreateParamsNonStreaming:
+        request: ResponseCreateParamsNonStreaming = {
+            "model": self.settings.model,
+            "instructions": plan.instructions,
+            "input": list(history),
+            "tools": TOOLS,
+            "tool_choice": plan.tool_choice,
+            "parallel_tool_calls": False,
+            "text": text_format,
+            "include": ["reasoning.encrypted_content"],
+            "max_output_tokens": MAX_OUTPUT_TOKENS,
+            "store": False,
+        }
+        if self.settings.reasoning_effort is not None:
+            request["reasoning"] = {"effort": self.settings.reasoning_effort}
+        return request
+
+    def _retry_model_request(
+        self, exc: APIConnectionError | APIStatusError, retry: ScheduledRetry | None, iteration: int,
+    ) -> ScheduledRetry | None:
+        """Schedule the one retry of a transient OpenAI failure. Returns None when the run must stop."""
+        failure = openai_transient_failure(exc)
+        if failure is None:
+            reason = (
+                f"OpenAI returned HTTP {exc.status_code}." if isinstance(exc, APIStatusError)
+                else "Could not connect to OpenAI."
+            )
+            self.trace.finish("failed", reason=reason, stop_reason="non_retryable_failure")
+            self.trace.stop_reason = "model_request_failed"
+            return None
+        return self._plan_retry(
+            "the OpenAI model request", failure, retry,
+            exhausted_budget="model_request_budget" if iteration == self.settings.max_iterations else None,
+            stops_analysis=True,
+        )
+
+    def _stop_on_response(
+        self, response: Response, calls: list[ResponseFunctionToolCall], plan: RequestPlan,
+    ) -> AnalysisResult | None:
+        """Returns the run's result when this response ends it, before any tool runs or answer is checked."""
+        assert self.tools is not None
+        if response.status != "completed":
+            if response.incomplete_details and response.incomplete_details.reason == "max_output_tokens":
+                self.trace.finish("incomplete", stop_reason="max_output_tokens")
+                return self.snapshot(
+                    f"The model response was incomplete: max_output_tokens reached {MAX_OUTPUT_TOKENS}. "
+                    "This output limit includes reasoning and visible text; no final analysis was accepted.",
+                    stop_reason="max_output_tokens",
+                )
+            failed = response.status == "failed"
+            stop_reason = "model_response_failed" if failed else "model_response_incomplete"
+            self.trace.finish("failed" if failed else "incomplete", stop_reason=stop_reason)
+            return self.snapshot(
+                "The model response was incomplete; no final analysis was accepted.",
+                stop_reason=stop_reason,
+            )
+        if calls and plan.finalizing_for_context:
+            self.trace.finish("rejected", stop_reason="tool_use_closed")
+            return self.snapshot(
+                "The model requested a tool during context-budget finalization; no tool was executed.",
+                stop_reason="context_budget",
+            )
+        if plan.required_action:
+            self.emit("status", f"Required lookup before finalization: {plan.required_action}.")
+        if calls and plan.repairing:
+            self.trace.finish("rejected", stop_reason="tool_use_closed")
+            return self.snapshot(
+                "The model requested a tool during final-answer repair; no tool was executed.",
+                stop_reason="tool_use_closed",
+            )
+        if not calls and self.tools.issue is None:
+            self.trace.finish("rejected", stop_reason="target_issue_unavailable")
+            return self.snapshot(
+                "The model finished without successfully reading the target issue.",
+                stop_reason="target_issue_unavailable",
+            )
+        return None
+
+    async def _use_tools(
+        self, context: ContextBuilder, history: ResponseInputParam, response: Response,
+        calls: list[ResponseFunctionToolCall], plan: RequestPlan,
+    ) -> None:
+        if plan.closing_for_repairs or plan.at_limit:
+            self.trace.finish(
+                "rejected", reason="The response requested a tool while tool use was closed.",
+                stop_reason="model_request_budget" if plan.iteration == self.settings.max_iterations else None,
+            )
+        else:
+            self.trace.finish("succeeded", reason="The response requested tool calls.")
+        # Continue tool planning with every original SDK output item intact,
+        # including encrypted reasoning and function-call linkage.
+        history.extend(cast(ResponseInputParam, [item.to_dict() for item in response.output]))
+        pending = PendingTools(
+            calls=calls, required_action=plan.required_action, require_comments=plan.require_comments,
+            closing_for_repairs=plan.closing_for_repairs, at_limit=plan.at_limit,
+        )
+        await self._save_execution_state(context, history, pending_tools=pending)
+        await self._complete_tool_round(context, history, pending)
+
+    def _validated_answer(self, response: Response, plan: RequestPlan, context: ContextBuilder) -> AnalysisContent:
+        """The final answer, or ValidationError or ValueError when it cannot be accepted."""
+        assert self.tools is not None
+        if plan.required_action:
+            raise ValueError(f"Complete {plan.required_action} before finalizing. {plan.action_instruction}")
+        content = AnalysisContent.model_validate_json(response.output_text)
+        validate_analysis(content, self.tools, context.visible_source_ids)
+        return content
+
+    def _reject_answer(
+        self, exc: ValueError, response: Response, plan: RequestPlan, context: ContextBuilder, clip: Clip,
+    ) -> str | None:
+        """Record a rejected answer and return the repair feedback for the next request."""
+        self.trace.finish(
+            "rejected", reason="The response did not pass final-answer validation.",
+            stop_reason="model_request_budget" if plan.iteration == self.settings.max_iterations else None,
+        )
+        detail = "Follow the required analysis JSON schema." if isinstance(exc, ValidationError) else str(exc)
+        next_step = "No correction budget remains."
+        if plan.iteration < self.settings.max_iterations:
+            next_step = "Retrying the required lookup." if plan.required_action else "Requesting a correction."
+        self.emit("warning", f"The answer failed validation: {detail} {next_step}")
+        # Retry from the same evidence checkpoint, not as a continuation of
+        # the rejected response. Its text is audit data, never new evidence.
+        repair_feedback = clip(
+            f"{detail} Available IDs: {sorted(context.visible_source_ids)}. "
+            "Regenerate consistent final JSON from the supplied evidence.",
+            REPAIR_RESERVE_TOKENS - 24,
+        )[0]
+        # Count the escaped instruction suffix, including its heading.
+        while context.count_tokens(json.dumps(
+            f"\nFinal-answer repair feedback: {repair_feedback}", ensure_ascii=False,
+        )) > REPAIR_RESERVE_TOKENS:
+            repair_feedback = clip(repair_feedback, max(0, context.count_tokens(repair_feedback) - 16))[0]
+        self.result.rejected_answers.append(RejectedAnswer(
+            request_number=plan.iteration, reason=detail, output_text=response.output_text,
+            output_sha256=hashlib.sha256(json.dumps({
+                "output": [item.to_dict() for item in response.output],
+                "output_text": response.output_text,
+            }, sort_keys=True).encode()).hexdigest(),
+            feedback=repair_feedback,
+        ))
+        if plan.required_action:
+            # A premature answer violates tool selection. Retry the
+            # required lookup as investigation, not final-answer repair.
+            return None
+        return repair_feedback

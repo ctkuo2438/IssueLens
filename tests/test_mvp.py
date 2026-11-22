@@ -211,7 +211,9 @@ class GitHubToolTests(unittest.IsolatedAsyncioTestCase):
                 await tools.execute("get_repo_readme", "{}")
 
 
-async def run_simulated_agent(responses, settings=SETTINGS, handler=github_response, encoding=None, *, required_lookups=False):
+async def run_simulated_agent(
+    responses, settings=SETTINGS, handler=github_response, encoding=None, *, required_lookups=False, trace=None,
+):
     """Isolate existing feature validators; new gate integration tests opt in explicitly."""
     github = httpx.AsyncClient(base_url="https://api.github.com", transport=httpx.MockTransport(handler))
     create = AsyncMock(side_effect=responses)
@@ -225,7 +227,7 @@ async def run_simulated_agent(responses, settings=SETTINGS, handler=github_respo
         patch("backend.app.agent.tiktoken.get_encoding", return_value=encoding if encoding is not None else OfflineEncoding()),
         lookup_policy,
     ):
-        result = await AgentRun(TARGET, settings, emit).run()
+        result = await AgentRun(TARGET, settings, emit, trace=trace).run()
     return result, create, emit
 
 
