@@ -1,14 +1,4 @@
-export type RepositoryLabel = {
-  name: string;
-  description: string;
-  color: string;
-};
-export type LabelRecommendation = {
-  name: string;
-  reason: string;
-  source_ids: string[];
-};
-type CitationSource = { id: string; title: string; url: string };
+import type { LabelRecommendation, RepositoryLabel, Source } from "./api-types";
 
 function LabelChip({
   name,
@@ -40,7 +30,7 @@ export function LabelRecommendations({
   existing: string[];
   catalogSourceId: string | null;
   complete: boolean | null;
-  sources: CitationSource[];
+  sources: Source[];
   accepted: boolean;
   active: boolean;
 }) {

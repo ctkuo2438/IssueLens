@@ -8,6 +8,18 @@ from urllib.parse import urlsplit
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
+class ApiModel(BaseModel):
+    """Data the API sends. The frontend's types are generated from these models.
+
+    A response always includes every field, but by default Pydantic marks a field
+    with a default as optional in the response schema. This setting marks it
+    required, so the OpenAPI schema and the generated types match what is sent.
+    It does not change validation or the validation schema sent to the model.
+    """
+
+    model_config = ConfigDict(json_schema_serialization_defaults_required=True)
+
+
 class IssueTarget(BaseModel):
     owner: str
     repo: str
@@ -46,18 +58,18 @@ class AnalysisRequest(BaseModel):
         return IssueTarget.from_url(value).url
 
 
-class GitHubUser(BaseModel):
+class GitHubUser(ApiModel):
     id: int = Field(strict=True, gt=0, le=2**63 - 1)
     login: str = Field(min_length=1, max_length=100)
 
 
-class Finding(BaseModel):
+class Finding(ApiModel):
     model_config = ConfigDict(extra="forbid")
     text: str
     source_ids: list[str]
 
 
-class IssueComparison(BaseModel):
+class IssueComparison(ApiModel):
     model_config = ConfigDict(extra="forbid")
     issue_number: int
     relationship: Literal["possible_duplicate", "related_but_different", "insufficient_evidence"]
@@ -67,20 +79,20 @@ class IssueComparison(BaseModel):
     source_ids: list[str]
 
 
-class LabelRecommendation(BaseModel):
+class LabelRecommendation(ApiModel):
     model_config = ConfigDict(extra="forbid")
     name: str
     reason: str
     source_ids: list[str]
 
 
-class RepositoryLabel(BaseModel):
+class RepositoryLabel(ApiModel):
     name: str
     description: str
     color: str = Field(pattern=r"^[0-9a-fA-F]{6}$")
 
 
-class TemplateField(BaseModel):
+class TemplateField(ApiModel):
     label: str
     description: str
     kind: str
@@ -88,7 +100,7 @@ class TemplateField(BaseModel):
     required_options: list[str] = Field(default_factory=list)
 
 
-class IssueTemplate(BaseModel):
+class IssueTemplate(ApiModel):
     path: str
     name: str
     description: str
@@ -99,7 +111,7 @@ class IssueTemplate(BaseModel):
     notes: list[str] = Field(default_factory=list)
 
 
-class AnalysisContent(BaseModel):
+class AnalysisContent(ApiModel):
     model_config = ConfigDict(extra="forbid")
     summary: Finding
     known_facts: list[Finding]
@@ -113,7 +125,7 @@ class AnalysisContent(BaseModel):
 SourceKind = Literal["issue", "comment", "readme", "search", "related_issue", "repo_labels", "issue_template", "template_lookup"]
 
 
-class Source(BaseModel):
+class Source(ApiModel):
     id: str
     kind: SourceKind
     title: str
@@ -121,7 +133,7 @@ class Source(BaseModel):
     excerpt: str
 
 
-class IssueInfo(BaseModel):
+class IssueInfo(ApiModel):
     title: str
     url: str
     number: int
@@ -133,7 +145,7 @@ class IssueInfo(BaseModel):
     closed_at: datetime | None = None
 
 
-class CommentCheck(BaseModel):
+class CommentCheck(ApiModel):
     status: Literal["not_read", "empty", "read", "partial", "failed"] = "not_read"
     reported_count: int | None = None
     attempted_pages: list[int] = Field(default_factory=list)
@@ -146,14 +158,14 @@ class CommentCheck(BaseModel):
     complete: bool = False
 
 
-class Usage(BaseModel):
+class Usage(ApiModel):
     model_requests: int = 0
     tool_calls: int = 0
     total_tokens: int = 0
     elapsed_seconds: float = 0
 
 
-class IssueCandidate(BaseModel):
+class IssueCandidate(ApiModel):
     number: int
     title: str
     url: str
@@ -161,7 +173,7 @@ class IssueCandidate(BaseModel):
     source_id: str | None = None
 
 
-class IssueSearch(BaseModel):
+class IssueSearch(ApiModel):
     query: str
     total_count: int
     incomplete_results: bool
@@ -169,7 +181,7 @@ class IssueSearch(BaseModel):
     source_id: str
 
 
-class SimilarIssueCheck(BaseModel):
+class SimilarIssueCheck(ApiModel):
     search_status: Literal["not_checked", "empty", "candidates_found", "partial", "failed"] = "not_checked"
     attempted_queries: list[str] = Field(default_factory=list)
     failed_queries: list[str] = Field(default_factory=list)
@@ -181,7 +193,7 @@ class SimilarIssueCheck(BaseModel):
     comparison_status: Literal["not_checked", "not_needed", "compared", "partial", "unavailable"] = "not_checked"
 
 
-class ContextSourceDecision(BaseModel):
+class ContextSourceDecision(ApiModel):
     source_id: str
     kind: SourceKind
     action: Literal["kept", "omitted", "reused", "redundant"]
@@ -190,7 +202,7 @@ class ContextSourceDecision(BaseModel):
     priority: int | None = None
 
 
-class ContextBuildReport(BaseModel):
+class ContextBuildReport(ApiModel):
     request_number: int
     budget_tokens: int
     estimated_tokens_before: int
@@ -207,7 +219,7 @@ class ContextBuildReport(BaseModel):
     reused_call_ids: list[str] = Field(default_factory=list)
 
 
-class RejectedAnswer(BaseModel):
+class RejectedAnswer(ApiModel):
     request_number: int
     reason: str
     output_text: str
@@ -215,7 +227,7 @@ class RejectedAnswer(BaseModel):
     feedback: str
 
 
-class AnalysisResult(BaseModel):
+class AnalysisResult(ApiModel):
     analysis_date: date | None = None
     issue: IssueInfo | None = None
     content: AnalysisContent | None = None
@@ -243,14 +255,22 @@ TERMINAL_STATUSES = {"completed", "partial", "failed", "cancelled"}
 EventKind = Literal["status", "model", "tool", "warning"]
 
 
-class ProgressEvent(BaseModel):
+class ProgressEvent(ApiModel):
     id: int
     kind: EventKind
     message: str
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
-class JobSnapshot(BaseModel):
+class Health(ApiModel):
+    status: Literal["ok"]
+    openai_configured: bool
+    github_authenticated: bool
+    storage: Literal["postgresql", "in-memory"]
+    model: str
+
+
+class JobSnapshot(ApiModel):
     job_id: str
     issue_url: str
     status: JobStatus

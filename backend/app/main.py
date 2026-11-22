@@ -13,7 +13,7 @@ import httpx
 from backend.app.auth import AuthSession, GitHubAuth, PRIVATE_HEADERS, redact_oauth_callback
 from backend.app.config import GITHUB_CALLBACK_PATH, Settings
 from backend.app.jobs import JobService, MemoryJobService, PostgresJobQueue, QueueFullError
-from backend.app.models import AnalysisRequest, IssueTarget, JobSnapshot, TERMINAL_STATUSES
+from backend.app.models import AnalysisRequest, Health, IssueTarget, JobSnapshot, TERMINAL_STATUSES
 from backend.app.storage import PostgresAnalysisStore, StorageError, STORAGE_UNAVAILABLE
 from backend.app.trace import AnalysisTrace
 
@@ -85,13 +85,13 @@ def create_app(
         app.add_api_route(GITHUB_CALLBACK_PATH, auth.callback, methods=["GET"], include_in_schema=False)
         app.add_api_route("/api/v1/auth/logout", auth.logout, methods=["POST"], status_code=204)
 
-    @app.get("/api/v1/health")
-    async def health() -> dict[str, object]:
-        return {
-            "status": "ok", "openai_configured": bool(config.openai_api_key),
-            "github_authenticated": bool(config.github_token),
-            "storage": "postgresql" if database is not None else "in-memory", "model": config.model,
-        }
+    @app.get("/api/v1/health", response_model=Health)
+    async def health() -> Health:
+        return Health(
+            status="ok", openai_configured=bool(config.openai_api_key),
+            github_authenticated=bool(config.github_token),
+            storage="postgresql" if database is not None else "in-memory", model=config.model,
+        )
 
     @app.post("/api/v1/analyses", response_model=JobSnapshot, status_code=status.HTTP_202_ACCEPTED)
     async def create_analysis(body: AnalysisRequest, owner_id: int | None = Depends(analysis_owner)) -> JobSnapshot:

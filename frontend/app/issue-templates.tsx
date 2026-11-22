@@ -1,26 +1,4 @@
-export type IssueTemplate = {
-  path: string;
-  name: string;
-  description: string;
-  format: "form" | "markdown";
-  source_id: string;
-  requirements_known: boolean;
-  notes: string[];
-  fields: {
-    label: string;
-    description: string;
-    kind: string;
-    required: boolean | null;
-    required_options: string[];
-  }[];
-};
-
-type TemplateSource = {
-  id: string;
-  title: string;
-  url: string;
-  excerpt: string;
-};
+import type { IssueTemplate, Source } from "./api-types";
 
 export function IssueTemplates({
   templates,
@@ -32,7 +10,7 @@ export function IssueTemplates({
   templates: IssueTemplate[];
   lookupSourceId: string | null;
   complete: boolean | null;
-  sources: TemplateSource[];
+  sources: Source[];
   active: boolean;
 }) {
   const lookup = sources.find((source) => source.id === lookupSourceId);

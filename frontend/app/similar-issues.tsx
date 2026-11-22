@@ -1,30 +1,12 @@
-export type IssueComparison = {
-  issue_number: number;
-  relationship:
-    "possible_duplicate" | "related_but_different" | "insufficient_evidence";
-  reason: string;
-  similarities: string[];
-  differences: string[];
-  source_ids: string[];
-};
+import type {
+  IssueCandidate,
+  IssueComparison,
+  IssueSearch,
+  Source,
+} from "./api-types";
 
-export type IssueCandidate = {
-  number: number;
-  title: string;
-  url: string;
-  state: string;
-  source_id: string | null;
-};
-
-export type IssueSearch = {
-  query: string;
-  total_count: number;
-  incomplete_results: boolean;
-  candidate_numbers: number[];
-  source_id: string;
-};
-
-const LABELS = {
+// A relationship the backend adds or removes fails type checking here.
+const LABELS: Record<IssueComparison["relationship"], string> = {
   possible_duplicate: "Possible duplicate",
   related_but_different: "Related but different",
   insufficient_evidence: "Insufficient evidence",
@@ -39,7 +21,7 @@ export function SimilarIssues({
   candidates: IssueCandidate[];
   searches: IssueSearch[];
   comparisons: IssueComparison[];
-  sources: { id: string; url: string; title: string }[];
+  sources: Source[];
 }) {
   const comparedNumbers = new Set(comparisons.map((item) => item.issue_number));
   const orderedCandidates = [...candidates].sort(

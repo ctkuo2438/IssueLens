@@ -1,78 +1,19 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
-import { IssueTemplates, type IssueTemplate } from "./issue-templates";
 import {
-  LabelRecommendations,
-  type LabelRecommendation,
-  type RepositoryLabel,
-} from "./label-recommendations";
-import {
-  SimilarIssues,
-  type IssueCandidate,
-  type IssueComparison,
-  type IssueSearch,
-} from "./similar-issues";
+  isFinished,
+  type AuthSession,
+  type Finding,
+  type Health,
+  type Job,
+  type Progress,
+  type Source,
+} from "./api-types";
+import { IssueTemplates } from "./issue-templates";
+import { LabelRecommendations } from "./label-recommendations";
+import { SimilarIssues } from "./similar-issues";
 
-type Source = {
-  id: string;
-  kind: string;
-  title: string;
-  url: string;
-  excerpt: string;
-};
-type Finding = { text: string; source_ids: string[] };
-type Content = {
-  summary: Finding;
-  known_facts: Finding[];
-  missing_information: string[];
-  draft_reply: string;
-  limitations: string[];
-  comparisons: IssueComparison[];
-  label_recommendations: LabelRecommendation[];
-};
-type Progress = {
-  id: number;
-  kind: string;
-  message: string;
-  created_at: string;
-};
-type Job = {
-  job_id: string;
-  issue_url: string;
-  status: string;
-  error: string | null;
-  events: Progress[];
-  result: {
-    issue: {
-      title: string;
-      number: number;
-      state: string;
-      author: string;
-      labels: string[];
-      comment_count: number;
-    } | null;
-    content: Content | null;
-    sources: Source[];
-    candidates: IssueCandidate[];
-    searches: IssueSearch[];
-    repo_labels: RepositoryLabel[];
-    labels_source_id: string | null;
-    labels_complete: boolean | null;
-    issue_templates: IssueTemplate[];
-    templates_source_id: string | null;
-    templates_complete: boolean | null;
-    limitations: string[];
-    usage: {
-      model_requests: number;
-      tool_calls: number;
-      total_tokens: number;
-      elapsed_seconds: number;
-    };
-  } | null;
-};
-type Health = { openai_configured: boolean; github_authenticated: boolean };
-type AuthSession = { enabled: boolean; user: { login: string } | null };
 type DraftEdit = { jobId: string; text: string };
 type CopyFeedback = DraftEdit & { status: "copied" | "error" };
 type IconName =
@@ -88,7 +29,6 @@ type IconName =
   | "stop";
 
 const EXAMPLE = "https://github.com/pallets/flask/issues/6146";
-const FINISHED = new Set(["completed", "partial", "failed", "cancelled"]);
 
 function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
   const paths: Record<IconName, React.ReactNode> = {
@@ -221,7 +161,7 @@ export default function Home() {
   const stream = useRef<EventSource | null>(null);
   // Starting a new analysis bumps this, so a slower load of the requested one is ignored.
   const loadVersion = useRef(0);
-  const active = submitting || !!(job && !FINISHED.has(job.status));
+  const active = submitting || !!(job && !isFinished(job.status));
   const jobIssuePath = job ? issuePath(job.issue_url) : null;
   const signInRequired = session?.enabled && !session.user;
   const loginHref = requestedAnalysis
@@ -277,7 +217,7 @@ export default function Home() {
             : [...previous, item],
         );
         setJob((previous) =>
-          previous && !FINISHED.has(previous.status)
+          previous && !isFinished(previous.status)
             ? { ...previous, status: "running" }
             : previous,
         );
@@ -301,7 +241,7 @@ export default function Home() {
           if (response.ok) {
             const latest = (await response.json()) as Job;
             if (stream.current !== source) return;
-            if (FINISHED.has(latest.status)) {
+            if (isFinished(latest.status)) {
               showResult(latest);
               return;
             }
@@ -377,7 +317,7 @@ export default function Home() {
         setJob(analysis);
         setUrl(analysis.issue_url);
         setEvents(analysis.events);
-        if (!FINISHED.has(analysis.status))
+        if (!isFinished(analysis.status))
           watch(id, analysis.events.at(-1)?.id || 0);
       })
       .catch((reason: Error) => {
@@ -443,7 +383,7 @@ export default function Home() {
       }
       if (!response.ok) throw new Error(await errorMessage(response));
       const data = (await response.json()) as Job;
-      if (FINISHED.has(data.status)) {
+      if (isFinished(data.status)) {
         stopWatching();
         setJob(data);
         setEvents(data.events);

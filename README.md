@@ -119,6 +119,8 @@ pyright --pythonpath .venv/bin/python backend evaluation scripts
 npm --prefix frontend run typecheck
 ```
 
+The frontend's API types are generated from the backend's schema. After changing a model the API returns, run `uv run --locked python scripts/export_openapi.py` and `npm --prefix frontend run api:types`; the tests and the type check fail until both are current.
+
 The tests simulate GitHub and the model, so they need no keys. They skip 28 PostgreSQL checks unless `ISSUELENS_TEST_DATABASE_URL` points to a dedicated database whose name ends in `_test`. `scripts/evaluate.py` and `scripts/acceptance.py` call the real model and cost money.
 
 ## Guides

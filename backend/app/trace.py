@@ -4,10 +4,10 @@ from datetime import UTC, datetime
 import time
 from typing import Literal
 
-from pydantic import AwareDatetime, BaseModel, Field, PrivateAttr
+from pydantic import AwareDatetime, Field, PrivateAttr
 
 from backend.app.checkpoint import ScheduledRetry
-from backend.app.models import JobStatus
+from backend.app.models import ApiModel, JobStatus
 
 
 AttemptKind = Literal["model", "tool"]
@@ -16,7 +16,7 @@ AttemptOutcome = Literal[
 ]
 
 
-class TraceAttempt(BaseModel):
+class TraceAttempt(ApiModel):
     id: int
     kind: AttemptKind
     name: str
@@ -31,7 +31,7 @@ class TraceAttempt(BaseModel):
     retry_scheduled_for: AwareDatetime | None = None
 
 
-class TraceLog(BaseModel):
+class TraceLog(ApiModel):
     attempts: list[TraceAttempt] = Field(default_factory=list)
     stop_reason: str | None = None
     _started: float | None = PrivateAttr(default=None)

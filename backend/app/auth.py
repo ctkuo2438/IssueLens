@@ -11,10 +11,9 @@ from urllib.parse import urlencode
 from fastapi import HTTPException, Request, Response
 from fastapi.responses import RedirectResponse
 import httpx
-from pydantic import BaseModel
 
 from backend.app.config import GITHUB_CALLBACK_PATH, GitHubOAuthConfig
-from backend.app.models import GitHubUser
+from backend.app.models import ApiModel, GitHubUser
 from backend.app.storage import PostgresAnalysisStore
 
 
@@ -28,7 +27,7 @@ TOKEN_FORMAT = re.compile(r"[A-Za-z0-9_-]{43}")
 JOB_ID_FORMAT = re.compile(r"[a-f0-9]{32}")
 
 
-class AuthSession(BaseModel):
+class AuthSession(ApiModel):
     enabled: bool
     user: GitHubUser | None = None
 
