@@ -134,7 +134,7 @@ class JobManager:
         job.snapshot = final
         job.changed.set()
 
-    async def _run(self, job: Job, checkpoint: AgentCheckpoint | None, save_checkpoint: CheckpointWriter | None) -> None:
+    async def _run(self, job: Job, checkpoint: AgentCheckpoint | None, save_checkpoint: CheckpointWriter | None) -> None:  # noqa: C901, PLR0915 - predates the lint limits
         run: AgentRun | None = None
         result: AnalysisResult | None = None
         final_status: JobStatus = "failed"

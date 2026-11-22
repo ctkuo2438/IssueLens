@@ -71,7 +71,7 @@ class ContextBuilder:
         self._seen_results = dict(state.seen_results)
         self.visible_source_ids = set(state.visible_source_ids)
 
-    def build(
+    def build(  # noqa: C901, PLR0915 - predates the lint limits
         self, history: ResponseInputParam, *, instructions: str,
         tools: list[FunctionToolParam], text_format: ResponseTextConfigParam,
         request_number: int, focus: str, repair_reserve_tokens: int = 0,

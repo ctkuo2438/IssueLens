@@ -117,7 +117,7 @@ class AgentRun:
 
 
     # The snapshot method collects the current state of the analysis and returns it as an AnalysisResult object.
-    def snapshot(self, reason: str | None = None, *, stop_reason: str | None = None) -> AnalysisResult:
+    def snapshot(self, reason: str | None = None, *, stop_reason: str | None = None) -> AnalysisResult:  # noqa: C901 - predates the lint limits
         if stop_reason is not None:
             self.trace.stop_reason = stop_reason
         if self.tools is not None:
@@ -380,7 +380,7 @@ class AgentRun:
         self.emit("warning", f"{name}: {message}")
         return {"error": message}
 
-    async def _execute_tool(
+    async def _execute_tool(  # noqa: C901 - predates the lint limits
         self, context: ContextBuilder, history: ResponseInputParam, pending: PendingTools, retry: ScheduledRetry | None,
     ) -> dict[str, Any]:
         assert self.tools is not None
@@ -488,7 +488,7 @@ class AgentRun:
             ))
         return result
 
-    async def _investigate(self) -> AnalysisResult:
+    async def _investigate(self) -> AnalysisResult:  # noqa: C901, PLR0915 - predates the lint limits
         """Run the bounded loop: plan a request, fit it in context, send it, then answer or use tools."""
         checkpoint = self.checkpoint
         self._announce_start()

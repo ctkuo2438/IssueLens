@@ -22,7 +22,7 @@ ANALYSIS_NOT_FOUND = "Analysis not found. Check the task URL and the configured 
 HEARTBEAT_SECONDS = 15
 
 
-def create_app(
+def create_app(  # noqa: C901, PLR0915 - predates the lint limits
     settings: Settings | None = None, *, oauth_transport: httpx.AsyncBaseTransport | None = None,
 ) -> FastAPI:
     """Build the API. Serve it with `uvicorn --factory backend.app.main:create_app`.

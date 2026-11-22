@@ -257,7 +257,7 @@ class GitHubTools(GitHubToolState):
             source_ids=source_ids, has_next_page=has_next, count_mismatch=mismatch, complete=complete,
         )
 
-    async def _get(
+    async def _get(  # noqa: C901 - predates the lint limits
         self, path: str, params: dict[str, int | str] | None = None, *, allow_not_found: bool = False,
     ) -> httpx.Response:
         if self.require_public and not self.repository_public and path != self.target.api_path:
@@ -480,7 +480,7 @@ class GitHubTools(GitHubToolState):
             "scope": "Only included active labels applicable to issues can be recommended. PR-only labels remain in the catalog as evidence but are ineligible for this target. No GitHub data was modified.",
         }
 
-    async def get_issue_templates(self) -> dict[str, Any]:
+    async def get_issue_templates(self) -> dict[str, Any]:  # noqa: C901, PLR0915 - predates the lint limits
         if self.issue is None:
             raise ToolError("Read the target with get_issue before checking issue templates.")
         directory = ".github/ISSUE_TEMPLATE"

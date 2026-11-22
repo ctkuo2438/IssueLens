@@ -87,7 +87,7 @@ def fixture_settings(database_url):
     return replace(SETTINGS, database_url=database_url, context_tokens=12_000, reasoning_effort="medium")
 
 
-async def run_fixture_worker(directory: Path, generation: str, scenario: str) -> None:
+async def run_fixture_worker(directory: Path, generation: str, scenario: str) -> None:  # noqa: C901 - predates the lint limits
     """Use the normal Worker and SDK with local responses and a controlled interruption."""
     trace = directory / f"{generation}.jsonl"
 
@@ -165,7 +165,7 @@ class WorkerCheckpointTests(unittest.IsolatedAsyncioTestCase):
         with TemporaryDirectory() as temporary:
             await self.check_restart(database_url, Path(temporary), signal.SIGTERM, scenario="retry_wait")
 
-    async def check_restart(self, database_url, directory, stop_signal, *, scenario="tool_interruption"):
+    async def check_restart(self, database_url, directory, stop_signal, *, scenario="tool_interruption"):  # noqa: C901, PLR0915 - predates the lint limits
         processes = []
         job_id = None
 

@@ -83,7 +83,7 @@ def functional_checks(result: AnalysisResult) -> dict[str, bool | None]:
     }
 
 
-async def main() -> Path:
+async def main() -> Path:  # noqa: PLR0915 - predates the lint limits
     # Review criteria remain in this runner, never in model input or tool responses.
     case_bytes = CASES_PATH.read_bytes()
     cases = AcceptanceSet.model_validate_json(case_bytes)

@@ -27,7 +27,7 @@ DATASET_PATH = ROOT / "evaluation" / "cases.json"
 OUTPUT_ROOT = ROOT / "evidence" / "m2" / "evaluations"
 
 
-async def main() -> Path:
+async def main() -> Path:  # noqa: PLR0915 - predates the lint limits
     # Validate references before reading credentials or starting any model request.
     dataset_bytes = DATASET_PATH.read_bytes()
     dataset = Dataset.model_validate_json(dataset_bytes)

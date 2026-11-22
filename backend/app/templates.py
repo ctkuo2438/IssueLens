@@ -26,7 +26,7 @@ def load_yaml(text: str) -> object:
     return yaml.safe_load(text)
 
 
-def parse_template(path: str, text: str, source_id: str) -> IssueTemplate:
+def parse_template(path: str, text: str, source_id: str) -> IssueTemplate:  # noqa: C901, PLR0915 - predates the lint limits
     template = IssueTemplate(
         path=path, name=path.rsplit("/", 1)[-1], description="",
         format="markdown" if path.lower().endswith(".md") else "form", source_id=source_id,
