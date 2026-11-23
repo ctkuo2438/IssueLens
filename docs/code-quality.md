@@ -108,7 +108,7 @@ The frontend marks exceptions with `// eslint-disable-next-line <rule> -- <reaso
 
 | Line | Rule | Plan |
 | --- | --- | --- |
-| `Home` | `complexity` (125) | Split later. It is the whole page, marked `predates the lint limits`. |
+| `Home` | `complexity` (125) | Keep while the frontend stays minimal; MCP is the focus. It is the whole page, marked `predates the lint limits`. |
 | The mount effect's `setRequestedAnalysis` | `react-hooks/set-state-in-effect` | Keep. The server render cannot read the URL, so the page sets the requested analysis and the sign-in error once after hydration, React's two-pass pattern. |
 | The brand link `<a href="/">` | `@next/next/no-html-link-for-pages` | Keep. A full load clears the workspace. A `<Link>` would keep the old analysis on screen, because a client navigation preserves component state. |
 
@@ -148,7 +148,7 @@ The recording and comparison scripts were temporary and are not kept.
 
 ## Limits
 
-- CI runs after a push, not before a commit. There is no pre-commit hook, and a failing run blocks nothing unless branch protection is turned on for `main`.
+- CI runs after a push, not before a commit. There is no pre-commit hook, and a failing run blocks nothing, because branch protection stays off while one person develops and pushes to `main`.
 - The workflow was not checked by actionlint or a local Docker container; GitHub's runs are its check.
 - CI pins Pyright to 1.1.411, but the README's local command runs whatever Pyright is installed.
 - `.python-version` names only 3.13, so CI installs the newest 3.13 release while a local environment may keep an older one. The first run found a test that passed only on the older one.
@@ -195,4 +195,4 @@ Exercise: in `page.tsx`, replace the brand link's `<a>` with `<Link>` from `next
 
 ## Next step
 
-Watch the first CI run on GitHub, then consider branch protection for `main`, so a failing run blocks merging.
+Resume lint batches 2 to 4. `snapshot`, `_execute_tool`, `jobs.py`'s `_run` and `context.py`'s `build` all run on every MCP call.
