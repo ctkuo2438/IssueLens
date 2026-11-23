@@ -117,6 +117,8 @@ class ToolCall:
     run: Callable[["GitHubTools", BeforeRead | None], Awaitable[dict[str, Any]]]
 
 
+# Add a ToolSpec to TOOL_SPECS to register a tool. TOOL_REGISTRY, which
+# GitHubTools.execute uses, and TOOLS are both built from TOOL_SPECS.
 @dataclass(frozen=True)
 class ToolSpec[A: EmptyArguments]:
     """Everything about one tool: the model's definition, its arguments and the method it runs.
