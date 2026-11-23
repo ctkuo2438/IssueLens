@@ -146,7 +146,7 @@ Each milestone has one guide with its design, verification, limits, and exercise
 - **M1 to M3** are complete.
 - **M2's agent behavior is frozen.** Its final acceptance on three new issues gave an answer for each, and one ended `partial`.
 - **M4** adds optional GitHub sign-in and per-account access. The live two-account check has not been run.
-- **M5**'s installed MCP server analyzed a real issue from both Claude Code and Codex, and `v0.1.0` installs from GitHub.
+- **M5**'s installed MCP server analyzed a real issue from both Claude Code and Codex, and `v0.2.0` installs from GitHub.
 
 The analysis reports are still awaiting human review, and none of these results measure production accuracy. Known limits are listed in [M2](docs/m2.md#known-limits) and [M5](docs/m5.md).
 

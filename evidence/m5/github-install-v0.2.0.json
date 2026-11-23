@@ -1,0 +1,40 @@
+{
+  "verified_on_utc": "2026-11-23",
+  "scope": "After pushing tag v0.2.0: install it from GitHub and check that the MCP server starts and lists its tool. No tool was called, so no model or GitHub API request was made.",
+  "tag": "v0.2.0, annotated, pointing to 801c740",
+  "command": "uvx --from git+https://github.com/ctkuo2438/IssueLens@v0.2.0 issuelens-mcp",
+  "environment": "only HOME, PATH (the uv directory and system directories) and UV_CACHE_DIR set to an empty scratch directory for the first start; working directory outside the checkout",
+  "python_note": "Python 3.13 was already installed in uv's own directory, which the empty cache does not cover, so the first start did not download Python.",
+  "client": "A probe script sent initialize, notifications/initialized and tools/list, then closed stdin.",
+  "starts": [
+    {
+      "cache": "empty",
+      "ready_seconds": 5.9,
+      "note": "uv cloned the tag and installed 38 packages"
+    },
+    {
+      "cache": "filled by the first start",
+      "ready_seconds": 1.04
+    }
+  ],
+  "protocol_version": "2025-11-25",
+  "server_info": {
+    "name": "issuelens",
+    "title": "IssueLens",
+    "version": "0.2.0"
+  },
+  "tools": [
+    "analyze_github_issue"
+  ],
+  "exit_codes": [
+    0,
+    0
+  ],
+  "compared_with_v0_1_0": "github-install.json measured 10.7 and 1.5 seconds for @v0.1.0 in a clean environment; network speed differs between runs, so the README keeps startup_timeout_sec = 30.",
+  "release_page": "https://github.com/ctkuo2438/IssueLens/releases/tag/v0.2.0, marked as a pre-release",
+  "not_verified": [
+    "An analysis through this GitHub install",
+    "Claude Code or Codex starting this install",
+    "A machine without Python 3.13"
+  ]
+}
