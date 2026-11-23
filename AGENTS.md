@@ -23,6 +23,7 @@
 - Start the app with `uv run --locked python scripts/dev.py`. See [README](README.md) for setup and [M3](docs/m3.md#setup) for PostgreSQL and independent restart commands.
 - Run the relevant offline checks for code changes. The Python suite command is `uv run --locked python -W error::RuntimeWarning -m unittest discover -s tests -q`. For PostgreSQL integration use `ISSUELENS_TEST_DATABASE_URL` with a dedicated database ending in `_test`. Check SDK call types with Pyright when editing API calls, use the SDK type aliases, and serialize responses at the replay boundary.
 - Run `uv run --locked ruff check` for Python changes and `npm --prefix frontend run lint` for frontend changes. Split a function that exceeds a lint limit. Add a `# noqa: <code> - <reason>` or `// eslint-disable-next-line <rule> -- <reason>` exception only when splitting or following the rule would harm the code's structure or behavior, and name each new exception in your report.
+- [CI](.github/workflows/ci.yml) runs the Python suite with PostgreSQL, ruff, Pyright, and the frontend type check and lint on pushes to `main` and on pull requests. Add a new check to CI as well as to the README, and keep each action pinned to a commit SHA.
 - Distinguish simulated checks, real API calls, and user review. Keep review expectations out of model requests, leave human review pending until performed, and record failed, partial, and unrun cases honestly.
 
 ## Docs and evidence

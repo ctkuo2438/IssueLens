@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Actions are pinned to commit SHAs, so a moved tag cannot change what runs.
+jobs:
+  backend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      # Matches the M3 setup: PostgreSQL 14, the issuelens role, trust authentication, C locale.
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_USER: issuelens
+          POSTGRES_DB: issuelens_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_INITDB_ARGS: --encoding=UTF8 --locale=C
+        ports:
+          - 5432:5432
+        # Checking over TCP waits for the final server; the image's setup server only listens on a socket.
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -U issuelens -d issuelens_test"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
+    env:
+      ISSUELENS_TEST_DATABASE_URL: postgresql://issuelens@127.0.0.1:5432/issuelens_test
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.11.32"
+          enable-cache: true
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+      - run: uv sync --locked
+      - name: Tests, including PostgreSQL
+        shell: bash
+        run: |
+          uv run --locked python -W error::RuntimeWarning -m unittest discover -s tests -q 2>&1 | tee "$RUNNER_TEMP/tests.txt"
+          # A skipped test here means the database checks did not run.
+          if grep -q "skipped=" "$RUNNER_TEMP/tests.txt"; then
+            echo "::error::Tests were skipped; the PostgreSQL checks must run in CI."
+            exit 1
+          fi
+      - run: uv run --locked ruff check
+      - run: npx --yes pyright@1.1.411 --pythonpath .venv/bin/python backend evaluation scripts
+
+  frontend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      # A fresh checkout has no .next, so generate the route types that tsc validates.
+      - run: npx next typegen
+      - run: npm run typecheck
+      - run: npm run lint

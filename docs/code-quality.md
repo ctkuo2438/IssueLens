@@ -10,7 +10,7 @@ In November 2026 the codebase was reviewed one layer at a time, following the in
 
 Each layer catches what the one above lets through. The more the upper layers check mechanically, the less depends on review.
 
-Layer 1, architecture and API design, has six of its seven items done. Layer 2 adds Python and frontend lint with complexity and length limits. Ten Python functions and the frontend's `Home` remain marked as exceptions. Splitting the Python ones in batches 2 to 4 is paused, and item 7 and layers 3 to 5 have not started. Every change kept the API, the `JobSnapshot` contract, the model's prompts and tools, and `checkpoint_signature` unchanged.
+Layer 1, architecture and API design, has six of its seven items done. Layer 2 adds Python and frontend lint with complexity and length limits. Ten Python functions and the frontend's `Home` remain marked as exceptions. CI runs every check on each push to `main` and each pull request. Splitting the Python functions in batches 2 to 4 is paused, and item 7 and layers 3 to 5 have not started. Every change kept the API, the `JobSnapshot` contract, the model's prompts and tools, and `checkpoint_signature` unchanged.
 
 ## Use
 
@@ -75,6 +75,17 @@ ruff is a development dependency pinned in `uv.lock`. It checks the repository i
 
 ESLint 10 is pinned in `package-lock.json`. ESLint 9 is no longer supported. Three plugins inside `eslint-config-next` (`react`, `jsx-a11y` and `import`) do not list ESLint 10 as a peer yet, so `npm install` warns `ERESOLVE overriding peer dependency`. Next.js documents ESLint 10 as supported.
 
+### CI
+
+[`.github/workflows/ci.yml`](../.github/workflows/ci.yml) runs two jobs in parallel on each push to `main`, each pull request, and on demand:
+
+| Job | Steps |
+| --- | --- |
+| `backend` | `uv sync --locked`, the Python suite against a PostgreSQL 14 service container, `ruff check`, and Pyright 1.1.411. The job fails if any test is skipped, so the database checks cannot be dropped silently. |
+| `frontend` | `npm ci`, `next typegen`, `npm run typecheck`, and `npm run lint`. A fresh checkout has no `.next`, so `next typegen` writes the route types that `tsc` then validates. |
+
+The container matches the [M3 setup](m3.md#setup): the `issuelens` role, trust authentication, UTF-8 and the C locale. Each action is pinned to a commit SHA, so a moved tag cannot change what runs. The workflow can only read the repository, and the checkout does not keep its token.
+
 ### Exceptions
 
 Split a function that exceeds a limit. If splitting would harm the code's structure, mark it with `# noqa: <code> - <reason>` instead, and name the new exception in your report. `AGENTS.md` asks agents to follow the same rule.
@@ -129,13 +140,17 @@ The recording and comparison scripts were temporary and are not kept.
 | API types | offline | A stale schema, unregenerated types, a renamed field, a model outside `ApiModel` and a new status each fail a check. | [test_api_contract.py](../tests/test_api_contract.py), commit message of `9753c52` |
 | Lint limits | offline | Removing a marker, adding a branch or statements past a limit, and claiming an unneeded exception each fail `ruff check`. | Commit messages of `f6eaf67` and `89f4ebb` |
 | Frontend lint | offline | Removing any of the three markers, a stale disable comment, an unused variable, 12 `if`s or 12 `&&`s, 51 statements, a conditional hook and `any` each fail `npm run lint`. Complexity 12 and 50 statements pass. A clean `npm ci` installs from the lockfile. | [eslint.config.mjs](../frontend/eslint.config.mjs), commit message |
+| CI | offline simulation | A clean clone with an empty environment passed every CI step against the local PostgreSQL 14: 403 tests with none skipped, ruff, Pyright, typegen, the type check and lint. The skip guard passes `OK` and fails `OK (skipped=28)` and a test failure under the runner's `bash -eo pipefail`. | [ci.yml](../.github/workflows/ci.yml) |
 | Template parser split | offline differential | The old and new parsers agreed on 20,002 templates. A planted note-order change was caught while the template tests passed. | Commit message of `a3e58b2` |
 | GitHub status and template reading | offline | The new tests pass on the old code, and six planted bugs each fail one. | [test_github_status.py](../tests/test_github_status.py), [test_templates.py](../tests/test_templates.py) |
 | Full suite | real PostgreSQL | Passes with `ISSUELENS_TEST_DATABASE_URL` set, none skipped. | [M3 setup](m3.md#setup) |
 
 ## Limits
 
-- Nothing runs the checks automatically. There is no CI and no pre-commit hook, so the checks run only when a person or agent runs them.
+- CI runs after a push, not before a commit. There is no pre-commit hook, and a failing run blocks nothing unless branch protection is turned on for `main`.
+- Before its first run, the workflow was not checked by actionlint or a local Docker container. The container's settings were checked only through the identical local cluster.
+- CI pins Pyright to 1.1.411, but the README's local command runs whatever Pyright is installed.
+- The pinned actions and the `postgres:14` image are updated by hand. Dependabot is not set up, and PostgreSQL 14 reached its end of life in November 2026.
 - A function marked `noqa` is not checked at all, so it can grow without notice.
 - Complexity and statement counts ignore nesting depth. `quality.py`'s `label_consistency_fields` nests five levels deep and still passes both limits.
 - ruff's statement count differs slightly from pylint's, for example in nested functions, so counts near 50 can differ by a few.
@@ -154,6 +169,8 @@ The recording and comparison scripts were temporary and are not kept.
 - **Recording and differential testing versus unit tests:** the first two prove that nothing changed, including cases nobody thought of, but they also preserve old bugs. Unit tests state the rules that later changes must keep.
 - **ruff versus pylint:** ruff is fast and holds every rule in one tool. pylint has more inference-based rules, which Pyright covers here.
 - **ESLint 10 versus 9:** 9 installs without warnings but is no longer supported. 10 is current and supported by Next.js, at the cost of peer warnings until the plugins catch up.
+- **PostgreSQL in CI versus skipping it:** the database checks add about 40 seconds locally, but M3's storage, checkpoints and Worker resume are checked on every push.
+- **SHA pins versus version tags:** a SHA always runs the same code. A tag gets fixes automatically but can be moved to different code.
 - **Following a lint rule versus marking it:** a rule states the usual case. The brand link and the mount effect are deliberate exceptions, and following the rule there would change what the page does.
 
 Exercise: remove the marker on `agent.py`'s `snapshot` and run `uv run --locked ruff check` to see its score. Restore the marker, move the limitation rules into their own function, and run ruff again. If `snapshot` is now at 12 or below, RUF100 asks you to remove the marker.
@@ -171,8 +188,9 @@ Exercise: in `page.tsx`, replace the brand link's `<a>` with `<Link>` from `next
 - `f6eaf67`: Limit function complexity and length with ruff, marking 13 exceptions.
 - `89f4ebb`: Add pyflakes, and ask agents in `AGENTS.md` to run ruff.
 - `a3e58b2`: Split `_get`, `get_issue_templates` and `parse_template`, leaving 10 exceptions.
-- Frontend lint: ESLint with Next.js's rules and the backend's limits, marking `Home` and two deliberate patterns.
+- `9580db7`: Lint the frontend with ESLint and the backend's limits, marking `Home` and two deliberate patterns.
+- CI: run every check in GitHub Actions, with the tests against PostgreSQL.
 
 ## Next step
 
-Run the checks automatically on each push, so lint, types and tests no longer depend on someone remembering to run them.
+Watch the first CI run on GitHub, then consider branch protection for `main`, so a failing run blocks merging.
