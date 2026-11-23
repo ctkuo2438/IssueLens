@@ -20,23 +20,8 @@ M2 is frozen. Start with the [frozen acceptance review](m2/acceptance/20261110T0
 | --- | --- | --- |
 | [acceptance/20261110T065740_115528Z/](m2/acceptance/20261110T065740_115528Z/review.md) | Frozen acceptance on HTTPX #3602, pytest #14560, and Ruff #29177: [review](m2/acceptance/20261110T065740_115528Z/review.md), [raw report](m2/acceptance/20261110T065740_115528Z/report.json), [assistant source check](m2/acceptance/20261110T065740_115528Z/assistant-review.json), [protocol](m2/acceptance/20261110T065740_115528Z/protocol.json), [cases](m2/acceptance/20261110T065740_115528Z/cases.json), [selection](m2/acceptance/20261110T065740_115528Z/selection.json) | Real model and GitHub |
 | [evaluations/20261109T083809_862702Z/](m2/evaluations/20261109T083809_862702Z/report.json) | Latest run on five fixed fictional snapshots | Real model, fictional GitHub data |
-| [server-reads/](m2/server-reads/) | After the freeze, with the server reads: HTTPX #3602 at 12,000 before ([20261123T194608Z](m2/server-reads/20261123T194608Z/report.json)) and after ([20261123T200214Z](m2/server-reads/20261123T200214Z/report.json)) the optional-tool reserve fix; pytest #14560 ([20261123T202838Z](m2/server-reads/20261123T202838Z/report.json)) and Ruff #29177 ([20261123T202942Z](m2/server-reads/20261123T202942Z/report.json)) at 12,000; pytest at 24,000 ([20261123T203738Z](m2/server-reads/20261123T203738Z/report.json)) | Real model and GitHub |
-| [steps/](m2/steps/) | One summary per development step, with the test counts and code fingerprints of that time (table below) | Mixed; each file says which parts were real |
+| [server-reads/](m2/server-reads/) | After the freeze, with the server reads: HTTPX #3602 at 12,000 after the optional-tool reserve fix ([20261123T200214Z](m2/server-reads/20261123T200214Z/report.json)); pytest #14560 ([20261123T202838Z](m2/server-reads/20261123T202838Z/report.json)) and Ruff #29177 ([20261123T202942Z](m2/server-reads/20261123T202942Z/report.json)) at 12,000; pytest at 24,000 ([20261123T203738Z](m2/server-reads/20261123T203738Z/report.json)) | Real model and GitHub |
 | [screenshots/](m2/screenshots/) | `live-*.jpg` from real feature checks; `*-offline.jpg` with fictional data and a simulated model | Mixed, by file name |
-
-| Step | Record |
-| --- | --- |
-| Similar issues | [similar-issues.json](m2/steps/similar-issues.json) |
-| Label recommendations / PR label scope / wording consistency | [labels.json](m2/steps/labels.json) / [label-scope.json](m2/steps/label-scope.json) / [label-consistency.json](m2/steps/label-consistency.json) |
-| Templates | [templates.json](m2/steps/templates.json) |
-| Five-case evaluation script / classification and reproduction rules | [evaluation.json](m2/steps/evaluation.json) / [behavior.json](m2/steps/behavior.json) |
-| First Context Builder | [context.json](m2/steps/context.json) |
-| Comment reads / minimum required lookups | [comments.json](m2/steps/comments.json) / [required-lookups.json](m2/steps/required-lookups.json) |
-| Citations and answer repair | [answer-repair.json](m2/steps/answer-repair.json) |
-| Draft voice / history attribution (first, follow-up) / actions and closed status | [draft-style.json](m2/steps/draft-style.json) / [draft-grounding.json](m2/steps/draft-grounding.json), [draft-grounding-final.json](m2/steps/draft-grounding-final.json) / [draft-status.json](m2/steps/draft-status.json) |
-| Editable draft | [editable-draft.json](m2/steps/editable-draft.json) |
-| Live regressions: first acceptance / after the action rules | [live-acceptance.json](m2/steps/live-acceptance.json) / [draft-status-live.json](m2/steps/draft-status-live.json) |
-| Reasoning settings | [reasoning-settings.json](m2/steps/reasoning-settings.json) |
 
 ## M3
 
@@ -57,8 +42,6 @@ M4 has no evidence folder. Its checks are offline and PostgreSQL tests linked fr
 
 | Record | Check | Kind |
 | --- | --- | --- |
-| [client-handshake.json](m5/client-handshake.json) | Claude Code 2.1.323 and Codex 0.167.2 connect and list the tool | Real client, no analysis |
-| [codex-live/20261113T031334Z/](m5/codex-live/20261113T031334Z/summary.json), [claude-code-live/20261113T202631Z/](m5/claude-code-live/20261113T202631Z/summary.json) | One analysis from each client at the 12,000 budget: summary, report, sanitized protocol log, final message | Real client |
 | [context-budget-24000/20261113T220623Z/](m5/context-budget-24000/20261113T220623Z/summary.json) | The same issue at the 24,000 budget | Real model and GitHub |
 | [packaging.json](m5/packaging.json) | Wheel contents and a clean `uvx` install | Real install, no analysis |
 | [settings.json](m5/settings.json) | An installed copy reads `~/.config/issuelens/.env` after the environment | Real install, fake keys |
@@ -78,4 +61,5 @@ Kept files are left as recorded, so they may mention paths or commit IDs that la
 
 - **2026-11-15 cleanup.** 80 superseded files were deleted: ten old M2 acceptance rounds (Flask #5804, #4032, Werkzeug #2948), four earlier five-case evaluations, two finished model experiments with their summaries, `manifest.json`, and three files in `evaluation/` that duplicated the frozen acceptance. The [M2 history](../docs/m2.md#history) keeps their observations. Commit `619ed99` still has them in the old layout: run `git show 619ed99:evidence/manifest.json`, or `git restore --source 619ed99 -- evidence/model-comparisons` to put a directory back at its old path.
 - **2026-11-16 history rewrite.** Before the first push, every commit's email became the GitHub noreply address, and 4 Codex session IDs were removed from the first Codex live run commit. Every commit ID changed. The guides use the new IDs, while kept files keep the old ones; for example, `6da82a3` in the installed-live summary is now `991ce41`.
+- **2026-11-23 cleanup.** 29 superseded files were deleted: the 19 per-step records in `m2/steps/`, the HTTPX server-reads run before the reserve fix (`m2/server-reads/20261123T194608Z/`), the first client runs at the 12,000 budget (`m5/codex-live/`, `m5/claude-code-live/`), and `m5/client-handshake.json`, whose handshake every later client run repeated. The [M2](../docs/m2.md#history) and [M5](../docs/m5.md) guides keep their observations. Commit `4027154` still has them: run `git show 4027154:evidence/m5/client-handshake.json`, or `git restore --source 4027154 -- evidence/m2/steps` to put a directory back.
 - **2026-11-16 folder move.** `m2/verification/` became `m2/steps/`, `evaluations/` became `m2/evaluations/`, `live-acceptance/` became `m2/acceptance/`, and `m3/verification/` and `m5/verification/` were flattened into `m3/` and `m5/`. File contents did not change.
