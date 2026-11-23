@@ -336,15 +336,26 @@ class AnalysisToolTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_progress_follows_the_activity_log(self):
         responses = iter([simulated_response([tool_call("get_repo_readme")]), simulated_response(content=final_content())])
+        newest_at_requests = []
 
         async def model(**kwargs):
-            # Yield like a real network request, so the reporter can run between steps.
-            await asyncio.sleep(0)
+            # A real request waits on the network long enough for the reporter to catch up. The reporter
+            # needs several loop turns to wake, and how many differs between Python versions, so wait
+            # until it reports the newest event, for at most 100 turns.
+            (job,) = self.analysis.manager.jobs.values()  # type: ignore[union-attr]
+            newest = progress_message(job.snapshot.events[-1].message)
+            newest_at_requests.append(newest)
+            for _ in range(100):
+                if self.progress[-1:] == [newest]:
+                    break
+                await asyncio.sleep(0)
             return next(responses)
 
         await self.run_tool({"issue_url": ISSUE_URL}, model=model)
         (job,) = self.analysis.manager.jobs.values()  # type: ignore[union-attr]
         messages = [event.message for event in job.snapshot.events]
+        for newest in newest_at_requests:
+            self.assertIn(newest, self.progress)
         self.assertEqual(self.progress[0], "Analysis queued.")
         self.assertEqual(self.progress[-1], messages[-1])
         self.assertTrue(set(self.progress) <= set(messages))

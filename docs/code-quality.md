@@ -141,6 +141,7 @@ The recording and comparison scripts were temporary and are not kept.
 | Lint limits | offline | Removing a marker, adding a branch or statements past a limit, and claiming an unneeded exception each fail `ruff check`. | Commit messages of `f6eaf67` and `89f4ebb` |
 | Frontend lint | offline | Removing any of the three markers, a stale disable comment, an unused variable, 12 `if`s or 12 `&&`s, 51 statements, a conditional hook and `any` each fail `npm run lint`. Complexity 12 and 50 statements pass. A clean `npm ci` installs from the lockfile. | [eslint.config.mjs](../frontend/eslint.config.mjs), commit message |
 | CI | offline simulation | A clean clone with an empty environment passed every CI step against the local PostgreSQL 14: 403 tests with none skipped, ruff, Pyright, typegen, the type check and lint. The skip guard passes `OK` and fails `OK (skipped=28)` and a test failure under the runner's `bash -eo pipefail`. | [ci.yml](../.github/workflows/ci.yml) |
+| First CI run | GitHub Actions | The frontend job and the database tests passed. `test_progress_follows_the_activity_log` failed on Python 3.13.14, where one `asyncio.sleep(0)` no longer gave the progress reporter enough loop turns; it passed on the local 3.13.7. The simulated request now waits for the reporter, at most 100 turns. The fixed test passes on both versions, and a reporter that reports the oldest event, or only the final one, fails it on both. | Run 45281201396, [test_mcp.py](../tests/test_mcp.py) |
 | Template parser split | offline differential | The old and new parsers agreed on 20,002 templates. A planted note-order change was caught while the template tests passed. | Commit message of `a3e58b2` |
 | GitHub status and template reading | offline | The new tests pass on the old code, and six planted bugs each fail one. | [test_github_status.py](../tests/test_github_status.py), [test_templates.py](../tests/test_templates.py) |
 | Full suite | real PostgreSQL | Passes with `ISSUELENS_TEST_DATABASE_URL` set, none skipped. | [M3 setup](m3.md#setup) |
@@ -148,8 +149,9 @@ The recording and comparison scripts were temporary and are not kept.
 ## Limits
 
 - CI runs after a push, not before a commit. There is no pre-commit hook, and a failing run blocks nothing unless branch protection is turned on for `main`.
-- Before its first run, the workflow was not checked by actionlint or a local Docker container. The container's settings were checked only through the identical local cluster.
+- The workflow was not checked by actionlint or a local Docker container; GitHub's runs are its check.
 - CI pins Pyright to 1.1.411, but the README's local command runs whatever Pyright is installed.
+- `.python-version` names only 3.13, so CI installs the newest 3.13 release while a local environment may keep an older one. The first run found a test that passed only on the older one.
 - The pinned actions and the `postgres:14` image are updated by hand. Dependabot is not set up, and PostgreSQL 14 reached its end of life in November 2026.
 - A function marked `noqa` is not checked at all, so it can grow without notice.
 - Complexity and statement counts ignore nesting depth. `quality.py`'s `label_consistency_fields` nests five levels deep and still passes both limits.
