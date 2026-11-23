@@ -10,7 +10,7 @@ In November 2026 the codebase was reviewed one layer at a time, following the in
 
 Each layer catches what the one above lets through. The more the upper layers check mechanically, the less depends on review.
 
-Layer 1, architecture and API design, has six of its seven items done. Layer 2 adds Python lint with complexity and length limits, and ten functions remain marked as exceptions. Splitting them in batches 2 to 4 is paused, and item 7, frontend lint and layers 3 to 5 have not started. Every change kept the API, the `JobSnapshot` contract, the model's prompts and tools, and `checkpoint_signature` unchanged.
+Layer 1, architecture and API design, has six of its seven items done. Layer 2 adds Python and frontend lint with complexity and length limits. Ten Python functions and the frontend's `Home` remain marked as exceptions. Splitting the Python ones in batches 2 to 4 is paused, and item 7 and layers 3 to 5 have not started. Every change kept the API, the `JobSnapshot` contract, the model's prompts and tools, and `checkpoint_signature` unchanged.
 
 ## Use
 
@@ -21,6 +21,7 @@ uv run --locked python -W error::RuntimeWarning -m unittest discover -s tests -q
 uv run --locked ruff check
 pyright --pythonpath .venv/bin/python backend evaluation scripts
 npm --prefix frontend run typecheck
+npm --prefix frontend run lint
 ```
 
 After changing a model that the API returns, regenerate the frontend's types:
@@ -58,6 +59,22 @@ npm --prefix frontend run api:types
 
 ruff is a development dependency pinned in `uv.lock`. It checks the repository in about 0.05 seconds, compared with about 7 for pylint. Pyright already covers the cross-module inference that pylint adds.
 
+### ESLint settings
+
+`frontend/eslint.config.mjs` sets:
+
+| Setting | Effect |
+| --- | --- |
+| `eslint-config-next/core-web-vitals` | Next.js, React and React Hooks rules, with the rules that affect page loading raised to errors. |
+| `eslint-config-next/typescript` | typescript-eslint's recommended rules, such as no unused variables and no `any`. |
+| `complexity: 12`, `max-statements: 50` | The backend's limits. ESLint also counts each `&&`, `\|\|`, `??` and `?:` as a branch, so conditions in JSX add up. |
+| `reportUnusedDisableDirectives: "error"` | Like `RUF100`: a disable comment that no longer suppresses anything fails the check. |
+| `app/openapi.ts` ignored | `openapi-typescript` generates it. |
+
+`npm run lint` passes `--max-warnings 0`, so rules that only warn, such as unused variables, fail it too. `next lint` was removed in Next.js 16, so the script calls the ESLint CLI.
+
+ESLint 10 is pinned in `package-lock.json`. ESLint 9 is no longer supported. Three plugins inside `eslint-config-next` (`react`, `jsx-a11y` and `import`) do not list ESLint 10 as a peer yet, so `npm install` warns `ERESOLVE overriding peer dependency`. Next.js documents ESLint 10 as supported.
+
 ### Exceptions
 
 Split a function that exceeds a limit. If splitting would harm the code's structure, mark it with `# noqa: <code> - <reason>` instead, and name the new exception in your report. `AGENTS.md` asks agents to follow the same rule.
@@ -75,6 +92,14 @@ The functions that exceeded a limit when it was set are marked `predates the lin
 | `tests/test_checkpoint.py` `check_restart`, `run_fixture_worker` | C901, PLR0915 | Last, or keep. |
 
 The four functions planned to be kept still carry `predates the lint limits`. Their markers should be changed to the reasons above.
+
+The frontend marks exceptions with `// eslint-disable-next-line <rule> -- <reason>`. Three lines in `page.tsx` are marked:
+
+| Line | Rule | Plan |
+| --- | --- | --- |
+| `Home` | `complexity` (125) | Split later. It is the whole page, marked `predates the lint limits`. |
+| The mount effect's `setRequestedAnalysis` | `react-hooks/set-state-in-effect` | Keep. The server render cannot read the URL, so the page sets the requested analysis and the sign-in error once after hydration, React's two-pass pattern. |
+| The brand link `<a href="/">` | `@next/next/no-html-link-for-pages` | Keep. A full load clears the workspace. A `<Link>` would keep the old analysis on screen, because a client navigation preserves component state. |
 
 Batch 1 (`a3e58b2`) split three functions:
 
@@ -103,6 +128,7 @@ The recording and comparison scripts were temporary and are not kept.
 | Request rules | offline | `plan_request` is tested directly. Two loop paths that no test reached before are covered, and both tests pass on the old code. | [test_request_plan.py](../tests/test_request_plan.py) |
 | API types | offline | A stale schema, unregenerated types, a renamed field, a model outside `ApiModel` and a new status each fail a check. | [test_api_contract.py](../tests/test_api_contract.py), commit message of `9753c52` |
 | Lint limits | offline | Removing a marker, adding a branch or statements past a limit, and claiming an unneeded exception each fail `ruff check`. | Commit messages of `f6eaf67` and `89f4ebb` |
+| Frontend lint | offline | Removing any of the three markers, a stale disable comment, an unused variable, 12 `if`s or 12 `&&`s, 51 statements, a conditional hook and `any` each fail `npm run lint`. Complexity 12 and 50 statements pass. A clean `npm ci` installs from the lockfile. | [eslint.config.mjs](../frontend/eslint.config.mjs), commit message |
 | Template parser split | offline differential | The old and new parsers agreed on 20,002 templates. A planted note-order change was caught while the template tests passed. | Commit message of `a3e58b2` |
 | GitHub status and template reading | offline | The new tests pass on the old code, and six planted bugs each fail one. | [test_github_status.py](../tests/test_github_status.py), [test_templates.py](../tests/test_templates.py) |
 | Full suite | real PostgreSQL | Passes with `ISSUELENS_TEST_DATABASE_URL` set, none skipped. | [M3 setup](m3.md#setup) |
@@ -115,7 +141,10 @@ The recording and comparison scripts were temporary and are not kept.
 - ruff's statement count differs slightly from pylint's, for example in nested functions, so counts near 50 can differ by a few.
 - These paths still have no test: `_get`'s network errors, a timeout right after a model retry, and a model response without usage.
 - The behavior recording reads a local variable named `request` in `agent.py`. A rename breaks the script, not the app.
-- The frontend has no lint beyond `tsc`.
+- The frontend has no tests, so lint and types check its code but not its behavior. The brand link's reason comes from the Next.js documentation and was not checked in a browser.
+- `react-hooks/set-state-in-effect` reports only the first call in an effect, so the marker on the mount effect also hides any later call in it.
+- `eslint-config-next` brings its own rule list, unlike ruff's explicit `select`. The lockfile pins it, but a version update can add rules.
+- The three plugins that do not list ESLint 10 could break the lint in a later update until they support it.
 - ruff's broader default rule set reports 92 findings, 57 of them import order. It is not enabled.
 
 ## Tradeoffs and exercises
@@ -124,8 +153,12 @@ The recording and comparison scripts were temporary and are not kept.
 - **Marking existing violations versus fixing them first:** markers let the limits start now and keep the debt visible in the code. A marked function is unchecked until it is split.
 - **Recording and differential testing versus unit tests:** the first two prove that nothing changed, including cases nobody thought of, but they also preserve old bugs. Unit tests state the rules that later changes must keep.
 - **ruff versus pylint:** ruff is fast and holds every rule in one tool. pylint has more inference-based rules, which Pyright covers here.
+- **ESLint 10 versus 9:** 9 installs without warnings but is no longer supported. 10 is current and supported by Next.js, at the cost of peer warnings until the plugins catch up.
+- **Following a lint rule versus marking it:** a rule states the usual case. The brand link and the mount effect are deliberate exceptions, and following the rule there would change what the page does.
 
 Exercise: remove the marker on `agent.py`'s `snapshot` and run `uv run --locked ruff check` to see its score. Restore the marker, move the limitation rules into their own function, and run ruff again. If `snapshot` is now at 12 or below, RUF100 asks you to remove the marker.
+
+Exercise: in `page.tsx`, replace the brand link's `<a>` with `<Link>` from `next/link` and remove its marker. Open an analysis, select the logo, and check whether the old result stays on screen while the address shows `/`.
 
 ## History
 
@@ -138,7 +171,8 @@ Exercise: remove the marker on `agent.py`'s `snapshot` and run `uv run --locked 
 - `f6eaf67`: Limit function complexity and length with ruff, marking 13 exceptions.
 - `89f4ebb`: Add pyflakes, and ask agents in `AGENTS.md` to run ruff.
 - `a3e58b2`: Split `_get`, `get_issue_templates` and `parse_template`, leaving 10 exceptions.
+- Frontend lint: ESLint with Next.js's rules and the backend's limits, marking `Home` and two deliberate patterns.
 
 ## Next step
 
-Add ESLint to the frontend, so `page.tsx` and its components get limits like the backend's.
+Run the checks automatically on each push, so lint, types and tests no longer depend on someone remembering to run them.

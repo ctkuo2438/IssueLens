@@ -118,9 +118,10 @@ uv run --locked python -W error::RuntimeWarning -m unittest discover -s tests -q
 uv run --locked ruff check
 pyright --pythonpath .venv/bin/python backend evaluation scripts
 npm --prefix frontend run typecheck
+npm --prefix frontend run lint
 ```
 
-`ruff check` reports unused and undefined names, and limits each function to a cyclomatic complexity of 12 and to 50 statements. Split a function that exceeds a limit, or mark it `# noqa: <code> - <reason>`; the functions marked "predates the lint limits" exceeded them when the limits were set.
+`ruff check` reports unused and undefined names, and limits each function to a cyclomatic complexity of 12 and to 50 statements. Split a function that exceeds a limit, or mark it `# noqa: <code> - <reason>`; the functions marked "predates the lint limits" exceeded them when the limits were set. The frontend lint runs ESLint with Next.js's rules and the same limits, fails on warnings too, and needs Node.js 20.19, 22.13 or later.
 
 The frontend's API types are generated from the backend's schema. After changing a model the API returns, run `uv run --locked python scripts/export_openapi.py` and `npm --prefix frontend run api:types`; the tests and the type check fail until both are current.
 

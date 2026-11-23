@@ -144,6 +144,7 @@ function Citations({
   );
 }
 
+// eslint-disable-next-line complexity -- predates the lint limits
 export default function Home() {
   const [url, setUrl] = useState("");
   const [health, setHealth] = useState<Health | null>(null);
@@ -284,6 +285,7 @@ export default function Home() {
     const location = new URL(window.location.href);
     const candidate = location.searchParams.get("analysis");
     const id = candidate && /^[a-f0-9]{32}$/.test(candidate) ? candidate : null;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- The server render cannot read the URL, so the page reads it once after hydration.
     setRequestedAnalysis(id);
     if (location.searchParams.get("auth_error") === "github") {
       setError("GitHub sign-in could not be completed. Please try again.");
@@ -425,6 +427,7 @@ export default function Home() {
   return (
     <div className="workspace">
       <header className="site-header">
+        {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- A full load clears the workspace; a client navigation would keep the old analysis. */}
         <a className="brand" href="/" aria-label="IssueLens home">
           <span className="brand-icon">
             <Icon name="lens" size={22} />
