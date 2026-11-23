@@ -11,6 +11,8 @@ __pycache__/
 /~/
 node_modules/
 .next/
+# Next.js regenerates it on each dev, build or typegen run.
+frontend/next-env.d.ts
 *.tsbuildinfo
 .npm-cache/
 .cache/
