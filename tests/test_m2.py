@@ -19,6 +19,8 @@ FIXTURE = json.loads((Path(__file__).parent / "fixtures" / "similar_issues.json"
 
 
 def m2_github_response(request):
+    if request.url.path.endswith("/labels"):
+        return httpx.Response(200, json=[])
     if request.url.path == "/search/issues":
         return httpx.Response(200, json={
             "total_count": 4, "incomplete_results": False,
@@ -36,8 +38,8 @@ def m2_content():
 
 
 def investigation_prefix(numbers=(41, 43, 44)):
+    """The model's search and candidate reads; the server reads the issue and labels (S1, S2) first."""
     return [
-        simulated_response([tool_call("get_issue")]),
         simulated_response([tool_call("search_issues", '{"query":"export"}', "call_search")]),
         *[simulated_response([tool_call("get_related_issue", json.dumps({"issue_number": number}), f"call_candidate_{number}")]) for number in numbers],
     ]
@@ -147,10 +149,10 @@ class ComparisonAgentTests(unittest.IsolatedAsyncioTestCase):
             "possible_duplicate", "related_but_different", "insufficient_evidence",
         ])
         self.assertEqual(len(result.candidates), 3)
-        self.assertEqual(len(result.sources), 5)
-        self.assertEqual(result.limitations, ["The repository label catalog was not retrieved; label recommendations were not checked."])
-        self.assertEqual(result.usage.model_requests, 6)
-        self.assertEqual(result.usage.tool_calls, 5)
+        self.assertEqual(len(result.sources), 6)
+        self.assertEqual(result.limitations, [])
+        self.assertEqual(result.usage.model_requests, 5)
+        self.assertEqual(result.usage.tool_calls, 6)
         self.assertEqual(create.call_args.kwargs["input"][-1]["call_id"], "call_candidate_44")
 
     async def test_invalid_comparison_contracts_require_correction(self):
@@ -169,7 +171,7 @@ class ComparisonAgentTests(unittest.IsolatedAsyncioTestCase):
                     *investigation_prefix(), simulated_response(content=invalid), simulated_response(content=m2_content()),
                 ], handler=m2_github_response)
                 self.assertIsNotNone(result.content)
-                self.assertEqual(create.await_count, 7)
+                self.assertEqual(create.await_count, 6)
                 self.assertIn("Final-answer repair feedback", create.call_args.kwargs["instructions"])
 
 
@@ -186,7 +188,7 @@ class ComparisonAgentTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_comparison_must_cite_target_and_full_candidate_not_search_source(self):
         invalid = m2_content()
-        invalid["comparisons"][0]["source_ids"] = ["S1", "S2"]
+        invalid["comparisons"][0]["source_ids"] = ["S1", "S3"]
         result, create, _ = await run_simulated_agent([
             *investigation_prefix(), simulated_response(content=invalid), simulated_response(content=m2_content()),
         ], handler=m2_github_response)
@@ -205,7 +207,7 @@ class ComparisonAgentTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.candidates, [])
         self.assertEqual(len(result.searches), 1)
         self.assertEqual(result.searches[0].total_count, 0)
-        self.assertEqual(result.limitations, ["The repository label catalog was not retrieved; label recommendations were not checked."])
+        self.assertEqual(result.limitations, [])
 
 
 class ComparisonAPITests(unittest.TestCase):
@@ -221,7 +223,7 @@ class ComparisonAPITests(unittest.TestCase):
                 stream = client.get(f"/api/v1/analyses/{job_id}/events")
                 self.assertIn("event: done", stream.text)
                 snapshot = client.get(f"/api/v1/analyses/{job_id}").json()
-                self.assertEqual(snapshot["status"], "partial")
+                self.assertEqual(snapshot["status"], "completed")
                 self.assertEqual(len(snapshot["result"]["candidates"]), 3)
                 self.assertEqual(snapshot["result"]["searches"][0]["candidate_numbers"], [41, 43, 44])
                 self.assertEqual(snapshot["result"]["content"]["comparisons"][2]["relationship"], "insufficient_evidence")

@@ -17,13 +17,15 @@ from test_mvp import (
 
 
 def run_after_reading_the_issue(*, comments: int = 0) -> AgentRun:
-    """A run that has read the target issue and made no other lookup."""
+    """A run whose server reads found the target issue and the label catalog, with no other lookup."""
     run = AgentRun(TARGET, SETTINGS, lambda *_: None)
     run.tools = GitHubTools(httpx.AsyncClient(), TARGET, lambda text, limit: (text, False))
     run.tools.issue = IssueInfo(
         title="Export fails on Windows", url=TARGET.url, number=42, state="open", author="reporter",
         labels=[], comment_count=comments,
     )
+    run.tools.label_lookup_attempted = True
+    run.tools.labels_source_id = "S2"
     return run
 
 
@@ -31,8 +33,6 @@ def run_with_core_checks() -> AgentRun:
     """A run with the label catalog and two empty searches, so no lookup is required."""
     run = run_after_reading_the_issue()
     assert run.tools is not None
-    run.tools.label_lookup_attempted = True
-    run.tools.labels_source_id = "S2"
     run.tools.search_attempts = ["export", "export windows"]
     run.tools.successful_search_queries = {"export", "export windows"}
     run.tools.searches = [
@@ -44,16 +44,11 @@ def run_with_core_checks() -> AgentRun:
 
 class RequestPlanTests(unittest.TestCase):
     def test_a_required_lookup_is_the_only_tool_offered(self):
-        plan = run_after_reading_the_issue().plan_request(2, None)
-        self.assertEqual(plan.required_action, "get_repo_labels")
-        self.assertEqual(plan.tool_choice, {"type": "function", "name": "get_repo_labels"})
-        self.assertIn("The required next action is get_repo_labels.", plan.instructions)
-
-    def test_unread_comments_come_before_other_lookups(self):
-        plan = run_after_reading_the_issue(comments=2).plan_request(2, None)
-        self.assertTrue(plan.require_comments)
-        self.assertEqual(plan.tool_choice, {"type": "function", "name": "get_issue_comments"})
-        self.assertIn("get_issue_comments with page=1", plan.instructions)
+        # Comments are the server's read, so an unread page never becomes the model's required lookup.
+        plan = run_after_reading_the_issue(comments=2).plan_request(1, None)
+        self.assertEqual(plan.required_action, "search_issues")
+        self.assertEqual(plan.tool_choice, {"type": "function", "name": "search_issues"})
+        self.assertIn("The required next action is search_issues.", plan.instructions)
 
     def test_the_last_request_closes_tools_even_with_lookups_pending(self):
         plan = run_after_reading_the_issue(comments=2).plan_request(SETTINGS.max_iterations, None)
@@ -112,14 +107,15 @@ class LoopEdgeTests(unittest.IsolatedAsyncioTestCase):
     async def test_a_tool_requested_after_tools_close_is_not_run(self):
         trace = TraceLog()
         result, create, _ = await run_simulated_agent([
-            simulated_response([tool_call("get_issue")]),
             simulated_response([tool_call("get_repo_readme", call_id="call_offline_2")]),
             simulated_response(content=final_content()),
         ], replace(SETTINGS, max_tool_calls=1), trace=trace)
-        self.assertEqual(create.call_args_list[1].kwargs["tool_choice"], "none")
+        # The server's issue read used the only tool call.
+        self.assertEqual(create.call_args_list[0].kwargs["tool_choice"], "none")
         self.assertEqual(result.usage.tool_calls, 1)
-        self.assertIn("tool-call budget was reached", create.call_args_list[2].kwargs["input"][-1]["output"])
-        rejected = trace.attempts[2]
+        self.assertIn("tool-call budget was reached", create.call_args_list[1].kwargs["input"][-1]["output"])
+        self.assertEqual([attempt.kind for attempt in trace.attempts], ["tool", "model", "model"])
+        rejected = trace.attempts[1]
         self.assertEqual(
             (rejected.kind, rejected.outcome, rejected.reason, rejected.stop_reason),
             ("model", "rejected", "The response requested a tool while tool use was closed.", None),

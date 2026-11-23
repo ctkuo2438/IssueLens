@@ -36,11 +36,8 @@ def label_content():
 
 
 def label_prefix():
-    return [
-        simulated_response([tool_call("get_issue")]),
-        simulated_response([tool_call("get_repo_labels", "{}", "call_labels")]),
-        simulated_response([tool_call("search_issues", '{"query":"export"}', "call_search")]),
-    ]
+    """The model's search; the server reads the issue and the label catalog before it."""
+    return [simulated_response([tool_call("search_issues", '{"query":"export"}', "call_search")])]
 
 
 class RepositoryLabelToolTests(unittest.IsolatedAsyncioTestCase):
@@ -137,17 +134,17 @@ class LabelAgentTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(result.repo_labels), 3)
         self.assertTrue(result.labels_complete)
         self.assertEqual(result.limitations, [])
-        replay = create.call_args_list[2].kwargs["input"]
-        self.assertEqual(replay[-1]["call_id"], "call_labels")
-        self.assertIn("Repository label catalog", replay[-1]["output"])
-        self.assertIn("model request 4 of 8", create.call_args.kwargs["instructions"])
+        first = create.call_args_list[0].kwargs["input"]
+        self.assertEqual(first[-1]["call_id"], "server_get_repo_labels")
+        self.assertIn("Repository label catalog", first[-1]["output"])
+        self.assertIn("model request 2 of 8", create.call_args.kwargs["instructions"])
 
     async def test_exhausted_validation_explains_why_suggestions_were_not_accepted(self):
         content = label_content()
         content["label_recommendations"][0]["source_ids"] = ["S2"]
         result, _, emit = await run_simulated_agent([
             *label_prefix(), simulated_response(content=content),
-        ], settings=replace(SETTINGS, max_iterations=4), handler=label_github_response)
+        ], settings=replace(SETTINGS, max_iterations=2), handler=label_github_response)
         self.assertIsNone(result.content)
         warnings = [call.args[1] for call in emit.call_args_list if call.args[0] == "warning"]
         self.assertTrue(any("cite the target issue and label catalog" in warning for warning in warnings))
@@ -188,7 +185,7 @@ class LabelAgentTests(unittest.IsolatedAsyncioTestCase):
                     *label_prefix(), simulated_response(content=content), simulated_response(content=label_content()),
                 ], handler=label_github_response)
                 self.assertIsNotNone(result.content)
-                self.assertEqual(create.await_count, 5)
+                self.assertEqual(create.await_count, 3)
                 self.assertEqual(len(result.content.label_recommendations), 2)
                 self.assertTrue(any(call.args[0] == "warning" for call in emit.call_args_list))
 
@@ -215,11 +212,14 @@ class LabelAgentTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.limitations, [])
 
     async def test_unretrieved_catalog_cannot_support_recommendations(self):
+        def labels_unavailable(request):
+            if request.url.path.endswith("/labels"):
+                return httpx.Response(404, json={"message": "Not Found"})
+            return label_github_response(request)
+
         result, create, _ = await run_simulated_agent([
-            simulated_response([tool_call("get_issue")]),
-            simulated_response([tool_call("search_issues", '{"query":"export"}', "call_search")]),
-            simulated_response(content=label_content()), simulated_response(content=final_content()),
-        ], handler=label_github_response)
+            *label_prefix(), simulated_response(content=label_content()), simulated_response(content=final_content()),
+        ], handler=labels_unavailable)
         self.assertEqual(result.content.label_recommendations, [])
         self.assertIsNone(result.labels_source_id)
         self.assertTrue(any("label catalog was not retrieved" in item for item in result.limitations))

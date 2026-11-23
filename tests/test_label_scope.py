@@ -101,7 +101,7 @@ class LabelScopeAgentTests(unittest.IsolatedAsyncioTestCase):
         result, create, _ = await run_simulated_agent([
             *label_prefix(), simulated_response(content=final_content()),
         ], handler=scoped_github_response)
-        output = json.loads(create.call_args_list[2].kwargs["input"][-1]["output"])
+        output = json.loads(create.call_args_list[0].kwargs["input"][-1]["output"])
         self.assertEqual(output["excluded_from_issue_recommendations"], ["python"])
         source = json.loads(output["source"]["excerpt"])
         self.assertEqual(next(row for row in source["labels"] if row["name"] == "python")["description"], SCOPED_LABELS[0]["description"])
@@ -116,7 +116,7 @@ class LabelScopeAgentTests(unittest.IsolatedAsyncioTestCase):
             simulated_response(content=recommended("TYPE:BUG")),
         ], handler=scoped_github_response)
         self.assertEqual([item.name for item in result.content.label_recommendations], ["type:bug"])
-        self.assertEqual(create.await_count, 5)
+        self.assertEqual(create.await_count, 3)
         warning = next(call.args[1] for call in emit.call_args_list if call.args[0] == "warning")
         self.assertIn("Label 'python' is scoped to pull requests", warning)
         self.assertIn("Requesting a correction", warning)
@@ -125,9 +125,9 @@ class LabelScopeAgentTests(unittest.IsolatedAsyncioTestCase):
     async def test_exhausted_budget_rejects_answer_instead_of_silently_deleting_labels(self):
         result, create, emit = await run_simulated_agent([
             *label_prefix(), simulated_response(content=recommended("python", "type:bug")),
-        ], settings=replace(SETTINGS, max_iterations=4), handler=scoped_github_response)
+        ], settings=replace(SETTINGS, max_iterations=2), handler=scoped_github_response)
         self.assertIsNone(result.content)
-        self.assertEqual(create.await_count, 4)
+        self.assertEqual(create.await_count, 2)
         self.assertEqual(result.usage.tool_calls, 3)
         warnings = [call.args[1] for call in emit.call_args_list if call.args[0] == "warning"]
         self.assertTrue(any("scoped to pull requests" in warning and "No correction budget remains" in warning for warning in warnings))
@@ -145,7 +145,7 @@ class LabelScopeAgentTests(unittest.IsolatedAsyncioTestCase):
             *label_prefix(), simulated_response(content=recommended("shared", "linked-pr")),
         ], handler=scoped_github_response)
         self.assertEqual([item.name for item in result.content.label_recommendations], ["shared", "linked-pr"])
-        self.assertEqual(create.await_count, 4)
+        self.assertEqual(create.await_count, 2)
 
     async def test_python_name_is_not_blocked_when_description_applies_to_issues(self):
         def generic_python(request):

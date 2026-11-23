@@ -12,7 +12,7 @@ from backend.app.models import AnalysisContent
 from backend.app.quality import reproduction_claim_fields
 from evaluation.checks import check_result
 from test_evaluation import DATASET, reference_result
-from test_mvp import ISSUE, SETTINGS, final_content, run_simulated_agent, simulated_response, tool_call
+from test_mvp import ISSUE, SETTINGS, final_content, run_simulated_agent, simulated_response
 
 
 FIXTURE = json.loads((Path(__file__).parent / "fixtures" / "reproduction_claims.json").read_text())
@@ -72,12 +72,11 @@ class BoundedCorrectionTests(unittest.IsolatedAsyncioTestCase):
         corrected = final_content()
         corrected["draft_reply"] = "The reporter describes a reproducible export failure. Please share any additional error details."
         result, create, emit = await run_simulated_agent([
-            simulated_response([tool_call("get_issue")]),
             simulated_response(content=invalid), simulated_response(content=corrected),
         ])
-        self.assertEqual(create.await_count, 3)
+        self.assertEqual(create.await_count, 2)
         self.assertEqual(result.content.draft_reply, corrected["draft_reply"])
-        self.assertEqual(result.usage.tool_calls, 1)
+        self.assertEqual(result.usage.tool_calls, 2)
         self.assertTrue(any("Unsupported first-person reproduction claim in draft_reply" in call.args[1] for call in emit.call_args_list))
         self.assertIn("third person", create.call_args.kwargs["instructions"])
 
@@ -85,10 +84,10 @@ class BoundedCorrectionTests(unittest.IsolatedAsyncioTestCase):
         invalid = final_content()
         invalid["draft_reply"] = "We reproduced the error locally."
         result, create, emit = await run_simulated_agent([
-            simulated_response([tool_call("get_issue")]), simulated_response(content=invalid),
-        ], settings=replace(SETTINGS, max_iterations=2))
+            simulated_response(content=invalid),
+        ], settings=replace(SETTINGS, max_iterations=1))
         self.assertIsNone(result.content)
-        self.assertEqual(create.await_count, 2)
+        self.assertEqual(create.await_count, 1)
         self.assertEqual(create.call_args.kwargs["tool_choice"], "none")
         self.assertTrue(result.sources)
         self.assertTrue(any("No correction budget remains" in call.args[1] for call in emit.call_args_list))
@@ -98,9 +97,10 @@ class BoundedCorrectionTests(unittest.IsolatedAsyncioTestCase):
         response = {**ISSUE, "body": quoted}
         answer = final_content()
         answer["draft_reply"] = "The reporter can reproduce the export failure on Windows."
-        result, _, _ = await run_simulated_agent([
-            simulated_response([tool_call("get_issue")]), simulated_response(content=answer),
-        ], handler=lambda request: httpx.Response(200, json=response))
+        result, _, _ = await run_simulated_agent(
+            [simulated_response(content=answer)],
+            handler=lambda request: httpx.Response(200, json=[] if request.url.path.endswith("/labels") else response),
+        )
         self.assertIsNotNone(result.content)
         self.assertEqual(result.sources[0].excerpt, quoted)
         self.assertEqual(result.content.draft_reply, answer["draft_reply"])

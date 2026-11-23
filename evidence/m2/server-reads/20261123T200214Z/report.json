@@ -1,0 +1,558 @@
+{
+  "kind": "real model and GitHub, one run",
+  "purpose": "Check that OpenAI accepts the server's function calls and that model requests drop.",
+  "note": "Run after the optional-tool reserve fix, same case and budget.",
+  "issue_url": "https://github.com/encode/httpx/issues/3602",
+  "started_at": "2026-11-23T20:01:54.222547+00:00",
+  "finished_at": "2026-11-23T20:02:14.031353+00:00",
+  "elapsed_seconds": 19.81,
+  "model": "gpt-5.6",
+  "reasoning_effort": "medium",
+  "context_tokens": 12000,
+  "github_authenticated": true,
+  "code": {
+    "base_commit": "a3e58b2579bd331914f41ca78f3441cf2fc4874e",
+    "uncommitted_changes": true,
+    "agent_sha256": "06931d502e7be1f0b74fe2686a48cbbda2a1ec31ce43458b4a0cb37dcde2dcdd",
+    "prompt_sha256": "d34e0f6e5dcc38ba216cd2098bcb8e549140ed2169a03cde681efa1245652fa3",
+    "checkpoint_signature": "1cef6356321a3cd27e530ce00cbf0da7bedcbe1247a3855dc729d212b3802938"
+  },
+  "error": null,
+  "accepted_answer": true,
+  "usage": {
+    "model_requests": 3,
+    "tool_calls": 5,
+    "total_tokens": 16706,
+    "elapsed_seconds": 19.81
+  },
+  "stop_reason": "final_answer",
+  "trace": [
+    {
+      "kind": "tool",
+      "name": "get_issue",
+      "attempt_number": 1,
+      "outcome": "succeeded",
+      "reason": null,
+      "stop_reason": null,
+      "duration_ms": 306
+    },
+    {
+      "kind": "tool",
+      "name": "get_issue_comments",
+      "attempt_number": 2,
+      "outcome": "succeeded",
+      "reason": null,
+      "stop_reason": null,
+      "duration_ms": 230
+    },
+    {
+      "kind": "tool",
+      "name": "get_repo_labels",
+      "attempt_number": 3,
+      "outcome": "succeeded",
+      "reason": null,
+      "stop_reason": null,
+      "duration_ms": 310
+    },
+    {
+      "kind": "model",
+      "name": "responses.create",
+      "attempt_number": 1,
+      "outcome": "succeeded",
+      "reason": "The response requested tool calls.",
+      "stop_reason": null,
+      "duration_ms": 2826
+    },
+    {
+      "kind": "tool",
+      "name": "search_issues",
+      "attempt_number": 4,
+      "outcome": "succeeded",
+      "reason": null,
+      "stop_reason": null,
+      "duration_ms": 510
+    },
+    {
+      "kind": "model",
+      "name": "responses.create",
+      "attempt_number": 2,
+      "outcome": "succeeded",
+      "reason": "The response requested tool calls.",
+      "stop_reason": null,
+      "duration_ms": 2751
+    },
+    {
+      "kind": "tool",
+      "name": "get_related_issue",
+      "attempt_number": 5,
+      "outcome": "succeeded",
+      "reason": null,
+      "stop_reason": null,
+      "duration_ms": 296
+    },
+    {
+      "kind": "model",
+      "name": "responses.create",
+      "attempt_number": 3,
+      "outcome": "succeeded",
+      "reason": "The final answer passed validation.",
+      "stop_reason": null,
+      "duration_ms": 11843
+    }
+  ],
+  "requests": [
+    {
+      "number": 1,
+      "tool_choice": {
+        "type": "function",
+        "name": "search_issues"
+      },
+      "repairing": false,
+      "input_items": [
+        {
+          "role": "user"
+        },
+        {
+          "type": "function_call",
+          "call_id": "server_get_issue",
+          "name": "get_issue",
+          "arguments": "{}"
+        },
+        {
+          "type": "function_call_output",
+          "call_id": "server_get_issue"
+        },
+        {
+          "type": "function_call",
+          "call_id": "server_get_issue_comments",
+          "name": "get_issue_comments",
+          "arguments": "{\"page\": 1}"
+        },
+        {
+          "type": "function_call_output",
+          "call_id": "server_get_issue_comments"
+        },
+        {
+          "type": "function_call",
+          "call_id": "server_get_repo_labels",
+          "name": "get_repo_labels",
+          "arguments": "{}"
+        },
+        {
+          "type": "function_call_output",
+          "call_id": "server_get_repo_labels"
+        }
+      ]
+    },
+    {
+      "number": 2,
+      "tool_choice": {
+        "type": "function",
+        "name": "get_related_issue"
+      },
+      "repairing": false,
+      "input_items": [
+        {
+          "role": "user"
+        },
+        {
+          "type": "function_call",
+          "call_id": "server_get_issue",
+          "name": "get_issue",
+          "arguments": "{}"
+        },
+        {
+          "type": "function_call_output",
+          "call_id": "server_get_issue"
+        },
+        {
+          "type": "function_call",
+          "call_id": "server_get_issue_comments",
+          "name": "get_issue_comments",
+          "arguments": "{\"page\": 1}"
+        },
+        {
+          "type": "function_call_output",
+          "call_id": "server_get_issue_comments"
+        },
+        {
+          "type": "function_call",
+          "call_id": "server_get_repo_labels",
+          "name": "get_repo_labels",
+          "arguments": "{}"
+        },
+        {
+          "type": "function_call_output",
+          "call_id": "server_get_repo_labels"
+        },
+        {
+          "type": "reasoning"
+        },
+        {
+          "type": "function_call",
+          "call_id": "call_81d5b836bd14400c92405e49e6191ce5",
+          "name": "search_issues",
+          "arguments": "{\"query\":\"BaseTransport\"}"
+        },
+        {
+          "type": "function_call_output",
+          "call_id": "call_81d5b836bd14400c92405e49e6191ce5"
+        }
+      ]
+    },
+    {
+      "number": 3,
+      "tool_choice": "none",
+      "repairing": false,
+      "input_items": [
+        {
+          "role": "user"
+        },
+        {
+          "type": "function_call",
+          "call_id": "server_get_issue",
+          "name": "get_issue",
+          "arguments": "{}"
+        },
+        {
+          "type": "function_call_output",
+          "call_id": "server_get_issue"
+        },
+        {
+          "type": "function_call",
+          "call_id": "server_get_issue_comments",
+          "name": "get_issue_comments",
+          "arguments": "{\"page\": 1}"
+        },
+        {
+          "type": "function_call_output",
+          "call_id": "server_get_issue_comments"
+        },
+        {
+          "type": "function_call",
+          "call_id": "server_get_repo_labels",
+          "name": "get_repo_labels",
+          "arguments": "{}"
+        },
+        {
+          "type": "function_call_output",
+          "call_id": "server_get_repo_labels"
+        },
+        {
+          "type": "reasoning"
+        },
+        {
+          "type": "function_call",
+          "call_id": "call_81d5b836bd14400c92405e49e6191ce5",
+          "name": "search_issues",
+          "arguments": "{\"query\":\"BaseTransport\"}"
+        },
+        {
+          "type": "function_call_output",
+          "call_id": "call_81d5b836bd14400c92405e49e6191ce5"
+        },
+        {
+          "type": "reasoning"
+        },
+        {
+          "type": "function_call",
+          "call_id": "call_d8fe21cf9c494b46b4c365d86f5fc1c0",
+          "name": "get_related_issue",
+          "arguments": "{\"issue_number\":3021}"
+        },
+        {
+          "type": "function_call_output",
+          "call_id": "call_d8fe21cf9c494b46b4c365d86f5fc1c0"
+        }
+      ]
+    }
+  ],
+  "context_builds": [
+    {
+      "request_number": 1,
+      "phase": "investigation",
+      "estimated_tokens": 6849,
+      "budget_tokens": 12000,
+      "fits": true,
+      "sent": true,
+      "future_reserve_tokens": 3936
+    },
+    {
+      "request_number": 2,
+      "phase": "investigation",
+      "estimated_tokens": 8632,
+      "budget_tokens": 12000,
+      "fits": true,
+      "sent": true,
+      "future_reserve_tokens": 2912
+    },
+    {
+      "request_number": 3,
+      "phase": "investigation",
+      "estimated_tokens": 10161,
+      "budget_tokens": 12000,
+      "fits": false,
+      "sent": false,
+      "future_reserve_tokens": 1583
+    },
+    {
+      "request_number": 3,
+      "phase": "investigation",
+      "estimated_tokens": 10161,
+      "budget_tokens": 12000,
+      "fits": true,
+      "sent": true,
+      "future_reserve_tokens": 0
+    }
+  ],
+  "comment_check": {
+    "status": "read",
+    "reported_count": 2,
+    "attempted_pages": [
+      1
+    ],
+    "read_pages": [
+      1
+    ],
+    "failed_pages": [],
+    "retrieved_count": 2,
+    "source_ids": [
+      "S2",
+      "S3"
+    ],
+    "has_next_page": false,
+    "count_mismatch": false,
+    "complete": true
+  },
+  "similar_issue_check": {
+    "search_status": "candidates_found",
+    "attempted_queries": [
+      "basetransport"
+    ],
+    "failed_queries": [],
+    "candidate_status": "read",
+    "attempted_candidate_numbers": [
+      3021
+    ],
+    "failed_candidate_numbers": [],
+    "read_candidate_numbers": [
+      3021
+    ],
+    "compared_candidate_numbers": [
+      3021
+    ],
+    "comparison_status": "compared"
+  },
+  "rejected_answers": [],
+  "limitations": [],
+  "sources": [
+    {
+      "id": "S1",
+      "kind": "issue",
+      "url": "https://github.com/encode/httpx/issues/3602"
+    },
+    {
+      "id": "S2",
+      "kind": "comment",
+      "url": "https://github.com/encode/httpx/issues/3602#issuecomment-3069921518"
+    },
+    {
+      "id": "S3",
+      "kind": "comment",
+      "url": "https://github.com/encode/httpx/issues/3602#issuecomment-3070085794"
+    },
+    {
+      "id": "S4",
+      "kind": "repo_labels",
+      "url": "https://github.com/encode/httpx/labels"
+    },
+    {
+      "id": "S5",
+      "kind": "search",
+      "url": "https://github.com/search?q=repo%3Aencode%2Fhttpx+is%3Aissue+in%3Atitle%2Cbody+%22BaseTransport%22&type=issues"
+    },
+    {
+      "id": "S6",
+      "kind": "related_issue",
+      "url": "https://github.com/encode/httpx/issues/3021"
+    }
+  ],
+  "content": {
+    "summary": {
+      "text": "The reporter found that upgrading from HTTPX 0.28.1 to the published 1.0.dev1 pre-release removed the top-level `httpx.BaseTransport` attribute. A maintainer confirmed that the 1.0 pre-release was intentionally available and linked to a discussion, but the retrieved response did not explicitly confirm whether this API removal was intentional or provide a migration path.",
+      "source_ids": [
+        "S1",
+        "S3"
+      ]
+    },
+    "known_facts": [
+      {
+        "text": "The reporter installed the pre-release with `uv pip install -U --pre httpx`; importing `httpx` succeeded, but accessing `httpx.BaseTransport` raised an `AttributeError` suggesting `Transport`.",
+        "source_ids": [
+          "S1"
+        ]
+      },
+      {
+        "text": "Another participant noted that the PyPI description for 1.0.dev1 did not provide information about the release.",
+        "source_ids": [
+          "S2"
+        ]
+      },
+      {
+        "text": "On July 14, 2025, a repository member confirmed that a 1.0 pre-release was available on PyPI and said they would discuss it further, linking to a GitHub discussion.",
+        "source_ids": [
+          "S3"
+        ]
+      },
+      {
+        "text": "The issue was closed on July 14, 2025, but closure alone does not establish that compatibility was restored, a migration path was documented, or a fix was released.",
+        "source_ids": [
+          "S1",
+          "S3"
+        ]
+      }
+    ],
+    "missing_information": [
+      "Was removing the top-level `BaseTransport` export an intentional 1.0 API change?",
+      "If intentional, what should custom transport implementations inherit from or use instead, and is `httpx.Transport` the supported replacement?",
+      "Was the migration path subsequently documented in release notes or API documentation?"
+    ],
+    "draft_reply": "Thanks for reporting this. The example showed that after upgrading from 0.28.1 to 1.0.dev1, `import httpx` still worked but `httpx.BaseTransport` was no longer exported. At the time, the maintainer response confirmed that the 1.0 pre-release was intentional and linked to the broader 1.0 discussion, but it did not explicitly clarify whether this particular removal was intentional or what custom transport implementations should use instead. The concrete follow-up would be to document whether `httpx.Transport` replaces `BaseTransport` and provide a migration example for existing custom transports.",
+    "limitations": [
+      "Repository source code, release notes, package contents, and the linked discussion were not inspected, so the intended 1.0 transport API and present-day support status remain unverified.",
+      "The related candidate contains only a minimal report, and its comments were not retrieved; its HTTPX version and underlying cause are therefore unknown.",
+      "The investigation was text-only and did not install or execute either HTTPX version."
+    ],
+    "comparisons": [
+      {
+        "issue_number": 3021,
+        "relationship": "insufficient_evidence",
+        "reason": "Both reports concern failure to obtain `BaseTransport` from the top-level `httpx` package. However, issue #3021 does not identify an HTTPX version, upgrade path, or surrounding conditions, so the evidence is insufficient to determine whether it describes the same 1.0.dev1 API change.",
+        "similarities": [
+          "Both report that `BaseTransport` cannot be imported or accessed from the top-level `httpx` module.",
+          "Both present an import/public-export failure involving the same symbol."
+        ],
+        "differences": [
+          "The target issue identifies an upgrade from 0.28.1 to 1.0.dev1 and reports an `AttributeError` after `import httpx`.",
+          "Issue #3021 only reports `ImportError: cannot import name 'BaseTransport' from 'httpx'` and supplies no version or upgrade context."
+        ],
+        "source_ids": [
+          "S1",
+          "S6"
+        ]
+      }
+    ],
+    "label_recommendations": [
+      {
+        "name": "release",
+        "reason": "The report specifically concerns behavior introduced by the published HTTPX 1.0.dev1 package compared with the latest stable release, matching the catalog’s release-related label.",
+        "source_ids": [
+          "S1",
+          "S4"
+        ]
+      }
+    ]
+  },
+  "events": [
+    {
+      "kind": "status",
+      "message": "Model: gpt-5.6; reasoning effort: medium; output limit: 2400 tokens including reasoning and visible text."
+    },
+    {
+      "kind": "status",
+      "message": "Reading the target issue, its first comments page if it has comments, and the label catalog before the first model request."
+    },
+    {
+      "kind": "tool",
+      "message": "Calling get_issue with {}."
+    },
+    {
+      "kind": "tool",
+      "message": "Finished get_issue; 1 sources collected."
+    },
+    {
+      "kind": "status",
+      "message": "Comment check: not_read; reported: 2; retrieved: 0; pages read: []; failed pages: []; complete: False."
+    },
+    {
+      "kind": "tool",
+      "message": "Calling get_issue_comments with {\"page\": 1}."
+    },
+    {
+      "kind": "tool",
+      "message": "Finished get_issue_comments; 3 sources collected."
+    },
+    {
+      "kind": "status",
+      "message": "Comment check: read; reported: 2; retrieved: 2; pages read: [1]; failed pages: []; complete: True."
+    },
+    {
+      "kind": "tool",
+      "message": "Calling get_repo_labels with {}."
+    },
+    {
+      "kind": "tool",
+      "message": "Finished get_repo_labels; 4 sources collected."
+    },
+    {
+      "kind": "status",
+      "message": "Context request 1: estimated 6849/12000 input tokens including 1024 margin; 256 tokens reserved for repair feedback; 3936/3936 tokens reserved for future evidence and loop growth (minimum 512); 0 excerpts omitted; 0 repeated results reused."
+    },
+    {
+      "kind": "model",
+      "message": "Investigation step 1: choosing the next action."
+    },
+    {
+      "kind": "status",
+      "message": "Required lookup before finalization: search_issues."
+    },
+    {
+      "kind": "tool",
+      "message": "Calling search_issues with {\"query\":\"BaseTransport\"}."
+    },
+    {
+      "kind": "tool",
+      "message": "Finished search_issues; 5 sources collected."
+    },
+    {
+      "kind": "status",
+      "message": "Similar-issue check: search=candidates_found; candidate=not_checked; read=[]; failed=[]."
+    },
+    {
+      "kind": "status",
+      "message": "Context request 2: estimated 8632/12000 input tokens including 1024 margin; 256 tokens reserved for repair feedback; 2912/2912 tokens reserved for future evidence and loop growth (minimum 2400); 0 excerpts omitted; 0 repeated results reused."
+    },
+    {
+      "kind": "model",
+      "message": "Investigation step 2: choosing the next action."
+    },
+    {
+      "kind": "status",
+      "message": "Required lookup before finalization: get_related_issue."
+    },
+    {
+      "kind": "tool",
+      "message": "Calling get_related_issue with {\"issue_number\":3021}."
+    },
+    {
+      "kind": "tool",
+      "message": "Finished get_related_issue; 6 sources collected."
+    },
+    {
+      "kind": "status",
+      "message": "Similar-issue check: search=candidates_found; candidate=read; read=[3021]; failed=[]."
+    },
+    {
+      "kind": "status",
+      "message": "Finalizing with existing evidence: the local context budget has no room for another tool result."
+    },
+    {
+      "kind": "status",
+      "message": "Context request 3: estimated 10161/12000 input tokens including 1024 margin; 256 tokens reserved for repair feedback; 0/0 tokens reserved for future evidence and loop growth (minimum 0); 0 excerpts omitted; 0 repeated results reused."
+    },
+    {
+      "kind": "model",
+      "message": "Investigation step 3: choosing the next action."
+    }
+  ]
+}

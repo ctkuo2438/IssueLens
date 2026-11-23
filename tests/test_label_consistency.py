@@ -154,7 +154,7 @@ class LabelConsistencyAgentTests(unittest.IsolatedAsyncioTestCase):
         ], settings=replace(SETTINGS, model="gpt-5.6", reasoning_effort="medium"), handler=label_github_response)
         self.assertIsNotNone(result.content)
         self.assertEqual([item.name for item in result.content.label_recommendations], ["type:bug", "needs-reproduction"])
-        self.assertEqual(create.await_count, 5)
+        self.assertEqual(create.await_count, 3)
         self.assertEqual(result.usage.tool_calls, 3)
         self.assertEqual(create.call_args_list[-2].kwargs["input"], create.call_args_list[-1].kwargs["input"])
         self.assertEqual(create.call_args_list[-1].kwargs["tool_choice"], "none")
@@ -175,7 +175,7 @@ class LabelConsistencyAgentTests(unittest.IsolatedAsyncioTestCase):
             simulated_response(content=decision("Both recommendations need maintainer review; no GitHub labels were applied.")),
         ], handler=label_github_response)
         self.assertEqual([item.name for item in result.content.label_recommendations], ["type:bug", "needs-reproduction"])
-        self.assertEqual(create.await_count, 5)
+        self.assertEqual(create.await_count, 3)
         warning = next(call.args[1] for call in emit.call_args_list if call.args[0] == "warning")
         self.assertIn("Label-decision text conflicts", warning)
         self.assertIn("limitations[0]", warning)
@@ -194,9 +194,9 @@ class LabelConsistencyAgentTests(unittest.IsolatedAsyncioTestCase):
     async def test_budget_exhaustion_rejects_answer_without_silently_stripping_prose_or_labels(self):
         result, create, emit = await run_simulated_agent([
             *label_prefix(), simulated_response(content=decision("No label recommendation is made.")),
-        ], settings=replace(SETTINGS, max_iterations=4), handler=label_github_response)
+        ], settings=replace(SETTINGS, max_iterations=2), handler=label_github_response)
         self.assertIsNone(result.content)
-        self.assertEqual(create.await_count, 4)
+        self.assertEqual(create.await_count, 2)
         self.assertEqual(result.usage.tool_calls, 3)
         warnings = [call.args[1] for call in emit.call_args_list if call.args[0] == "warning"]
         self.assertTrue(any("Label-decision text conflicts" in warning and "No correction budget remains" in warning for warning in warnings))
@@ -207,16 +207,16 @@ class LabelConsistencyAgentTests(unittest.IsolatedAsyncioTestCase):
         result, create, _ = await run_simulated_agent([
             *label_prefix(), simulated_response(content=decision("No label recommendation is made.")),
             simulated_response(content=decision("No label recommendations are being made.")),
-        ], settings=replace(SETTINGS, max_iterations=5), handler=label_github_response)
+        ], settings=replace(SETTINGS, max_iterations=3), handler=label_github_response)
         self.assertIsNone(result.content)
-        self.assertEqual(create.await_count, 5)
+        self.assertEqual(create.await_count, 3)
 
     async def test_normal_coverage_limitations_need_no_correction(self):
         result, create, _ = await run_simulated_agent([
             *label_prefix(), simulated_response(content=decision("Only the loaded catalog was checked; suggestions remain for review.")),
         ], handler=label_github_response)
         self.assertIsNotNone(result.content)
-        self.assertEqual(create.await_count, 4)
+        self.assertEqual(create.await_count, 2)
 
 
 class LabelConsistencyEvaluationTests(unittest.TestCase):

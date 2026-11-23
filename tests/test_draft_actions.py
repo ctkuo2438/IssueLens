@@ -12,7 +12,7 @@ from backend.app.quality import draft_action_claims, draft_closure_claims
 from evaluation.checks import check_result
 from scripts.acceptance import functional_checks
 from test_evaluation import DATASET
-from test_mvp import COMMENT, ISSUE, SETTINGS, final_content, run_simulated_agent, simulated_response, tool_call
+from test_mvp import COMMENT, ISSUE, SETTINGS, final_content, run_simulated_agent, simulated_response
 from test_required_lookups import PolicyServer, content_with_comparison, prefix, run_policy, step
 
 
@@ -174,14 +174,13 @@ class DraftClosureRuleTests(unittest.TestCase):
 class DraftActionAgentTests(unittest.IsolatedAsyncioTestCase):
     async def test_both_problems_share_one_bounded_repair_from_the_same_evidence(self):
         result, create, emit = await run_simulated_agent([
-            simulated_response([tool_call("get_issue")]),
             simulated_response(content=draft_content(OBSERVED_DRAFT)),
             simulated_response(content=draft_content(SAFE_DRAFT)),
         ])
-        self.assertEqual(create.await_count, 3)
-        self.assertEqual(result.usage.tool_calls, 1)
+        self.assertEqual(create.await_count, 2)
+        self.assertEqual(result.usage.tool_calls, 2)
         self.assertEqual(result.content.draft_reply, SAFE_DRAFT)
-        self.assertEqual(create.call_args_list[1].kwargs["input"], create.call_args_list[2].kwargs["input"])
+        self.assertEqual(create.call_args_list[0].kwargs["input"], create.call_args_list[1].kwargs["input"])
         self.assertEqual(create.call_args.kwargs["tool_choice"], "none")
         self.assertNotIn("RFC5861 support in", json.dumps(create.call_args.kwargs))
         feedback = create.call_args.kwargs["instructions"]
@@ -198,7 +197,6 @@ class DraftActionAgentTests(unittest.IsolatedAsyncioTestCase):
         ):
             with self.subTest(problem=problem):
                 result, _, _ = await run_simulated_agent([
-                    simulated_response([tool_call("get_issue")]),
                     simulated_response(content=draft_content(text)),
                     simulated_response(content=draft_content(SAFE_DRAFT)),
                 ])
@@ -207,10 +205,9 @@ class DraftActionAgentTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_exhausted_budget_keeps_partial_sources_without_a_bad_final(self):
         result, create, emit = await run_simulated_agent([
-            simulated_response([tool_call("get_issue")]),
             simulated_response(content=draft_content(OBSERVED_DRAFT)),
-        ], settings=replace(SETTINGS, max_iterations=2))
-        self.assertEqual(create.await_count, 2)
+        ], settings=replace(SETTINGS, max_iterations=1))
+        self.assertEqual(create.await_count, 1)
         self.assertIsNone(result.content)
         self.assertTrue(result.sources)
         self.assertEqual(len(result.rejected_answers), 1)
@@ -226,29 +223,27 @@ class DraftActionAgentTests(unittest.IsolatedAsyncioTestCase):
             *prefix(), step("get_related_issue", issue_number=41),
             simulated_response(content=bad), simulated_response(content=good),
         ], server)
-        self.assertEqual(create.await_count, 6)
+        self.assertEqual(create.await_count, 4)
         self.assertEqual(len(server.requests), 4)
         self.assertEqual(result.similar_issue_check.compared_candidate_numbers, [41])
         self.assertTrue(functional_checks(result)["minimum_similar_issue_checks_completed"])
-        self.assertEqual(create.call_args_list[4].kwargs["input"], create.call_args_list[5].kwargs["input"])
+        self.assertEqual(create.call_args_list[2].kwargs["input"], create.call_args_list[3].kwargs["input"])
         self.assertEqual(create.call_args.kwargs["tool_choice"], "none")
 
     async def test_existing_reported_source_action_is_not_rewritten_or_executed(self):
         source_body = 'In 2020, a maintainer wrote: "I closed this issue."'
 
         def respond(request):
+            if request.url.path.endswith("/labels"):
+                return httpx.Response(200, json=[])
             return httpx.Response(200, json=[{**COMMENT, "body": source_body}] if request.url.path.endswith("/comments")
                                   else {**ISSUE, "comments": 1})
 
         content = draft_content(source_body)
-        result, create, _ = await run_simulated_agent([
-            simulated_response([tool_call("get_issue")]),
-            simulated_response([tool_call("get_issue_comments", '{"page":1}', "comments")]),
-            simulated_response(content=content),
-        ], handler=respond)
+        result, create, _ = await run_simulated_agent([simulated_response(content=content)], handler=respond)
         self.assertEqual(result.content.draft_reply, source_body)
         self.assertIn(source_body, result.sources[1].excerpt)
-        self.assertEqual(create.await_count, 3)
+        self.assertEqual(create.await_count, 1)
         self.assertEqual(result.rejected_answers, [])
 
 

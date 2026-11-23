@@ -43,6 +43,9 @@ class Outcome:
     emit: Mock
     saved: AsyncMock
     sleep: AsyncMock | None
+    # Each saved checkpoint as JSON at the moment it was saved. A saved object can share
+    # state, such as usage, that the run changes afterwards.
+    saved_json: list[str]
 
 
 def offline_patches(github, client):
@@ -64,9 +67,7 @@ def simulated_services(answers, paths, responses=None):
         return github_response(request)
 
     github = httpx.AsyncClient(base_url="https://api.github.com", transport=httpx.MockTransport(handler))
-    create = AsyncMock(side_effect=responses or [
-        simulated_response([tool_call("get_issue")]), simulated_response(content=final_content()),
-    ])
+    create = AsyncMock(side_effect=responses or [simulated_response(content=final_content())])
     client = AsyncMock()
     client.__aenter__.return_value.responses.create = create
     return github, client, create
@@ -77,25 +78,26 @@ async def run_agent(*answers, settings=TOKEN_SETTINGS, checkpoint=None, fake_sle
     paths = []
     github, client, create = simulated_services(answers, paths, responses)
     emit = Mock()
-    saved = AsyncMock()
+    saved_json: list[str] = []
+    saved = AsyncMock(side_effect=lambda state: saved_json.append(state.model_dump_json()))
     run = AgentRun(TARGET, settings, emit, checkpoint=checkpoint, save_checkpoint=saved if checkpoint else None)
     gateway, model, encoding, lookups = offline_patches(github, client)
     sleeping = patch("backend.app.agent.asyncio.sleep", new_callable=AsyncMock) if fake_sleep else nullcontext()
     with gateway, model, encoding, lookups, sleeping as sleep:
         result = await run.run()
-    return Outcome(run, result, create, paths, emit, saved, sleep)
+    return Outcome(run, result, create, paths, emit, saved, sleep, saved_json)
 
 
 def resumed_checkpoint(*, repository_public=False, cooldown_until=None, restored_evidence=False) -> AgentCheckpoint:
-    """A checkpoint saved after the model requested get_issue but before the read finished."""
+    """A checkpoint saved during the server's get_issue read, before the read finished."""
     checkpoint = AgentCheckpoint.start("offline-signature")
-    call = tool_call("get_issue")
+    call = tool_call("get_issue", call_id="server_get_issue")
     checkpoint.history = [
         {"role": "user", "content": f"Investigate this GitHub issue and draft a maintainer reply: {TARGET.url}"},
         call.to_dict(),
     ]
     checkpoint.pending_tools = PendingTools(
-        calls=[call], required_action=None, require_comments=False, closing_for_repairs=False, at_limit=False,
+        calls=[call], required_action=None, closing_for_repairs=False, at_limit=False,
     )
     tools = GitHubTools(Mock(spec=httpx.AsyncClient), TARGET, lambda text, limit: (text, False))
     tools.repository_public = repository_public
@@ -120,10 +122,10 @@ class PublicRepositoryGuardTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(outcome.paths[0], REPOSITORY_PATH)
         self.assertEqual(outcome.paths.count(REPOSITORY_PATH), 1)
         self.assertIsNotNone(outcome.result.content)
-        self.assertEqual(outcome.create.await_count, 2)
-        # The server check is neither a model tool call nor a Trace attempt.
-        self.assertEqual(outcome.result.usage.tool_calls, 1)
-        self.assertEqual([attempt.kind for attempt in outcome.run.trace.attempts], ["model", "tool", "model"])
+        self.assertEqual(outcome.create.await_count, 1)
+        # The visibility check is neither a tool call nor a Trace attempt; the issue and catalog reads are both.
+        self.assertEqual(outcome.result.usage.tool_calls, 2)
+        self.assertEqual([attempt.kind for attempt in outcome.run.trace.attempts], ["tool", "tool", "model"])
         # The confirmation is saved with the run, so a replacement Worker does not repeat it.
         first_save = outcome.saved.await_args_list[0].args[0]
         self.assertTrue(first_save.tools.repository_public)
@@ -218,18 +220,14 @@ class PublicRepositoryGuardTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNotNone(outcome.result.content)
 
     async def test_restored_cooldown_after_confirmation_keeps_the_evidence(self):
-        # First leg: confirm the repository, read the issue, then save while the comments read is in flight.
-        first = await run_agent(checkpoint=AgentCheckpoint.start("offline-signature"), responses=[
-            simulated_response([tool_call("get_issue")]),
-            simulated_response([tool_call("get_issue_comments", '{"page": 1}', call_id="call_offline_2")]),
-            simulated_response(content=final_content()),
-        ])
-        saves = [call.args[0] for call in first.saved.await_args_list]
+        # First leg: confirm the repository, read the issue, then save while the catalog read is in flight.
+        first = await run_agent(checkpoint=AgentCheckpoint.start("offline-signature"))
         interrupted = next(
-            AgentCheckpoint.model_validate_json(state.model_dump_json()) for state in saves
+            state for state in map(AgentCheckpoint.model_validate_json, first.saved_json)
             if state.in_flight == "tool" and state.pending_tools is not None
-            and state.pending_tools.calls[0].name == "get_issue_comments"
+            and state.pending_tools.calls[0].name == "get_repo_labels"
         )
+        self.assertEqual(interrupted.result.usage.model_requests, 0)
         assert interrupted.tools is not None
         # GitHub asked for a wait longer than the job runtime just before the Worker stopped.
         interrupted.tools.cooldown_until = time.time() + 600
@@ -237,7 +235,11 @@ class PublicRepositoryGuardTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(resumed.paths, [])  # The cooldown is honored.
         self.assertEqual([source.id for source in resumed.result.sources], ["S1"])
         self.assertIsNotNone(resumed.result.content)
-        self.assertIn("get_issue_comments: GitHub's requested cooldown is still active.", resumed.result.limitations)
+        self.assertIn("get_repo_labels: GitHub's requested cooldown is still active.", resumed.result.limitations)
+        # The resumed run finishes the interrupted catalog read once and repeats no earlier server read.
+        self.assertEqual(resumed.result.usage.tool_calls, 3)
+        calls = [item["call_id"] for item in resumed.create.call_args.kwargs["input"] if item.get("type") == "function_call"]
+        self.assertEqual(calls, ["server_get_issue", "server_get_repo_labels"])
         self.assertNotEqual(resumed.run.trace.stop_reason, "repository_check_failed")
 
 

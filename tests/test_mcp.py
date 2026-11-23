@@ -263,9 +263,7 @@ class AnalysisToolTests(unittest.IsolatedAsyncioTestCase):
         self.progress = []
         github = httpx.AsyncClient(base_url="https://api.github.com", transport=httpx.MockTransport(handler))
         # A list gives one response per request; a function replaces the model call.
-        self.create = AsyncMock(side_effect=model or [
-            simulated_response([tool_call("get_issue")]), simulated_response(content=final_content()),
-        ])
+        self.create = AsyncMock(side_effect=model or [simulated_response(content=final_content())])
         client = AsyncMock()
         client.__aenter__.return_value.responses.create = self.create
         self.analysis = IssueAnalysisTool(settings)
@@ -289,9 +287,12 @@ class AnalysisToolTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(list(report), REPORT_FIELDS)
         self.assertEqual(report["notice"], NOTICE)
         self.assertEqual(report["summary"]["source_ids"], ["S1"])
-        self.assertEqual(report["sources"], [{"id": "S1", "kind": "issue", "title": ISSUE["title"], "url": ISSUE_URL}])
+        self.assertEqual(report["sources"], [
+            {"id": "S1", "kind": "issue", "title": ISSUE["title"], "url": ISSUE_URL},
+            {"id": "S2", "kind": "repo_labels", "title": "Repository label catalog", "url": "https://github.com/example/project/labels"},
+        ])
         self.assertEqual(report["issue"]["title"], ISSUE["title"])
-        self.assertEqual(report["usage"]["model_requests"], 2)
+        self.assertEqual(report["usage"]["model_requests"], 1)
         # Raw third-party text stays out of the report; the source URL leads to it.
         self.assertNotIn("EXCERPT_CANARY", result.text)
 
@@ -334,7 +335,7 @@ class AnalysisToolTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.create.await_count, 0)
 
     async def test_progress_follows_the_activity_log(self):
-        responses = iter([simulated_response([tool_call("get_issue")]), simulated_response(content=final_content())])
+        responses = iter([simulated_response([tool_call("get_repo_readme")]), simulated_response(content=final_content())])
 
         async def model(**kwargs):
             # Yield like a real network request, so the reporter can run between steps.

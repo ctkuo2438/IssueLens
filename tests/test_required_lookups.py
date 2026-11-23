@@ -11,7 +11,9 @@ from fastapi.testclient import TestClient
 import httpx
 
 from backend.app.main import create_app
-from backend.app.agent import AgentRun, CANDIDATE_RESERVE_TOKENS, CONTINUATION_RESERVE_TOKENS, PENDING_LOOKUP_RESERVE_TOKENS
+from backend.app.agent import (
+    AgentRun, CANDIDATE_RESERVE_TOKENS, CONTINUATION_RESERVE_TOKENS, PENDING_LOOKUP_RESERVE_TOKENS, REPAIR_RESERVE_TOKENS,
+)
 from scripts.acceptance import functional_checks
 from test_labels import FIXTURE, TARGET_ISSUE
 from test_mvp import COMMENT, SETTINGS, TARGET, final_content, run_simulated_agent, simulated_response, tool_call
@@ -78,19 +80,22 @@ async def run_policy(responses, server, settings=SETTINGS):
 
 
 def prefix():
-    return [step("get_issue"), step("get_repo_labels"), step("search_issues", query="export crash")]
+    """The model's first search; the server reads the issue and the label catalog before it."""
+    return [step("search_issues", query="export crash")]
 
 
 class RequiredLookupTests(unittest.IsolatedAsyncioTestCase):
-    async def test_target_catalog_search_and_candidate_precede_a_grounded_final(self):
+    async def test_server_reads_then_search_and_candidate_precede_a_grounded_final(self):
+        server = PolicyServer()
         result, create, _ = await run_policy([
             *prefix(), step("get_related_issue", issue_number=41), simulated_response(content=content_with_comparison()),
-        ], PolicyServer())
+        ], server)
         self.assertIsNotNone(result.content)
-        self.assertEqual([call.kwargs["tool_choice"] for call in create.call_args_list[1:4]], [
-            {"type": "function", "name": "get_repo_labels"},
+        self.assertEqual([request.url.path.rsplit("/", 1)[-1] for request in server.requests[:2]], ["42", "labels"])
+        self.assertEqual([call.kwargs["tool_choice"] for call in create.call_args_list], [
             {"type": "function", "name": "search_issues"},
             {"type": "function", "name": "get_related_issue"},
+            "auto",
         ])
         state = result.similar_issue_check
         self.assertEqual(state.search_status, "candidates_found")
@@ -101,24 +106,25 @@ class RequiredLookupTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(functional_checks(result)["minimum_similar_issue_checks_completed"])
         self.assertEqual(result.limitations, [])
 
-    async def test_positive_comment_count_keeps_first_page_ahead_of_other_lookups(self):
+    async def test_positive_comment_count_reads_the_first_page_before_the_first_request(self):
+        server = PolicyServer(comments=1)
         result, create, _ = await run_policy([
-            step("get_issue"), step("get_issue_comments", page=1), step("get_repo_labels"),
             step("search_issues", query="export"), step("get_related_issue", issue_number=41),
             simulated_response(content=content_with_comparison("S5")),
-        ], PolicyServer(comments=1))
+        ], server)
         self.assertIsNotNone(result.content)
-        self.assertEqual(create.call_args_list[1].kwargs["tool_choice"], {"type": "function", "name": "get_issue_comments"})
+        self.assertEqual([request.url.path.rsplit("/", 1)[-1] for request in server.requests[:3]], ["42", "comments", "labels"])
+        self.assertEqual(server.requests[1].url.params["page"], "1")
         self.assertEqual(result.comment_check.status, "read")
-        self.assertEqual(create.call_args_list[4].kwargs["tool_choice"], {"type": "function", "name": "get_related_issue"})
-        self.assertEqual(create.call_args_list[5].kwargs["tool_choice"], "none")
+        self.assertEqual(create.await_count, 3)
+        self.assertEqual(create.call_args_list[0].kwargs["tool_choice"], {"type": "function", "name": "search_issues"})
 
     async def test_two_successful_distinct_empty_queries_are_not_an_unread_check(self):
         result, create, _ = await run_policy([
             *prefix(), step("search_issues", query="export"), simulated_response(content=final_content()),
         ], PolicyServer(empty=True))
         self.assertIsNotNone(result.content)
-        self.assertEqual(create.call_args_list[3].kwargs["tool_choice"], {"type": "function", "name": "search_issues"})
+        self.assertEqual(create.call_args_list[1].kwargs["tool_choice"], {"type": "function", "name": "search_issues"})
         self.assertEqual(result.similar_issue_check.search_status, "empty")
         self.assertEqual(result.similar_issue_check.candidate_status, "not_needed")
         self.assertEqual(result.similar_issue_check.comparison_status, "not_needed")
@@ -150,7 +156,7 @@ class RequiredLookupTests(unittest.IsolatedAsyncioTestCase):
             return server.respond(request)
 
         responses = [*prefix(), step("search_issues", query="export"), simulated_response(content=final_content())]
-        first_search_id = responses[2].output[0].call_id
+        first_search_id = responses[0].output[0].call_id
         with patch.object(AgentRun, "_wait_for_retry", new=AsyncMock()):
             result, create, emit = await run_simulated_agent(responses, handler=respond, required_lookups=True)
         state = result.similar_issue_check
@@ -258,13 +264,12 @@ class RequiredLookupTests(unittest.IsolatedAsyncioTestCase):
     async def test_wrong_tool_is_rejected_before_network_and_does_not_skip_a_gate(self):
         server = PolicyServer()
         result, create, _ = await run_policy([
-            step("get_issue"), step("get_repo_readme"), step("get_repo_labels"),
-            step("search_issues", query="export"), step("get_related_issue", issue_number=41),
+            step("get_repo_readme"), step("search_issues", query="export"), step("get_related_issue", issue_number=41),
             simulated_response(content=content_with_comparison()),
         ], server)
         self.assertIsNotNone(result.content)
         self.assertFalse(any(request.url.path.endswith("/readme") for request in server.requests))
-        self.assertEqual(create.call_args_list[2].kwargs["tool_choice"], {"type": "function", "name": "get_repo_labels"})
+        self.assertEqual(create.call_args_list[1].kwargs["tool_choice"], {"type": "function", "name": "search_issues"})
 
     async def test_target_number_does_not_count_as_a_candidate_attempt(self):
         server = PolicyServer()
@@ -278,13 +283,12 @@ class RequiredLookupTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_premature_final_is_retained_but_mandatory_tools_still_execute(self):
         result, create, _ = await run_policy([
-            step("get_issue"), simulated_response(content=final_content()), step("get_repo_labels"),
-            step("search_issues", query="export"), step("get_related_issue", issue_number=41),
-            simulated_response(content=content_with_comparison()),
+            simulated_response(content=final_content()), step("search_issues", query="export"),
+            step("get_related_issue", issue_number=41), simulated_response(content=content_with_comparison()),
         ], PolicyServer())
         self.assertIsNotNone(result.content)
-        self.assertIn("Complete get_repo_labels", result.rejected_answers[0].reason)
-        self.assertEqual(create.call_args_list[2].kwargs["tool_choice"], {"type": "function", "name": "get_repo_labels"})
+        self.assertIn("Complete search_issues", result.rejected_answers[0].reason)
+        self.assertEqual(create.call_args_list[1].kwargs["tool_choice"], {"type": "function", "name": "search_issues"})
         self.assertEqual(result.similar_issue_check.comparison_status, "compared")
 
     async def test_retrieved_body_requires_a_comparison_before_acceptance(self):
@@ -295,12 +299,12 @@ class RequiredLookupTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNotNone(result.content)
         self.assertIn("missing: [41]", result.rejected_answers[0].reason)
         self.assertEqual(create.call_args.kwargs["tool_choice"], "none")
-        self.assertEqual(create.call_args_list[4].kwargs["input"], create.call_args_list[5].kwargs["input"])
+        self.assertEqual(create.call_args_list[2].kwargs["input"], create.call_args_list[3].kwargs["input"])
 
     async def test_iteration_limit_preserves_unattempted_search_and_unread_candidate_states(self):
         for limit, responses, search_status, candidate_status in (
-            (2, [step("get_issue"), simulated_response(content=final_content())], "not_checked", "not_checked"),
-            (4, [*prefix(), simulated_response(content=final_content())], "candidates_found", "not_checked"),
+            (1, [simulated_response(content=final_content())], "not_checked", "not_checked"),
+            (2, [*prefix(), simulated_response(content=final_content())], "candidates_found", "not_checked"),
         ):
             with self.subTest(limit=limit):
                 result, create, _ = await run_policy(responses, PolicyServer(), replace(SETTINGS, max_iterations=limit))
@@ -313,17 +317,18 @@ class RequiredLookupTests(unittest.IsolatedAsyncioTestCase):
                 self.assertTrue(result.limitations)
 
     async def test_tool_limit_does_not_trigger_extra_lookups(self):
-        result, _, _ = await run_policy([
-            step("get_issue"), step("get_repo_labels"), simulated_response(content=final_content()),
-        ], PolicyServer(), replace(SETTINGS, max_tool_calls=2))
+        result, create, _ = await run_policy(
+            [simulated_response(content=final_content())], PolicyServer(), replace(SETTINGS, max_tool_calls=2),
+        )
         self.assertIsNotNone(result.content)
+        self.assertEqual(create.call_args.kwargs["tool_choice"], "none")
         self.assertEqual(result.usage.tool_calls, 2)
         self.assertEqual(result.similar_issue_check.search_status, "not_checked")
 
     async def test_first_empty_query_is_partial_when_no_broader_query_fits_the_request_limit(self):
         result, _, _ = await run_policy([
             *prefix(), simulated_response(content=final_content()),
-        ], PolicyServer(empty=True), replace(SETTINGS, max_iterations=4))
+        ], PolicyServer(empty=True), replace(SETTINGS, max_iterations=2))
         self.assertIsNotNone(result.content)
         self.assertEqual(result.similar_issue_check.search_status, "partial")
         self.assertNotEqual(result.similar_issue_check.candidate_status, "not_needed")
@@ -333,10 +338,10 @@ class RequiredLookupTests(unittest.IsolatedAsyncioTestCase):
         probe, _, _ = await run_policy([
             *prefix(), step("get_related_issue", issue_number=41), simulated_response(content=content_with_comparison()),
         ], PolicyServer())
-        budget = probe.context_builds[1].estimated_tokens + 8
-        result, create, _ = await run_policy([
-            step("get_issue"), simulated_response(content=final_content()),
-        ], PolicyServer(), replace(SETTINGS, context_tokens=budget))
+        budget = probe.context_builds[0].estimated_tokens + 8
+        result, create, _ = await run_policy(
+            [simulated_response(content=final_content())], PolicyServer(), replace(SETTINGS, context_tokens=budget),
+        )
         self.assertIsNotNone(result.content)
         self.assertEqual(create.call_args.kwargs["tool_choice"], "none")
         self.assertEqual(result.similar_issue_check.search_status, "not_checked")
@@ -357,7 +362,7 @@ class RequiredLookupTests(unittest.IsolatedAsyncioTestCase):
 
 
 class FutureLookupReserveTests(unittest.IsolatedAsyncioTestCase):
-    async def test_reserve_releases_as_catalog_search_and_candidate_arrive(self):
+    async def test_reserve_releases_as_search_and_candidate_arrive(self):
         result, create, _ = await run_policy([
             *prefix(), step("get_related_issue", issue_number=41), simulated_response(content=content_with_comparison()),
         ], PolicyServer())
@@ -365,43 +370,96 @@ class FutureLookupReserveTests(unittest.IsolatedAsyncioTestCase):
         base = CONTINUATION_RESERVE_TOKENS
         body = CANDIDATE_RESERVE_TOKENS
         lookup = PENDING_LOOKUP_RESERVE_TOKENS
+        # The last request leaves the tool choice to the model, so it keeps room for one result.
         self.assertEqual([report.future_reserve_tokens for report in result.context_builds], [
-            base, base + body + 2 * lookup, base + body + lookup, base + body, base,
+            base + body + lookup, base + body, base + body,
         ])
         self.assertTrue(all(call.kwargs["max_output_tokens"] == 2400 for call in create.call_args_list))
 
-    async def test_second_empty_search_or_failed_candidate_releases_body_reserve(self):
+    async def test_second_empty_search_or_failed_candidate_ends_the_required_candidate_read(self):
         for empty, failed in ((True, False), (False, True)):
             with self.subTest(empty=empty, failed=failed):
                 server = PolicyServer(empty=empty)
                 if failed:
                     server.candidate_statuses = [500]
                 followup = step("search_issues", query="export") if empty else step("get_related_issue", issue_number=41)
-                result, _, _ = await run_policy([
+                result, create, _ = await run_policy([
                     *prefix(), followup, simulated_response(content=final_content()),
                 ], server)
                 self.assertIsNotNone(result.content)
                 self.assertGreater(result.context_builds[-2].future_reserve_tokens, CONTINUATION_RESERVE_TOKENS)
-                self.assertEqual(result.context_builds[-1].future_reserve_tokens, CONTINUATION_RESERVE_TOKENS)
+                # Nothing is required any more; an optional tool still keeps room for one result.
+                self.assertEqual(create.call_args.kwargs["tool_choice"], "auto")
+                self.assertEqual(
+                    result.context_builds[-1].future_reserve_target_tokens, CONTINUATION_RESERVE_TOKENS + CANDIDATE_RESERVE_TOKENS,
+                )
                 self.assertEqual(result.similar_issue_check.candidate_status, "not_needed" if empty else "failed")
 
     async def test_no_room_for_future_steps_finalizes_with_explicit_unread_state(self):
         probe, _, _ = await run_policy([
             *prefix(), step("get_related_issue", issue_number=41), simulated_response(content=content_with_comparison()),
         ], PolicyServer())
-        budget = probe.context_builds[1].estimated_tokens + 8
-        result, create, emit = await run_policy([
-            step("get_issue"), simulated_response(content=final_content()),
-        ], PolicyServer(), replace(SETTINGS, context_tokens=budget))
+        budget = probe.context_builds[0].estimated_tokens + 8
+        result, create, emit = await run_policy(
+            [simulated_response(content=final_content())], PolicyServer(), replace(SETTINGS, context_tokens=budget),
+        )
         self.assertIsNotNone(result.content)
         self.assertEqual(create.call_args.kwargs["tool_choice"], "none")
         self.assertEqual(result.similar_issue_check.search_status, "not_checked")
-        self.assertIsNone(result.labels_source_id)
+        # The server read the catalog before the first request, whatever the context budget.
+        self.assertEqual(result.labels_source_id, "S2")
         self.assertTrue(any("Finalizing early" in item for item in result.limitations))
         self.assertTrue(any("Finalizing early" in call.args[1] for call in emit.call_args_list))
         self.assertFalse(result.context_builds[-2].sent)
         self.assertTrue(any(not item.fits and item.future_reserve_target_tokens > 0 for item in result.context_builds))
         self.assertEqual(result.context_builds[-1].future_reserve_tokens, 0)
+
+    async def test_an_optional_tool_needs_room_for_its_result_or_the_run_answers_now(self):
+        # Seen live at 12,000 tokens: once the required checks were done, the model chose another
+        # lookup, its result overflowed the budget, and the run ended without an answer.
+        # Long bodies, so each full read takes most of a candidate reserve.
+        first = {**CANDIDATE, "body": "Version 1.3 on Linux. Export closes the application. " * 40}
+        second = {**CANDIDATE, "number": 43, "title": "Export fails on macOS", "body": "Export closes the app on macOS. " * 80}
+
+        class TwoCandidateServer(PolicyServer):
+            def respond(self, request):
+                self.requests.append(request)
+                if request.url.path == "/search/issues":
+                    return httpx.Response(200, json={"total_count": 2, "incomplete_results": False, "items": [first, second]})
+                if request.url.path.endswith("/issues/41"):
+                    return httpx.Response(200, json=first)
+                if request.url.path.endswith("/issues/43"):
+                    return httpx.Response(200, json=second)
+                self.requests.pop()
+                return super().respond(request)
+
+        def exploring_model(**request):
+            """Reads one more candidate whenever the tool choice is left to it."""
+            choice = request["tool_choice"]
+            if choice == "none":
+                return simulated_response(content=content_with_comparison())
+            if choice == "auto":
+                return step("get_related_issue", issue_number=43)
+            return step(choice["name"], **({"query": "export crash"} if choice["name"] == "search_issues" else {"issue_number": 41}))
+
+        probe, _, _ = await run_policy([
+            *prefix(), step("get_related_issue", issue_number=41), simulated_response(content=content_with_comparison()),
+        ], TwoCandidateServer())
+        # Room for the 512-token continuation reserve, but not for a candidate body.
+        budget = probe.context_builds[2].estimated_tokens + REPAIR_RESERVE_TOKENS + 1200
+        server = TwoCandidateServer()
+        result, create, emit = await run_policy(exploring_model, server, replace(SETTINGS, context_tokens=budget))
+        self.assertIsNotNone(result.content, result.limitations)
+        self.assertEqual(create.call_args.kwargs["tool_choice"], "none")
+        self.assertFalse(any(request.url.path.endswith("/issues/43") for request in server.requests))
+        self.assertEqual(result.similar_issue_check.read_candidate_numbers, [41])
+        self.assertTrue(all(report.estimated_tokens <= budget for report in result.context_builds if report.sent))
+        # The required checks were done, so giving up optional lookups is reported but is no limitation.
+        self.assertFalse(any("Finalizing early" in item for item in result.limitations))
+        self.assertIn(
+            ("status", "Finalizing with existing evidence: the local context budget has no room for another tool result."),
+            [call.args for call in emit.call_args_list],
+        )
 
     async def test_context_finalization_does_not_execute_an_unexpected_tool(self):
         probe, _, _ = await run_policy([
@@ -409,19 +467,19 @@ class FutureLookupReserveTests(unittest.IsolatedAsyncioTestCase):
         ], PolicyServer())
         server = PolicyServer()
         result, create, _ = await run_policy([
-            step("get_issue"), step("get_repo_labels"),
-        ], server, replace(SETTINGS, context_tokens=probe.context_builds[1].estimated_tokens + 8))
+            step("get_repo_readme"),
+        ], server, replace(SETTINGS, context_tokens=probe.context_builds[0].estimated_tokens + 8))
         self.assertIsNone(result.content)
         self.assertEqual(create.call_args.kwargs["tool_choice"], "none")
-        self.assertEqual(result.usage.tool_calls, 1)
-        self.assertEqual(len(server.requests), 1)
+        self.assertEqual(result.usage.tool_calls, 2)
+        self.assertEqual(len(server.requests), 2)
         self.assertTrue(any("no tool was executed" in item for item in result.limitations))
 
     async def test_candidate_is_not_fetched_when_its_minimum_reserve_cannot_fit(self):
         probe, _, _ = await run_policy([
             *prefix(), step("get_related_issue", issue_number=41), simulated_response(content=content_with_comparison()),
         ], PolicyServer())
-        budget = probe.context_builds[3].estimated_tokens + CANDIDATE_RESERVE_TOKENS - 100
+        budget = probe.context_builds[1].estimated_tokens + CANDIDATE_RESERVE_TOKENS - 100
         server = PolicyServer()
         result, create, _ = await run_policy([
             *prefix(), simulated_response(content=final_content()),
@@ -451,7 +509,6 @@ class FutureLookupReserveTests(unittest.IsolatedAsyncioTestCase):
                 return response
 
         responses = [
-            step("get_issue"), step("get_issue_comments", page=1), step("get_repo_labels"),
             step("search_issues", query="export crash"), step("get_related_issue", issue_number=41),
             simulated_response(content=content_with_comparison("S12")),
         ]
@@ -470,7 +527,7 @@ class FutureLookupReserveTests(unittest.IsolatedAsyncioTestCase):
             "limitations": result.limitations,
         })
         self.assertEqual(result.similar_issue_check.compared_candidate_numbers, [41])
-        self.assertEqual(create.await_count, 6)
+        self.assertEqual(create.await_count, 3)
         self.assertEqual(result.usage.tool_calls, 5)
         omitted = [item.source_id for report in result.context_builds for item in report.sources if item.action == "omitted"]
         self.assertTrue(omitted)

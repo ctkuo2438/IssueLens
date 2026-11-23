@@ -6,7 +6,7 @@ import unittest
 from backend.app.quality import draft_has_service_offer
 from evaluation.checks import check_result
 from test_evaluation import DATASET, reference_result
-from test_mvp import SETTINGS, final_content, run_simulated_agent, simulated_response, tool_call
+from test_mvp import SETTINGS, final_content, run_simulated_agent, simulated_response
 
 
 ORIGINAL_OFFER = "If you want, I can help turn this into a more concrete migration plan or checklist for 3.2/4.0."
@@ -56,10 +56,9 @@ class DraftCorrectionTests(unittest.IsolatedAsyncioTestCase):
         corrected = final_content()
         corrected["draft_reply"] = "Thanks for reporting this. Please provide a minimal reproduction and the exact export error."
         result, create, emit = await run_simulated_agent([
-            simulated_response([tool_call("get_issue")]),
             simulated_response(content=invalid), simulated_response(content=corrected),
         ])
-        self.assertEqual(create.await_count, 3)
+        self.assertEqual(create.await_count, 2)
         self.assertEqual(result.content.draft_reply, corrected["draft_reply"])
         self.assertIn("maintainer comment", create.call_args.kwargs["instructions"])
         self.assertTrue(any("assistant-style service offer" in call.args[1] for call in emit.call_args_list))
@@ -68,9 +67,9 @@ class DraftCorrectionTests(unittest.IsolatedAsyncioTestCase):
         invalid = final_content()
         invalid["draft_reply"] = ORIGINAL_OFFER
         result, create, emit = await run_simulated_agent([
-            simulated_response([tool_call("get_issue")]), simulated_response(content=invalid),
-        ], settings=replace(SETTINGS, max_iterations=2))
-        self.assertEqual(create.await_count, 2)
+            simulated_response(content=invalid),
+        ], settings=replace(SETTINGS, max_iterations=1))
+        self.assertEqual(create.await_count, 1)
         self.assertIsNone(result.content)
         self.assertTrue(result.sources)
         self.assertTrue(any("No correction budget remains" in call.args[1] for call in emit.call_args_list))

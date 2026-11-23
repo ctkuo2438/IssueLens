@@ -201,13 +201,8 @@ class RunnerTests(unittest.IsolatedAsyncioTestCase):
     async def test_five_case_runner_saves_provenance_outcomes_and_usage_with_simulated_sdk(self):
         responses = []
         for index, case in enumerate(DATASET.cases):
-            responses.append(simulated_response([tool_call("get_issue")]))
-            if case.snapshot.comments:
-                responses.append(simulated_response([tool_call("get_issue_comments", '{"page":1}', "call_comments")]))
-            responses.extend([
-                simulated_response([tool_call("get_repo_labels", call_id="call_labels")]),
-                simulated_response([tool_call("search_issues", json.dumps({"query": {0: "CSV Windows", 1: "FreeHost deployment", 2: "export fails", 3: "keyboard shortcut", 4: "PNG encoder"}[index]}), "call_search")]),
-            ])
+            # The server reads the issue, any comments and the labels before the model's first request.
+            responses.append(simulated_response([tool_call("search_issues", json.dumps({"query": {0: "CSV Windows", 1: "FreeHost deployment", 2: "export fails", 3: "keyboard shortcut", 4: "PNG encoder"}[index]}), "call_search")]))
             for comparison in case.expected.comparisons:
                 responses.append(simulated_response([tool_call("get_related_issue", json.dumps({"issue_number": comparison.issue_number}), "call_candidate")]))
             if case.expected.no_candidates_expected:

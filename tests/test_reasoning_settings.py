@@ -76,7 +76,7 @@ class ReasoningAgentTests(unittest.IsolatedAsyncioTestCase):
     async def test_effort_is_fixed_across_tool_planning_and_same_evidence_repair(self):
         settings = replace(SETTINGS, model="gpt-5.6", reasoning_effort="medium")
         result, create, emit = await run_simulated_agent([
-            simulated_response([tool_call("get_issue")]),
+            simulated_response([tool_call("get_repo_readme")]),
             simulated_response(content=final_content("S999")),
             simulated_response(content=final_content()),
         ], settings=settings)
@@ -97,7 +97,7 @@ class ReasoningAgentTests(unittest.IsolatedAsyncioTestCase):
 
                 def respond(request):
                     requests.append(json.loads(request.content))
-                    output = [tool_call("get_issue").to_dict()] if len(requests) == 1 else [{
+                    output = [tool_call("get_repo_readme").to_dict()] if len(requests) == 1 else [{
                         "id": "msg_offline", "type": "message", "role": "assistant", "status": "completed",
                         "content": [{"type": "output_text", "text": json.dumps(final_content()), "annotations": []}],
                     }]
@@ -126,6 +126,11 @@ class ReasoningAgentTests(unittest.IsolatedAsyncioTestCase):
                     await github.aclose()
                 self.assertIsNotNone(result.content)
                 self.assertEqual(len(requests), 2)
+                # A server read reaches the model as a call without the response-item ID a model call has.
+                self.assertEqual(requests[0]["input"][1], {
+                    "type": "function_call", "call_id": "server_get_issue", "name": "get_issue", "arguments": "{}",
+                })
+                self.assertEqual(requests[0]["input"][2]["type"], "function_call_output")
                 for request in requests:
                     if effort is None:
                         self.assertNotIn("reasoning", request)
@@ -136,21 +141,19 @@ class ReasoningAgentTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_output_budget_exhaustion_is_explicit_and_preserves_sources(self):
         result, create, _ = await run_simulated_agent([
-            simulated_response([tool_call("get_issue")]),
             simulated_response([tool_call("get_repo_readme")], status="incomplete", incomplete_reason="max_output_tokens"),
         ], settings=replace(SETTINGS, model="gpt-5.6", reasoning_effort="medium"))
-        self.assertEqual(create.await_count, 2)
-        self.assertEqual(result.usage.tool_calls, 1)
+        self.assertEqual(create.await_count, 1)
+        self.assertEqual(result.usage.tool_calls, 2)
         self.assertIsNone(result.content)
         self.assertTrue(result.sources)
         self.assertTrue(any("max_output_tokens reached 2400" in item for item in result.limitations))
         self.assertTrue(any("reasoning and visible text" in item for item in result.limitations))
 
     async def test_missing_incomplete_details_does_not_guess_budget_exhaustion(self):
-        result, _, _ = await run_simulated_agent([
-            simulated_response([tool_call("get_issue")]),
-            simulated_response(status="incomplete"),
-        ], settings=replace(SETTINGS, reasoning_effort="medium"))
+        result, _, _ = await run_simulated_agent(
+            [simulated_response(status="incomplete")], settings=replace(SETTINGS, reasoning_effort="medium"),
+        )
         self.assertIsNone(result.content)
         self.assertTrue(any("incomplete" in item for item in result.limitations))
         self.assertFalse(any("max_output_tokens reached" in item for item in result.limitations))

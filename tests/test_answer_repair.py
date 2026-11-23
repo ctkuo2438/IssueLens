@@ -16,7 +16,7 @@ from backend.app.main import create_app
 from test_context import build, exchange, source
 from test_labels import label_content, label_github_response, label_prefix
 from test_m2 import investigation_prefix, m2_content, m2_github_response
-from test_mvp import OfflineEncoding, SETTINGS, commented_github_response, final_content, run_simulated_agent, simulated_response, tool_call
+from test_mvp import OfflineEncoding, SETTINGS, final_content, run_simulated_agent, simulated_response, tool_call
 from test_required_lookups import PolicyServer, content_with_comparison, prefix as policy_prefix, run_policy, step
 
 
@@ -76,13 +76,14 @@ class CitationRepairTests(unittest.IsolatedAsyncioTestCase):
             *investigation_prefix((41,)), simulated_response(content=content),
         ], handler=m2_github_response)
         self.assertIsNotNone(result.content)
-        self.assertIn('"comparisons": {"41": ["S1", "S3"]}', create.call_args.kwargs["instructions"])
+        self.assertIn('"comparisons": {"41": ["S1", "S4"]}', create.call_args.kwargs["instructions"])
 
     async def test_repair_uses_the_same_evidence_without_replaying_a_large_rejected_answer(self):
         probe, _, _ = await run_simulated_agent([
             *label_prefix(), simulated_response(content=label_content()),
         ], handler=label_github_response)
-        budget = probe.context_builds[-1].estimated_tokens + REPAIR_RESERVE_TOKENS + 32
+        # The final request can still call a tool, so it keeps room for one candidate-sized result.
+        budget = probe.context_builds[-1].estimated_tokens + REPAIR_RESERVE_TOKENS + CANDIDATE_RESERVE_TOKENS + 32
         bad = invalid_citations()
         bad["draft_reply"] = "Rejected draft detail. " * 1000
         reasoning = ResponseReasoningItem(type="reasoning", id="rs_rejected", summary=[], encrypted_content="opaque-rejected-reasoning")
@@ -92,8 +93,8 @@ class CitationRepairTests(unittest.IsolatedAsyncioTestCase):
             *label_prefix(), simulated_response([reasoning, message], content=bad), simulated_response(content=label_content()),
         ], settings=replace(SETTINGS, context_tokens=budget), handler=label_github_response)
         self.assertIsNotNone(result.content)
-        first = create.call_args_list[3].kwargs
-        repaired = create.call_args_list[4].kwargs
+        first = create.call_args_list[1].kwargs
+        repaired = create.call_args_list[2].kwargs
         self.assertEqual(first["input"], repaired["input"])
         self.assertEqual(repaired["tool_choice"], "none")
         self.assertNotIn("Rejected draft detail", json.dumps(repaired))
@@ -117,8 +118,8 @@ class CitationRepairTests(unittest.IsolatedAsyncioTestCase):
         ], handler=label_github_response)
         self.assertIsNotNone(result.content)
         self.assertEqual(len(result.rejected_answers), 2)
-        self.assertEqual(create.call_args_list[3].kwargs["input"], create.call_args_list[4].kwargs["input"])
-        self.assertEqual(create.call_args_list[4].kwargs["input"], create.call_args_list[5].kwargs["input"])
+        self.assertEqual(create.call_args_list[1].kwargs["input"], create.call_args_list[2].kwargs["input"])
+        self.assertEqual(create.call_args_list[2].kwargs["input"], create.call_args_list[3].kwargs["input"])
         self.assertNotIn("unseen-499", create.call_args.kwargs["instructions"])
         for answer in result.rejected_answers:
             serialized = json.dumps(f"\nFinal-answer repair feedback: {answer.feedback}", ensure_ascii=False)
@@ -126,13 +127,12 @@ class CitationRepairTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.usage.tool_calls, 3)
 
     async def test_a_fitting_final_attempt_is_allowed_when_the_full_reserve_does_not_fit(self):
-        probe, _, _ = await run_simulated_agent([
-            *label_prefix(), simulated_response(content=label_content()),
-        ], handler=label_github_response)
+        probe, _, _ = await run_simulated_agent([simulated_response(content=label_content())], handler=label_github_response)
         budget = probe.context_builds[-1].estimated_tokens + 8
-        result, create, _ = await run_simulated_agent([
-            *label_prefix(), simulated_response(content=label_content()),
-        ], settings=replace(SETTINGS, context_tokens=budget), handler=label_github_response)
+        result, create, _ = await run_simulated_agent(
+            [simulated_response(content=label_content())],
+            settings=replace(SETTINGS, context_tokens=budget), handler=label_github_response,
+        )
         self.assertIsNotNone(result.content)
         self.assertEqual(create.call_args.kwargs["tool_choice"], "none")
         self.assertFalse(result.context_builds[-2].fits)
@@ -151,29 +151,13 @@ class CitationRepairTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.usage.tool_calls, 3)
         self.assertTrue(any("no tool was executed" in reason for reason in result.limitations))
 
-    async def test_context_finalization_reports_unread_comments_instead_of_forcing_an_unfitting_read(self):
-        prefix = simulated_response([tool_call("get_issue")])
-        probe, _, _ = await run_simulated_agent([
-            prefix, simulated_response([tool_call("get_issue_comments", '{"page":1}', "comments")]),
-            simulated_response(content=final_content()),
-        ], handler=commented_github_response)
-        budget = probe.context_builds[1].estimated_tokens + 8
-        result, create, _ = await run_simulated_agent([
-            prefix, simulated_response(content=final_content()),
-        ], settings=replace(SETTINGS, context_tokens=budget), handler=commented_github_response)
-        self.assertIsNotNone(result.content)
-        self.assertEqual(result.comment_check.status, "not_read")
-        self.assertEqual(create.call_args.kwargs["tool_choice"], "none")
-        self.assertNotIn("The required next action is get_issue_comments", create.call_args.kwargs["instructions"])
-        self.assertTrue(any("no comments lookup" in reason for reason in result.limitations))
-
     async def test_iteration_exhaustion_keeps_the_rejected_candidate_and_sources(self):
         result, create, _ = await run_simulated_agent([
             *label_prefix(), simulated_response(content=invalid_citations()),
             simulated_response(content=invalid_citations()),
-        ], settings=replace(SETTINGS, max_iterations=5), handler=label_github_response)
+        ], settings=replace(SETTINGS, max_iterations=3), handler=label_github_response)
         self.assertIsNone(result.content)
-        self.assertEqual(create.await_count, 5)
+        self.assertEqual(create.await_count, 3)
         self.assertEqual(len(result.rejected_answers), 2)
         self.assertTrue(result.sources)
 
@@ -185,7 +169,7 @@ class RepairTransitionTests(unittest.IsolatedAsyncioTestCase):
             simulated_response(content=content_with_comparison()),
         ], PolicyServer())
         self.assertIsNotNone(probe.content)
-        return probe.context_builds[3].estimated_tokens + CANDIDATE_RESERVE_TOKENS - 100
+        return probe.context_builds[1].estimated_tokens + CANDIDATE_RESERVE_TOKENS - 100
 
     async def test_candidate_pending_repair_keeps_the_same_evidence_and_zero_future_reserve(self):
         settings = replace(SETTINGS, context_tokens=await self.candidate_gate_budget(), model="gpt-5.6", reasoning_effort="medium")
@@ -196,7 +180,7 @@ class RepairTransitionTests(unittest.IsolatedAsyncioTestCase):
             *policy_prefix(), simulated_response(content=bad), simulated_response(content=final_content()),
         ], server, settings)
         self.assertIsNotNone(result.content)
-        self.assertEqual(create.await_count, 5)
+        self.assertEqual(create.await_count, 3)
         self.assertEqual(result.usage.tool_calls, 3)
         self.assertEqual(len(server.requests), 3)
         self.assertEqual(server.candidate_calls, 0)
@@ -218,41 +202,28 @@ class RepairTransitionTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(any("Finalizing early" in event.args[1] for event in emit.call_args_list))
         self.assertTrue(all(call.kwargs["model"] == "gpt-5.6" and call.kwargs["reasoning"] == {"effort": "medium"} and call.kwargs["max_output_tokens"] == 2400 for call in create.call_args_list))
 
-    async def test_pending_comments_catalog_and_search_cannot_override_repair(self):
-        for pending, comments, prefix_length, build_index in (
-            ("comments", 1, 1, 1), ("catalog", 0, 1, 1), ("search", 0, 2, 2),
-        ):
-            with self.subTest(pending=pending):
-                full_prefix = [step("get_issue")]
-                if comments:
-                    full_prefix.append(step("get_issue_comments", page=1))
-                full_prefix.extend([step("get_repo_labels"), step("search_issues", query="export crash")])
-                probe, _, _ = await run_policy([
-                    *full_prefix, step("get_related_issue", issue_number=41),
-                    simulated_response(content=content_with_comparison("S5" if comments else "S4")),
-                ], PolicyServer(comments=comments))
-                budget = probe.context_builds[build_index].estimated_tokens + REPAIR_RESERVE_TOKENS + 128
-                server = PolicyServer(comments=comments)
-                result, create, _ = await run_policy([
-                    *full_prefix[:prefix_length], simulated_response(content=final_content("S999")),
-                    simulated_response(content=final_content()),
-                ], server, replace(SETTINGS, context_tokens=budget))
-                self.assertIsNotNone(result.content)
-                self.assertEqual(create.await_count, prefix_length + 2)
-                self.assertEqual(len(server.requests), prefix_length)
-                self.assertEqual(result.usage.tool_calls, prefix_length)
-                self.assertEqual(create.call_args.kwargs["tool_choice"], "none")
-                self.assertNotIn("The required next action is", create.call_args.kwargs["instructions"])
-                self.assertEqual(create.call_args_list[-2].kwargs["input"], create.call_args.kwargs["input"])
-                self.assertEqual(result.context_builds[-1].phase, "repair")
-                self.assertEqual(result.context_builds[-1].future_reserve_target_tokens, 0)
-                self.assertEqual(result.context_builds[-1].future_reserve_minimum_tokens, 0)
-                self.assertEqual(result.similar_issue_check.search_status, "not_checked")
-                if pending == "comments":
-                    self.assertEqual(result.comment_check.status, "not_read")
-                    self.assertEqual(result.comment_check.attempted_pages, [])
-                if pending != "search":
-                    self.assertIsNone(result.labels_source_id)
+    async def test_pending_search_cannot_override_repair(self):
+        probe, _, _ = await run_policy([
+            *policy_prefix(), step("get_related_issue", issue_number=41),
+            simulated_response(content=content_with_comparison()),
+        ], PolicyServer())
+        budget = probe.context_builds[0].estimated_tokens + REPAIR_RESERVE_TOKENS + 128
+        server = PolicyServer()
+        result, create, _ = await run_policy([
+            simulated_response(content=final_content("S999")), simulated_response(content=final_content()),
+        ], server, replace(SETTINGS, context_tokens=budget))
+        self.assertIsNotNone(result.content)
+        self.assertEqual(create.await_count, 2)
+        # Only the server's issue and catalog reads ran.
+        self.assertEqual(len(server.requests), 2)
+        self.assertEqual(result.usage.tool_calls, 2)
+        self.assertEqual(create.call_args.kwargs["tool_choice"], "none")
+        self.assertNotIn("The required next action is", create.call_args.kwargs["instructions"])
+        self.assertEqual(create.call_args_list[-2].kwargs["input"], create.call_args.kwargs["input"])
+        self.assertEqual(result.context_builds[-1].phase, "repair")
+        self.assertEqual(result.context_builds[-1].future_reserve_target_tokens, 0)
+        self.assertEqual(result.context_builds[-1].future_reserve_minimum_tokens, 0)
+        self.assertEqual(result.similar_issue_check.search_status, "not_checked")
 
     async def test_unexpected_candidate_tool_during_repair_is_not_executed(self):
         server = PolicyServer()
@@ -261,7 +232,7 @@ class RepairTransitionTests(unittest.IsolatedAsyncioTestCase):
             step("get_related_issue", issue_number=41),
         ], server, replace(SETTINGS, context_tokens=await self.candidate_gate_budget()))
         self.assertIsNone(result.content)
-        self.assertEqual(create.await_count, 5)
+        self.assertEqual(create.await_count, 3)
         self.assertEqual(create.call_args.kwargs["tool_choice"], "none")
         self.assertEqual(result.usage.tool_calls, 3)
         self.assertEqual(len(server.requests), 3)
@@ -274,9 +245,9 @@ class RepairTransitionTests(unittest.IsolatedAsyncioTestCase):
         server = PolicyServer()
         result, create, _ = await run_policy([
             *policy_prefix(), *[simulated_response(content=final_content("S999")) for _ in range(3)],
-        ], server, replace(SETTINGS, context_tokens=await self.candidate_gate_budget(), max_iterations=6))
+        ], server, replace(SETTINGS, context_tokens=await self.candidate_gate_budget(), max_iterations=4))
         self.assertIsNone(result.content)
-        self.assertEqual(create.await_count, 6)
+        self.assertEqual(create.await_count, 4)
         self.assertEqual(result.usage.tool_calls, 3)
         self.assertEqual(server.candidate_calls, 0)
         self.assertEqual(len(result.rejected_answers), 3)
@@ -292,15 +263,15 @@ class RepairTransitionTests(unittest.IsolatedAsyncioTestCase):
             *policy_prefix(), step("get_related_issue", issue_number=41),
             simulated_response(content=content_with_comparison()),
         ], PolicyServer())
-        budget = probe.context_builds[1].estimated_tokens + 8
+        budget = probe.context_builds[0].estimated_tokens + 8
         server = PolicyServer()
-        result, create, _ = await run_policy([
-            step("get_issue"), simulated_response(content=final_content("S999")),
-        ], server, replace(SETTINGS, context_tokens=budget))
+        result, create, _ = await run_policy(
+            [simulated_response(content=final_content("S999"))], server, replace(SETTINGS, context_tokens=budget),
+        )
         self.assertIsNone(result.content)
-        self.assertEqual(create.await_count, 2)
-        self.assertEqual(result.usage.tool_calls, 1)
-        self.assertEqual(len(server.requests), 1)
+        self.assertEqual(create.await_count, 1)
+        self.assertEqual(result.usage.tool_calls, 2)
+        self.assertEqual(len(server.requests), 2)
         repair = result.context_builds[-1]
         self.assertEqual(repair.phase, "repair")
         self.assertEqual((repair.future_reserve_tokens, repair.future_reserve_target_tokens, repair.future_reserve_minimum_tokens), (0, 0, 0))
@@ -310,22 +281,13 @@ class RepairTransitionTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(result.sources)
 
     async def test_premature_answers_still_retry_required_lookups_as_investigation(self):
-        for name, comments, index in (
-            ("get_issue_comments", 1, 1), ("get_repo_labels", 0, 1),
-            ("search_issues", 0, 2), ("get_related_issue", 0, 3),
-        ):
+        for name, index in (("search_issues", 0), ("get_related_issue", 1)):
             with self.subTest(required_lookup=name):
-                planned = [step("get_issue")]
-                if comments:
-                    planned.append(step("get_issue_comments", page=1))
-                planned.extend([
-                    step("get_repo_labels"), step("search_issues", query="export crash"),
-                    step("get_related_issue", issue_number=41),
-                ])
+                planned = [step("search_issues", query="export crash"), step("get_related_issue", issue_number=41)]
                 result, create, emit = await run_policy([
                     *planned[:index], simulated_response(content=final_content()), *planned[index:],
-                    simulated_response(content=content_with_comparison("S5" if comments else "S4")),
-                ], PolicyServer(comments=comments))
+                    simulated_response(content=content_with_comparison()),
+                ], PolicyServer())
                 self.assertIsNotNone(result.content)
                 self.assertEqual(len(result.rejected_answers), 1)
                 self.assertIn(f"Complete {name}", result.rejected_answers[0].reason)

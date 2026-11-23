@@ -28,6 +28,8 @@ COMMENTS = [
 def draft_github_response(request):
     if request.url.path.endswith("/comments"):
         return httpx.Response(200, json=COMMENTS)
+    if request.url.path.endswith("/labels"):
+        return httpx.Response(200, json=[])
     return httpx.Response(200, json={**ISSUE, "state": "closed", "comments": 2, "created_at": CREATED, "closed_at": CLOSED})
 
 
@@ -36,13 +38,6 @@ def draft_content(text):
     content["draft_reply"] = text
     content["missing_information"] = []
     return content
-
-
-def discussion_prefix():
-    return [
-        simulated_response([tool_call("get_issue")]),
-        simulated_response([tool_call("get_issue_comments", '{"page":1}', "comments")]),
-    ]
 
 
 class DraftTemporalRuleTests(unittest.TestCase):
@@ -126,21 +121,19 @@ class DraftGroundingAgentTests(unittest.IsolatedAsyncioTestCase):
         bad_labels["limitations"] = ["No labels are recommended."]
         result, create, _ = await run_simulated_agent([
             *label_prefix(),
-            simulated_response([tool_call("get_repo_labels", call_id="repeat_labels_1")]),
-            simulated_response([tool_call("get_repo_labels", call_id="repeat_labels_2")]),
+            *[simulated_response([tool_call("get_repo_labels", call_id=f"repeat_labels_{index}")]) for index in range(4)],
             simulated_response(content=bad_time), simulated_response(content=bad_labels),
             simulated_response(content=label_content()),
         ], handler=label_github_response)
         self.assertIsNotNone(result.content)
         self.assertEqual(create.await_count, 8)
-        self.assertEqual(result.usage.tool_calls, 5)
+        self.assertEqual(result.usage.tool_calls, 7)
         self.assertEqual(len(result.rejected_answers), 2)
         self.assertTrue(all(call.kwargs["tool_choice"] == "none" for call in create.call_args_list[5:]))
 
     async def test_early_finalization_waits_for_a_successful_search(self):
         result, create, _ = await run_simulated_agent([
-            simulated_response([tool_call("get_issue")]),
-            *[simulated_response([tool_call("get_repo_labels", call_id=f"labels_{index}")]) for index in range(4)],
+            *[simulated_response([tool_call("get_repo_labels", call_id=f"labels_{index}")]) for index in range(5)],
             simulated_response([tool_call("search_issues", '{"query":"export"}', "search")]),
             simulated_response(content=label_content()),
         ], handler=label_github_response)
@@ -152,38 +145,42 @@ class DraftGroundingAgentTests(unittest.IsolatedAsyncioTestCase):
         bad = draft_content("This is expected to be addressed in version 2.0.")
         good = draft_content("In the 2020 discussion, a maintainer expected the timing fix in version 2.0. Current release status has not been verified. The reporter already explained that cleanup is safe to repeat and timing remains the concern.")
         result, create, emit = await run_simulated_agent([
-            *discussion_prefix(), simulated_response(content=bad), simulated_response(content=good),
+            simulated_response(content=bad), simulated_response(content=good),
         ], handler=draft_github_response)
         self.assertIsNotNone(result.content)
         self.assertEqual(result.content.draft_reply, good["draft_reply"])
         self.assertEqual(create.call_args.kwargs["tool_choice"], "none")
-        self.assertEqual(create.call_args_list[2].kwargs["input"], create.call_args_list[3].kwargs["input"])
+        self.assertEqual(create.call_args_list[0].kwargs["input"], create.call_args_list[1].kwargs["input"])
         self.assertEqual(json.loads(result.rejected_answers[0].output_text)["draft_reply"], bad["draft_reply"])
         self.assertTrue(any("unqualified time/capability" in call.args[1] for call in emit.call_args_list))
 
     async def test_analysis_date_and_source_timestamps_reach_model_input(self):
         result, create, _ = await run_simulated_agent([
-            *discussion_prefix(), simulated_response(content=final_content()),
+            simulated_response(content=final_content()),
         ], handler=draft_github_response)
         self.assertIn(f"Analysis date (UTC): {result.analysis_date.isoformat()}", create.call_args.kwargs["instructions"])
-        issue_payload = json.loads(create.call_args_list[1].kwargs["input"][-1]["output"])
+        issue_output = next(
+            item for item in create.call_args_list[0].kwargs["input"]
+            if item.get("type") == "function_call_output" and item["call_id"] == "server_get_issue"
+        )
+        issue_payload = json.loads(issue_output["output"])
         self.assertEqual(issue_payload["issue"]["closed_at"], CLOSED)
         self.assertTrue(any("Created: 2020-01-02" in source.excerpt for source in result.sources))
 
     async def test_retrospective_reply_with_no_question_is_a_valid_final_answer(self):
         content = draft_content("Thanks for clarifying that cleanup is already safe to repeat. The recorded concern is its timing. The maintainer expected a fix in version 2.0 at the time; the current implementation was not checked.")
         result, create, _ = await run_simulated_agent([
-            *discussion_prefix(), simulated_response(content=content),
+            simulated_response(content=content),
         ], handler=draft_github_response)
         self.assertIsNotNone(result.content)
         self.assertNotIn("?", result.content.draft_reply)
         self.assertEqual(result.content.missing_information, [])
-        self.assertEqual(create.await_count, 3)
+        self.assertEqual(create.await_count, 1)
 
     async def test_a_still_unanswered_minimal_example_question_is_allowed(self):
         content = draft_content("Thanks for clarifying the timing concern. Could you share a minimal application demonstrating the failure?")
         result, _, _ = await run_simulated_agent([
-            *discussion_prefix(), simulated_response(content=content),
+            simulated_response(content=content),
         ], handler=draft_github_response)
         self.assertIsNotNone(result.content)
         self.assertIn("minimal application", result.content.draft_reply)

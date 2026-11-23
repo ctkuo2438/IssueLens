@@ -12,7 +12,8 @@ from typing import Any, Literal, cast
 import httpx
 from openai import APIConnectionError, APIStatusError, AsyncOpenAI
 from openai.types.responses import (
-    Response, ResponseFunctionToolCall, ResponseInputParam, ResponseTextConfigParam, ToolChoiceFunctionParam,
+    Response, ResponseFunctionToolCall, ResponseInputItemParam, ResponseInputParam, ResponseTextConfigParam,
+    ToolChoiceFunctionParam,
 )
 from openai.types.responses.response_create_params import ResponseCreateParamsNonStreaming
 from pydantic import ValidationError
@@ -24,7 +25,7 @@ from backend.app.checkpoint import AgentCheckpoint, CheckpointWriter, PendingToo
 from backend.app.config import Settings
 from backend.app.context import BuiltContext, ContextBuilder
 from backend.app.github import (
-    CommentArguments, GitHubTools, RepositoryNotPublicError, SearchArguments, TOOLS, ToolError, TransientToolError,
+    GitHubTools, RepositoryNotPublicError, SearchArguments, TOOLS, ToolError, TransientToolError,
 )
 from backend.app.models import (
     AnalysisContent, AnalysisResult, ContextBuildReport, EventKind, IssueTarget, RejectedAnswer,
@@ -46,6 +47,8 @@ RETRY_BUDGET_NAMES = {
     "candidate_read_budget": "candidate-read budget",
 }
 Clip = Callable[[str, int], tuple[str, bool]]
+# Lookups that need no judgment. The server makes them, in order, before the first model request.
+FIXED_LOOKUPS = (("get_issue", "{}"), ("get_issue_comments", '{"page": 1}'), ("get_repo_labels", "{}"))
 
 
 def checkpoint_signature(settings: Settings) -> str:
@@ -69,7 +72,6 @@ class RequestPlan:
     repairing: bool
     at_limit: bool
     closing_for_repairs: bool
-    require_comments: bool
     required_action: str | None
     action_instruction: str
     tool_choice: Literal["auto", "none"] | ToolChoiceFunctionParam
@@ -173,12 +175,14 @@ class AgentRun:
 
     # The required_lookup method determines the next required action for the agent to take based on the current state of the tools and the investigation.
     def required_lookup(self) -> tuple[str, str] | None:
-        """Require minimum scoped evidence once; failures remain explicit and bounded."""
+        """Require the similar-issue checks once; failures remain explicit and bounded.
+
+        The issue, comments and labels need no judgment, so the server reads them before the
+        first model request instead (see _read_fixed_evidence).
+        """
         assert self.tools is not None
         if self.tools.issue is None:
             return None
-        if not self.tools.label_lookup_attempted:
-            return "get_repo_labels", "Read the repository label catalog before finalizing."
         if not self.tools.search_attempts:
             return "search_issues", "Search this repository before finalizing."
         if self.tools.successful_search_queries and not self.tools.candidates and len(self.tools.search_attempts) < 2:
@@ -205,8 +209,6 @@ class AgentRun:
             # The tool clips the body to 1800 text tokens; allow another 600 for
             # its JSON envelope and source/citation metadata. This is an estimate.
             reserve += CANDIDATE_RESERVE_TOKENS
-        if not self.tools.label_lookup_attempted:
-            reserve += PENDING_LOOKUP_RESERVE_TOKENS
         if pending_search:
             reserve += PENDING_LOOKUP_RESERVE_TOKENS
         return reserve
@@ -219,10 +221,6 @@ class AgentRun:
             iteration == self.settings.max_iterations
             or self.result.usage.tool_calls >= self.settings.max_tool_calls
         )
-        needs_first_page = bool(
-            self.tools.issue and self.tools.issue.comment_count > 0
-            and 1 not in self.tools.comment_attempted_pages
-        )
         # Repair regenerates from the same evidence checkpoint. Pending
         # lookups stay incomplete rather than reopening investigation.
         lookup = None if repairing else self.required_lookup()
@@ -230,16 +228,10 @@ class AgentRun:
             not repairing and self.settings.max_iterations >= 6
             and iteration >= self.settings.max_iterations - FINAL_REPAIR_REQUESTS
             and self.tools.issue and self.tools.labels_source_id and self.tools.searches
-            and not needs_first_page
             and lookup is None
         )
-        require_comments = needs_first_page and not at_limit and not repairing
-        required_action = "get_issue_comments" if require_comments else lookup[0] if lookup and not at_limit else None
-        action_instruction = (
-            "The required next action is get_issue_comments with page=1."
-            if require_comments else f"The required next action is {lookup[0]}. {lookup[1]}"
-            if lookup and not at_limit else ""
-        )
+        required_action = lookup[0] if lookup and not at_limit else None
+        action_instruction = f"The required next action is {lookup[0]}. {lookup[1]}" if lookup and not at_limit else ""
         tool_choice: Literal["auto", "none"] | ToolChoiceFunctionParam = "none" if at_limit or repairing or closing_for_repairs else "auto"
         if required_action:
             tool_choice = {"type": "function", "name": required_action}
@@ -256,14 +248,19 @@ class AgentRun:
         )
         future_reserve = self.future_context_reserve() if not repairing and tool_choice != "none" else 0
         minimum_future_reserve = 0
-        if future_reserve:
+        if tool_choice == "auto":
+            # The model may call any tool, so keep room for one result of the largest kind, a
+            # candidate body. Otherwise an optional lookup could overflow the budget and cost the answer.
+            future_reserve = max(future_reserve, CONTINUATION_RESERVE_TOKENS + CANDIDATE_RESERVE_TOKENS)
+            minimum_future_reserve = CANDIDATE_RESERVE_TOKENS
+        elif future_reserve:
             minimum_future_reserve = (
                 CANDIDATE_RESERVE_TOKENS if required_action == "get_related_issue"
                 else CONTINUATION_RESERVE_TOKENS
             )
         return RequestPlan(
             iteration=iteration, repairing=repairing, at_limit=at_limit, closing_for_repairs=closing_for_repairs,
-            require_comments=require_comments, required_action=required_action,
+            required_action=required_action,
             action_instruction=action_instruction, tool_choice=tool_choice, instructions=instructions,
             future_reserve=future_reserve, minimum_future_reserve=minimum_future_reserve,
         )
@@ -407,10 +404,6 @@ class AgentRun:
                     and SearchArguments.model_validate_json(call.arguments).query.casefold() in self.tools.search_attempts
                 ):
                     raise ToolError("Use a distinct broader query; a cached repeat does not complete the empty-search check.")
-                if pending.require_comments and (
-                    call.name != "get_issue_comments" or CommentArguments.model_validate_json(call.arguments).page != 1
-                ):
-                    raise ToolError("The comment policy requires get_issue_comments page=1 first.")
                 output = await self.tools.execute(call.name, call.arguments, before_candidate_read=save_attempt)
             except TransientToolError as exc:
                 exhausted_budget = None
@@ -609,7 +602,7 @@ class AgentRun:
         self, github: httpx.AsyncClient, clip: Clip, context: ContextBuilder, history: ResponseInputParam,
         model_retry: ScheduledRetry | None,
     ) -> AnalysisResult | None:
-        """Create the tools and finish what a checkpoint left in progress.
+        """Create the tools, finish what a checkpoint left in progress, and read the fixed evidence.
 
         Returns the run's result when it ends before the next model request.
         """
@@ -635,6 +628,45 @@ class AgentRun:
             message = f"The Worker stopped during the OpenAI retry after {model_retry.reason}. The retry was exhausted."
             self.emit("warning", message)
             return self.snapshot(message, stop_reason="retry_exhausted")
+        return await self._read_fixed_evidence(context, history)
+
+    async def _read_fixed_evidence(self, context: ContextBuilder, history: ResponseInputParam) -> AnalysisResult | None:
+        """Read the target issue, page 1 of its comments and the label catalog before the first model request.
+
+        These lookups take no judgment, so the server makes them rather than spending a model
+        request on each. They are ordinary tool calls: they count toward the tool-call budget,
+        retry like any lookup, and reach the model as calls with results in its input.
+        Returns the run's result when the target issue cannot be read.
+        """
+        assert self.tools is not None
+        if self.result.usage.model_requests:
+            return None
+        # Each lookup has a fixed call ID, so a resumed run skips the ones already in its history.
+        made = {item.get("call_id") for item in history if item.get("type") == "function_call"}
+        for name, arguments in FIXED_LOOKUPS:
+            issue = self.tools.issue
+            if name != "get_issue":
+                if issue is None:
+                    break
+                if name == "get_issue_comments" and issue.comment_count == 0:
+                    continue
+            call = ResponseFunctionToolCall(type="function_call", call_id=f"server_{name}", name=name, arguments=arguments)
+            if call.call_id in made:
+                continue
+            if name == "get_issue":
+                self.emit("status", (
+                    "Reading the target issue, its first comments page if it has comments, "
+                    "and the label catalog before the first model request."
+                ))
+            history.append(cast(ResponseInputItemParam, call.to_dict()))
+            pending = PendingTools(calls=[call], required_action=None, closing_for_repairs=False, at_limit=False)
+            await self._save_execution_state(context, history, pending_tools=pending)
+            await self._complete_tool_round(context, history, pending)
+        if self.tools.issue is None:
+            return self.snapshot(
+                "The target issue could not be read, so no model request was sent.",
+                stop_reason="target_issue_unavailable",
+            )
         return None
 
     def _fit_context(
@@ -661,7 +693,7 @@ class AgentRun:
             return built, plan
         # Stop tool planning when the remaining space cannot accommodate
         # its reserves. Retry only as a final answer from existing evidence.
-        if built.report.future_reserve_minimum_tokens:
+        if built.report.future_reserve_minimum_tokens and plan.required_action:
             limitation = (
                 f"Finalizing early: at least {built.report.future_reserve_minimum_tokens} tokens for future evidence "
                 "and loop growth could not be reserved within the local context budget. "
@@ -669,11 +701,14 @@ class AgentRun:
             )
             self.result.limitations.append(limitation)
             self.emit("warning", limitation)
+        elif built.report.future_reserve_minimum_tokens:
+            # The required checks are done, so only optional lookups are given up, as when closing for repairs.
+            self.emit("status", "Finalizing with existing evidence: the local context budget has no room for another tool result.")
         instructions = plan.instructions
         if plan.action_instruction:
             instructions = instructions.replace(plan.action_instruction, "")
         plan = replace(
-            plan, require_comments=False, required_action=None, tool_choice="none", instructions=instructions,
+            plan, required_action=None, tool_choice="none", instructions=instructions,
             finalizing_for_context=True,
         )
         built = context.build(
@@ -802,12 +837,6 @@ class AgentRun:
                 "The model requested a tool during final-answer repair; no tool was executed.",
                 stop_reason="tool_use_closed",
             )
-        if not calls and self.tools.issue is None:
-            self.trace.finish("rejected", stop_reason="target_issue_unavailable")
-            return self.snapshot(
-                "The model finished without successfully reading the target issue.",
-                stop_reason="target_issue_unavailable",
-            )
         return None
 
     async def _use_tools(
@@ -825,7 +854,7 @@ class AgentRun:
         # including encrypted reasoning and function-call linkage.
         history.extend(cast(ResponseInputParam, [item.to_dict() for item in response.output]))
         pending = PendingTools(
-            calls=calls, required_action=plan.required_action, require_comments=plan.require_comments,
+            calls=calls, required_action=plan.required_action,
             closing_for_repairs=plan.closing_for_repairs, at_limit=plan.at_limit,
         )
         await self._save_execution_state(context, history, pending_tools=pending)

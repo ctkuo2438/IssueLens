@@ -47,10 +47,8 @@ class AgentCheckpointTests(unittest.IsolatedAsyncioTestCase):
         async def respond(**request):
             requests.append(request)
             if len(requests) == 1:
-                return simulated_response([tool_call("get_issue")])
-            if len(requests) == 2:
                 return simulated_response(content=final_content("S999"))
-            if len(requests) == 3:
+            if len(requests) == 2:
                 raise asyncio.CancelledError
             return simulated_response(content=final_content())
 
@@ -67,19 +65,20 @@ class AgentCheckpointTests(unittest.IsolatedAsyncioTestCase):
                                checkpoint=initial, save_checkpoint=persist).run()
             recovered = AgentCheckpoint.model_validate_json(saved)
             self.assertEqual(recovered.in_flight, "model")
-            self.assertEqual(recovered.result.usage.model_requests, 3)
+            self.assertEqual(recovered.result.usage.model_requests, 2)
             self.assertFalse(recovered.result.context_builds[-1].sent)
             result = await AgentRun(TARGET, settings, lambda *_: None, github_transport=github,
                                     checkpoint=recovered, save_checkpoint=persist).run()
 
         self.assertIsNotNone(result.content)
-        self.assertEqual(result.usage.model_requests, 4)
-        self.assertEqual(result.usage.tool_calls, 1)
-        self.assertEqual(result.usage.total_tokens, 75)
+        self.assertEqual(result.usage.model_requests, 3)
+        # The resumed run does not repeat the server's issue and catalog reads.
+        self.assertEqual(result.usage.tool_calls, 2)
+        self.assertEqual(result.usage.total_tokens, 50)
         self.assertEqual(len(result.rejected_answers), 1)
-        self.assertEqual(requests[2]["input"], requests[3]["input"])
-        self.assertEqual(requests[3]["tool_choice"], "none")
-        self.assertIn(recovered.repair_feedback, requests[3]["instructions"])
+        self.assertEqual(requests[1]["input"], requests[2]["input"])
+        self.assertEqual(requests[2]["tool_choice"], "none")
+        self.assertIn(recovered.repair_feedback, requests[2]["instructions"])
         self.assertTrue(AgentCheckpoint.model_validate_json(saved).finished)
 
 
@@ -99,17 +98,15 @@ async def run_fixture_worker(directory: Path, generation: str, scenario: str) ->
         body = json.loads(request.content)
         number = int(re.search(r"This is model request (\d+) of", body["instructions"])[1])
         record({"kind": "model", "number": number, "input": body["input"]})
-        if number == 1:
-            output = [ResponseReasoningItem(
-                id="rs_fixture", type="reasoning", summary=[], encrypted_content=REPLAY_TOKEN,
-            ).to_dict(), tool_call("get_issue", call_id="call_issue").to_dict()]
-        elif number == 2:
-            output = [tool_call("get_repo_labels", call_id="call_labels").to_dict()]
-        elif number in (3, 4):
-            query = "export" if number == 3 else "windows"
+        if number in (1, 2):
+            query = "export" if number == 1 else "windows"
             output = [tool_call("search_issues", json.dumps({"query": query}), f"call_search_{number}").to_dict()]
+            if number == 1:
+                output.insert(0, ResponseReasoningItem(
+                    id="rs_fixture", type="reasoning", summary=[], encrypted_content=REPLAY_TOKEN,
+                ).to_dict())
         else:
-            if number != 5:
+            if number != 3:
                 raise AssertionError("Unexpected fixture model request.")
             output = [{
                 "id": "msg_fixture", "type": "message", "role": "assistant", "status": "completed",
@@ -206,10 +203,11 @@ class WorkerCheckpointTests(unittest.IsolatedAsyncioTestCase):
                             self.assertIsNone(first.returncode, (directory / "first.log").read_text())
                             await asyncio.sleep(0.02)
 
+                    # The Worker stops during the server's catalog read, before the first model request.
                     self.assertEqual(saved.in_flight, None if scenario == "retry_wait" else "tool")
                     self.assertEqual(saved.result.usage.tool_calls, 2)
-                    self.assertEqual(saved.pending_tools.calls[0].call_id, "call_labels")
-                    self.assertEqual(saved.result.usage.model_requests, 2)
+                    self.assertEqual(saved.pending_tools.calls[0].call_id, "server_get_repo_labels")
+                    self.assertEqual(saved.result.usage.model_requests, 0)
                     self.assertEqual(saved.result.sources[0].id, "S1")
                     before = (await api.get(path)).json()
                     self.assertEqual(before["status"], "running")
@@ -221,7 +219,7 @@ class WorkerCheckpointTests(unittest.IsolatedAsyncioTestCase):
                     before_execution = trace_response.json()
                     self.assertEqual((before_execution["job_id"], before_execution["status"]), (job_id, "running"))
                     first_attempts = before_execution["attempts"]
-                    self.assertEqual([item["kind"] for item in first_attempts], ["model", "tool", "model", "tool"])
+                    self.assertEqual([item["kind"] for item in first_attempts], ["tool", "tool"])
                     labels_attempt = first_attempts[-1]
                     self.assertEqual(labels_attempt["name"], "get_repo_labels")
                     self.assertEqual(labels_attempt["outcome"], "failed" if scenario == "retry_wait" else "running")
@@ -248,9 +246,9 @@ class WorkerCheckpointTests(unittest.IsolatedAsyncioTestCase):
                     self.assertEqual(current["status"], "completed", current)
                     self.assertEqual(current["job_id"], job_id)
                     self.assertEqual(current["result"]["sources"][0], saved.result.sources[0].model_dump(mode="json"))
-                    self.assertEqual(current["result"]["usage"]["model_requests"], 5)
+                    self.assertEqual(current["result"]["usage"]["model_requests"], 3)
                     self.assertEqual(current["result"]["usage"]["tool_calls"], 5)
-                    self.assertEqual(current["result"]["usage"]["total_tokens"], 125)
+                    self.assertEqual(current["result"]["usage"]["total_tokens"], 75)
                     self.assertEqual(current["events"][:len(before["events"])], before["events"])
                     self.assertEqual([event["id"] for event in current["events"]], list(range(1, len(current["events"]) + 1)))
                     replay = await api.get(f"{path}/events", headers={"Last-Event-ID": str(before["events"][-1]["id"])})
@@ -263,24 +261,24 @@ class WorkerCheckpointTests(unittest.IsolatedAsyncioTestCase):
                         job_id, "completed", "final_answer",
                     ))
                     attempts = execution["attempts"]
-                    self.assertEqual([item["id"] for item in attempts], list(range(1, 11)))
-                    for kind in ("model", "tool"):
-                        self.assertEqual([item["attempt_number"] for item in attempts if item["kind"] == kind], list(range(1, 6)))
-                    self.assertEqual(attempts[:3], first_attempts[:3])
+                    self.assertEqual([item["id"] for item in attempts], list(range(1, 9)))
+                    self.assertEqual([item["attempt_number"] for item in attempts if item["kind"] == "model"], [1, 2, 3])
+                    self.assertEqual([item["attempt_number"] for item in attempts if item["kind"] == "tool"], [1, 2, 3, 4, 5])
+                    self.assertEqual(attempts[:1], first_attempts[:1])
                     if scenario == "retry_wait":
-                        self.assertEqual(attempts[3], labels_attempt)
-                        self.assertTrue(attempts[4]["is_retry"])
-                        self.assertEqual(attempts[4]["retry_of"], labels_attempt["id"])
+                        self.assertEqual(attempts[1], labels_attempt)
+                        self.assertTrue(attempts[2]["is_retry"])
+                        self.assertEqual(attempts[2]["retry_of"], labels_attempt["id"])
                     else:
-                        self.assertEqual(attempts[3]["outcome"], "interrupted")
-                        self.assertEqual(attempts[3]["stop_reason"], "worker_interrupted")
-                        self.assertEqual(attempts[3]["started_at"], labels_attempt["started_at"])
-                        self.assertIsNone(attempts[3]["duration_ms"])
-                    self.assertEqual(attempts[4]["name"], "get_repo_labels")
-                    for item in attempts[4:]:
+                        self.assertEqual(attempts[1]["outcome"], "interrupted")
+                        self.assertEqual(attempts[1]["stop_reason"], "worker_interrupted")
+                        self.assertEqual(attempts[1]["started_at"], labels_attempt["started_at"])
+                        self.assertIsNone(attempts[1]["duration_ms"])
+                    self.assertEqual(attempts[2]["name"], "get_repo_labels")
+                    for item in attempts[2:]:
                         self.assertEqual(item["outcome"], "succeeded")
                         self.assertGreaterEqual(item["duration_ms"], 0)
-                    for private in (REPLAY_TOKEN, "call_labels", TARGET.url, settings.openai_api_key):
+                    for private in (REPLAY_TOKEN, "server_get_repo_labels", TARGET.url, settings.openai_api_key):
                         self.assertNotIn(private, json.dumps(execution))
 
                 replacement.terminate()
@@ -292,11 +290,20 @@ class WorkerCheckpointTests(unittest.IsolatedAsyncioTestCase):
                     [json.loads(line) for line in (directory / f"{generation}.jsonl").read_text().splitlines()]
                     for generation in ("first", "replacement")
                 ]
-                self.assertEqual([entry["number"] for entry in before_trace if entry["kind"] == "model"], [1, 2])
+                self.assertEqual([entry["number"] for entry in before_trace if entry["kind"] == "model"], [])
                 new_requests = [entry for entry in after_trace if entry["kind"] == "model"]
-                self.assertEqual([entry["number"] for entry in new_requests], [3, 4, 5])
-                self.assertEqual(new_requests[0]["input"][:len(saved.history)], saved.history)
-                self.assertEqual(new_requests[0]["input"][-1]["call_id"], "call_labels")
+                self.assertEqual([entry["number"] for entry in new_requests], [1, 2, 3])
+                # The saved results were never sent, so the first request packs them as compact JSON.
+                def decoded(items):
+                    return [
+                        {**item, "output": json.loads(item["output"])} if item.get("type") == "function_call_output" else item
+                        for item in items
+                    ]
+
+                self.assertEqual(decoded(new_requests[0]["input"][:len(saved.history)]), decoded(saved.history))
+                self.assertEqual(new_requests[0]["input"][-1]["call_id"], "server_get_repo_labels")
+                # The reasoning from the first request is replayed to the next one.
+                self.assertIn(REPLAY_TOKEN, json.dumps(new_requests[1]["input"]))
                 self.assertEqual([entry["path"] for entry in after_trace if entry["kind"] == "tool"], [
                     f"{TARGET.api_path}/labels", "/search/issues", "/search/issues",
                 ])

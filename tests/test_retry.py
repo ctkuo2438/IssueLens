@@ -46,32 +46,31 @@ class RetryPolicyTests(unittest.TestCase):
 
 class RetryAgentTests(unittest.IsolatedAsyncioTestCase):
     async def test_model_retry_allows_the_investigation_to_complete(self):
-        target, labels, search = prefix()
+        (search,) = prefix()
         server = PolicyServer(empty=True)
         with patch.object(AgentRun, "_wait_for_retry", new=AsyncMock()) as wait:
             result, create, _ = await run_simulated_agent([
-                target, model_error(503), labels, search, step("search_issues", query="export"),
+                model_error(503), search, step("search_issues", query="export"),
                 simulated_response(content=final_content()),
             ], handler=server.respond, required_lookups=True)
         self.assertIsNotNone(result.content)
         self.assertEqual(result.limitations, [])
-        self.assertEqual(result.usage.model_requests, 6)
-        self.assertEqual(create.call_args_list[1].kwargs["input"], create.call_args_list[2].kwargs["input"])
+        self.assertEqual(result.usage.model_requests, 4)
+        self.assertEqual(create.call_args_list[0].kwargs["input"], create.call_args_list[1].kwargs["input"])
         wait.assert_awaited_once()
 
     async def test_model_retry_reuses_evidence_and_rechecks_the_last_request_slot(self):
         with patch.object(AgentRun, "_wait_for_retry", new=AsyncMock()) as wait:
             result, create, emit = await run_simulated_agent([
-                simulated_response([tool_call("get_issue")]),
                 model_error(429, code="rate_limit_exceeded", error_type="rate_limit_error"),
                 simulated_response(content=final_content()),
-            ], settings=replace(SETTINGS, max_iterations=3))
+            ], settings=replace(SETTINGS, max_iterations=2))
         self.assertIsNotNone(result.content)
-        self.assertEqual(result.usage.model_requests, 3)
-        self.assertEqual(result.usage.total_tokens, 50)
-        self.assertEqual(create.call_args_list[1].kwargs["input"], create.call_args_list[2].kwargs["input"])
+        self.assertEqual(result.usage.model_requests, 2)
+        self.assertEqual(result.usage.total_tokens, 25)
+        self.assertEqual(create.call_args_list[0].kwargs["input"], create.call_args_list[1].kwargs["input"])
         self.assertEqual(create.call_args.kwargs["tool_choice"], "none")
-        self.assertIn("request 3 of 3", create.call_args.kwargs["instructions"])
+        self.assertIn("request 2 of 2", create.call_args.kwargs["instructions"])
         self.assertTrue(any("OpenAI returned a response to the retry" in item.args[1] for item in emit.call_args_list))
         wait.assert_awaited_once()
 
@@ -101,14 +100,12 @@ class RetryAgentTests(unittest.IsolatedAsyncioTestCase):
         return resumed, result, create
 
     async def test_interrupted_model_retry_cannot_gain_another_attempt_on_resume(self):
-        resumed, result, create = await self.interrupt_and_resume([
-            simulated_response([tool_call("get_issue")]), model_error(503), asyncio.CancelledError(),
-        ])
+        resumed, result, create = await self.interrupt_and_resume([model_error(503), asyncio.CancelledError()])
         self.assertEqual(resumed.in_flight, "model")
         self.assertIsNotNone(resumed.retry)
-        self.assertEqual(create.await_count, 3)
-        self.assertEqual(result.usage.model_requests, 3)
-        self.assertEqual([source.id for source in result.sources], ["S1"])
+        self.assertEqual(create.await_count, 2)
+        self.assertEqual(result.usage.model_requests, 2)
+        self.assertEqual([source.id for source in result.sources], ["S1", "S2"])
         self.assertIsNone(result.content)
         self.assertTrue(any("retry was exhausted" in limitation for limitation in result.limitations))
 
@@ -164,17 +161,16 @@ class RetryAPITests(unittest.TestCase):
 
     def test_trace_links_successful_model_retry(self):
         snapshot, calls, waits, trace = self.analyze([
-            simulated_response([tool_call("get_issue")]),
-            model_error(503, headers={"Retry-After": "2"}),
-            simulated_response(content=final_content()),
-        ], replace(SETTINGS, max_iterations=3))
-        self.assertEqual((snapshot["status"], calls, waits), ("partial", 3, 1))
+            model_error(503, headers={"Retry-After": "2"}), simulated_response(content=final_content()),
+        ], replace(SETTINGS, max_iterations=2))
+        self.assertEqual((snapshot["status"], calls, waits), ("partial", 2, 1))
         self.assertEqual(trace["stop_reason"], "final_answer")
-        model, tool, failed, retry = trace["attempts"]
-        self.assertEqual([(item["kind"], item["outcome"]) for item in (model, tool, failed, retry)], [
-            ("model", "succeeded"), ("tool", "succeeded"), ("model", "failed"), ("model", "succeeded"),
+        issue, labels, failed, retry = trace["attempts"]
+        self.assertEqual([(item["kind"], item["name"], item["outcome"]) for item in (issue, labels, failed, retry)], [
+            ("tool", "get_issue", "succeeded"), ("tool", "get_repo_labels", "succeeded"),
+            ("model", "responses.create", "failed"), ("model", "responses.create", "succeeded"),
         ])
-        self.assertEqual((failed["attempt_number"], retry["attempt_number"]), (2, 3))
+        self.assertEqual((failed["attempt_number"], retry["attempt_number"]), (1, 2))
         self.assertIsNotNone(failed["retry_scheduled_for"])
         self.assertIsNone(failed["stop_reason"])
         self.assertTrue(retry["is_retry"])
@@ -184,25 +180,27 @@ class RetryAPITests(unittest.TestCase):
 
     def test_trace_reports_context_stop_without_an_unsent_attempt(self):
         snapshot, calls, waits, trace = self.analyze([], replace(SETTINGS, context_tokens=128))
-        self.assertEqual((snapshot["status"], calls, waits), ("failed", 0, 0))
-        self.assertEqual((trace["stop_reason"], trace["attempts"]), ("context_budget", []))
+        # The server's reads finished; the first model request did not fit and was never sent.
+        self.assertEqual((snapshot["status"], calls, waits), ("partial", 0, 0))
+        self.assertEqual(trace["stop_reason"], "context_budget")
+        self.assertEqual([(item["kind"], item["name"]) for item in trace["attempts"]], [
+            ("tool", "get_issue"), ("tool", "get_repo_labels"),
+        ])
 
     def test_model_retry_and_job_budgets_preserve_partial_evidence_when_exhausted(self):
         for limit, failures, waits, stop_reason, reason in (
-            (2, [model_error(503)], 0, "model_request_budget", "model request budget was exhausted"),
+            (1, [model_error(503)], 0, "model_request_budget", "model request budget was exhausted"),
             (8, [model_error(503), model_error(503)], 1, "retry_exhausted", "the one retry was exhausted"),
             (8, [model_error(503, headers={"Retry-After": "600"})], 0,
              "retry_wait_exceeds_runtime", "required wait exceeds the remaining job time"),
         ):
             with self.subTest(reason=reason):
-                snapshot, calls, retry_waits, trace = self.analyze([
-                    simulated_response([tool_call("get_issue")]), *failures,
-                ], replace(SETTINGS, max_iterations=limit))
+                snapshot, calls, retry_waits, trace = self.analyze(failures, replace(SETTINGS, max_iterations=limit))
                 self.assertEqual(snapshot["status"], "partial")
-                self.assertEqual(calls, len(failures) + 1)
+                self.assertEqual(calls, len(failures))
                 self.assertEqual(retry_waits, waits)
                 self.assertEqual(snapshot["result"]["usage"]["model_requests"], calls)
-                self.assertEqual([source["id"] for source in snapshot["result"]["sources"]], ["S1"])
+                self.assertEqual([source["id"] for source in snapshot["result"]["sources"]], ["S1", "S2"])
                 self.assertTrue(any(reason in item for item in snapshot["result"]["limitations"]))
                 self.assertNotIn("Private upstream response", json.dumps(snapshot))
                 self.assertEqual(trace["stop_reason"], stop_reason)
@@ -220,9 +218,11 @@ class RetryAPITests(unittest.TestCase):
         ):
             with self.subTest(code=failure.code, status=failure.status_code):
                 snapshot, calls, waits, trace = self.analyze([failure])
-                self.assertEqual((snapshot["status"], calls, waits), ("failed", 1, 0))
+                # The server's reads are kept as partial evidence.
+                self.assertEqual((snapshot["status"], calls, waits), ("partial", 1, 0))
                 self.assertNotIn("Private upstream response", json.dumps(snapshot))
-                (attempt,) = trace["attempts"]
+                attempt = trace["attempts"][-1]
+                self.assertEqual([item["kind"] for item in trace["attempts"]], ["tool", "tool", "model"])
                 self.assertEqual(trace["stop_reason"], "model_request_failed")
                 self.assertEqual((attempt["outcome"], attempt["stop_reason"]), ("failed", "non_retryable_failure"))
                 self.assertNotIn("Private upstream response", json.dumps(trace))
@@ -236,12 +236,10 @@ class RetryAPITests(unittest.TestCase):
                 return httpx.Response(503)
             return github_response(request)
 
-        snapshot, calls, waits, trace = self.analyze([
-            simulated_response([tool_call("get_issue")]),
-            simulated_response([tool_call("get_repo_labels", call_id="labels")]),
-            simulated_response(content=final_content()),
-        ], replace(SETTINGS, max_tool_calls=2), respond)
-        self.assertEqual((snapshot["status"], calls, waits), ("partial", 3, 0))
+        snapshot, calls, waits, trace = self.analyze(
+            [simulated_response(content=final_content())], replace(SETTINGS, max_tool_calls=2), respond,
+        )
+        self.assertEqual((snapshot["status"], calls, waits), ("partial", 1, 0))
         self.assertEqual(len(label_requests), 1)
         self.assertEqual(snapshot["result"]["usage"]["tool_calls"], 2)
         self.assertIsNotNone(snapshot["result"]["content"])
@@ -261,8 +259,6 @@ class RetryAPITests(unittest.TestCase):
             return github_response(request)
 
         snapshot, _, waits, _ = self.analyze([
-            simulated_response([tool_call("get_issue")]),
-            simulated_response([tool_call("get_repo_labels", call_id="labels")]),
             simulated_response([tool_call("search_issues", '{"query":"export"}', "search")]),
             simulated_response(content=final_content()),
         ], SETTINGS, respond)

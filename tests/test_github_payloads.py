@@ -11,7 +11,7 @@ import httpx
 from backend.app.agent import AgentRun
 from backend.app.github import GitHubTools, ToolError
 from backend.app.jobs import JobManager
-from test_mvp import ISSUE, SETTINGS, TARGET, OfflineEncoding, final_content, github_response, simulated_response, tool_call
+from test_mvp import ISSUE, SETTINGS, TARGET, OfflineEncoding, final_content, github_response, simulated_response
 
 
 README = {
@@ -118,11 +118,7 @@ class MalformedPayloadJobTests(unittest.IsolatedAsyncioTestCase):
     async def test_malformed_labels_keep_the_answer(self):
         server = PayloadServer()
         server.payloads["/labels"] = {"message": "unexpected"}
-        job = await self.run_job(server, [
-            simulated_response([tool_call("get_issue")]),
-            simulated_response([tool_call("get_repo_labels", call_id="call_offline_2")]),
-            simulated_response(content=final_content()),
-        ])
+        job = await self.run_job(server, [simulated_response(content=final_content())])
         result = job.snapshot.result
         assert result is not None
         self.assertIsNotNone(result.content)
@@ -133,9 +129,7 @@ class MalformedPayloadJobTests(unittest.IsolatedAsyncioTestCase):
     async def test_malformed_issue_reports_missing_evidence(self):
         server = PayloadServer()
         server.payloads["/issues/42"] = {**ISSUE, "user": "reporter"}
-        job = await self.run_job(server, [
-            simulated_response([tool_call("get_issue")]), simulated_response(content=final_content()),
-        ])
+        job = await self.run_job(server, [simulated_response(content=final_content())])
         self.assertEqual(job.snapshot.status, "failed")
         self.assertEqual(job.snapshot.error, "No issue evidence could be retrieved. Check the URL and the activity log.")
         self.assertEqual(job.trace.stop_reason, "target_issue_unavailable")

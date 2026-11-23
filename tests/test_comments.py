@@ -13,7 +13,7 @@ from backend.app.github import GitHubTools, ToolError
 from backend.app.main import create_app
 from backend.app.models import AnalysisContent, CommentCheck
 from backend.app.quality import comment_claim_fields
-from test_mvp import COMMENT, ISSUE, SETTINGS, TARGET, commented_github_response, final_content, run_simulated_agent, simulated_response, tool_call
+from test_mvp import COMMENT, ISSUE, SETTINGS, TARGET, commented_github_response, final_content, run_simulated_agent, simulated_response
 
 
 class CommentServer:
@@ -32,6 +32,8 @@ class CommentServer:
             data, more = self.pages.get(page, ([], False))
             headers = {"Link": f'<https://api.github.com{TARGET.api_path}/issues/42/comments?page={page + 1}>; rel="next"'} if more else {}
             return httpx.Response(200, json=data, headers=headers)
+        if request.url.path.endswith("/labels"):
+            return httpx.Response(200, json=[])
         return httpx.Response(200, json={**ISSUE, "comments": self.count})
 
 
@@ -150,16 +152,22 @@ class CommentClaimTests(unittest.TestCase):
 
 
 class CommentAgentTests(unittest.IsolatedAsyncioTestCase):
-    async def test_positive_count_forces_page_one_before_optional_tools(self):
-        result, create, emit = await run_simulated_agent([
-            simulated_response([tool_call("get_issue")]),
-            simulated_response([tool_call("get_issue_comments", '{"page":1}', "comments")]),
-            simulated_response(content=final_content()),
-        ], handler=commented_github_response)
-        self.assertEqual(create.call_args_list[1].kwargs["tool_choice"], {"type": "function", "name": "get_issue_comments"})
-        self.assertEqual(create.call_args_list[2].kwargs["tool_choice"], "auto")
+    async def test_positive_count_reads_page_one_before_the_first_request(self):
+        server = CommentServer()
+        result, create, emit = await run_simulated_agent([simulated_response(content=final_content())], handler=server.respond)
+        pages = [req.url.params["page"] for req in server.requests if req.url.path.endswith("/comments")]
+        self.assertEqual(pages, ["1"])
+        self.assertEqual(create.await_count, 1)
+        self.assertEqual(create.call_args.kwargs["tool_choice"], "auto")
         self.assertEqual(result.comment_check.status, "read")
         self.assertTrue(any("Comment check: read" in call.args[1] for call in emit.call_args_list))
+
+    async def test_zero_count_skips_the_comment_lookup(self):
+        server = CommentServer(count=0)
+        result, _, _ = await run_simulated_agent([simulated_response(content=final_content())], handler=server.respond)
+        self.assertFalse(any(req.url.path.endswith("/comments") for req in server.requests))
+        self.assertEqual(result.comment_check.status, "not_read")
+        self.assertFalse(any("comments" in item for item in result.limitations))
 
     async def test_failed_lookup_requests_bounded_correction_for_false_absence(self):
         server = CommentServer()
@@ -169,23 +177,24 @@ class CommentAgentTests(unittest.IsolatedAsyncioTestCase):
         corrected = final_content()
         corrected["summary"]["text"] = "The comment lookup failed, so the discussion was not reviewed."
         result, create, emit = await run_simulated_agent([
-            simulated_response([tool_call("get_issue")]),
-            simulated_response([tool_call("get_issue_comments", '{"page":1}', "comments")]),
             simulated_response(content=bad), simulated_response(content=corrected),
         ], handler=server.respond)
         self.assertIsNotNone(result.content)
         self.assertEqual(result.comment_check.status, "failed")
-        self.assertEqual(create.call_args_list[2].kwargs["tool_choice"], "auto")
+        self.assertEqual(create.call_args_list[0].kwargs["tool_choice"], "auto")
         self.assertEqual(len([req for req in server.requests if req.url.path.endswith("/comments")]), 1)
         self.assertTrue(any("Unsupported comment absence" in call.args[1] for call in emit.call_args_list))
-        output = json.loads(create.call_args_list[2].kwargs["input"][-1]["output"])
-        self.assertEqual(output["comment_check"]["status"], "failed")
+        output = next(
+            item for item in create.call_args_list[0].kwargs["input"]
+            if item.get("type") == "function_call_output" and item["call_id"] == "server_get_issue_comments"
+        )
+        self.assertEqual(json.loads(output["output"])["comment_check"]["status"], "failed")
 
-    async def test_budget_exhaustion_preserves_unread_state_without_exceeding_limits(self):
-        settings = replace(SETTINGS, max_iterations=2)
-        result, create, _ = await run_simulated_agent([
-            simulated_response([tool_call("get_issue")]), simulated_response(content=final_content()),
-        ], settings=settings, handler=commented_github_response)
+    async def test_tool_budget_exhaustion_preserves_unread_state_without_exceeding_limits(self):
+        result, create, _ = await run_simulated_agent(
+            [simulated_response(content=final_content())],
+            settings=replace(SETTINGS, max_tool_calls=1), handler=commented_github_response,
+        )
         self.assertIsNotNone(result.content)
         self.assertEqual(result.comment_check.status, "not_read")
         self.assertEqual(result.usage.tool_calls, 1)
@@ -195,34 +204,20 @@ class CommentAgentTests(unittest.IsolatedAsyncioTestCase):
     async def test_false_absence_is_rejected_when_no_correction_budget_remains(self):
         bad = final_content()
         bad["draft_reply"] = "No discussion comments were available."
-        result, _, emit = await run_simulated_agent([
-            simulated_response([tool_call("get_issue")]), simulated_response(content=bad),
-        ], settings=replace(SETTINGS, max_iterations=2), handler=commented_github_response)
+        result, _, emit = await run_simulated_agent(
+            [simulated_response(content=bad)],
+            settings=replace(SETTINGS, max_iterations=1, max_tool_calls=1), handler=commented_github_response,
+        )
         self.assertIsNone(result.content)
         self.assertEqual(result.comment_check.status, "not_read")
         self.assertTrue(any("No correction budget remains" in call.args[1] for call in emit.call_args_list))
 
-    async def test_wrong_first_page_is_rejected_before_any_comment_request(self):
-        server = CommentServer()
-        result, create, _ = await run_simulated_agent([
-            simulated_response([tool_call("get_issue")]),
-            simulated_response([tool_call("get_issue_comments", '{"page":2}', "wrong")]),
-            simulated_response([tool_call("get_issue_comments", '{"page":1}', "correct")]),
-            simulated_response(content=final_content()),
-        ], handler=server.respond)
-        pages = [req.url.params["page"] for req in server.requests if req.url.path.endswith("/comments")]
-        self.assertEqual(pages, ["1"])
-        self.assertEqual(create.call_args_list[2].kwargs["tool_choice"], {"type": "function", "name": "get_issue_comments"})
-        self.assertEqual(result.comment_check.status, "read")
-
 
 class CommentAPITests(unittest.TestCase):
     def test_comment_state_survives_job_snapshot_and_event_stream(self):
-        result, _, _ = asyncio.run(run_simulated_agent([
-            simulated_response([tool_call("get_issue")]),
-            simulated_response([tool_call("get_issue_comments", '{"page":1}', "comments")]),
-            simulated_response(content=final_content()),
-        ], handler=commented_github_response))
+        result, _, _ = asyncio.run(run_simulated_agent(
+            [simulated_response(content=final_content())], handler=commented_github_response,
+        ))
         with patch("backend.app.jobs.AgentRun.run", new=AsyncMock(return_value=result)):
             with TestClient(create_app(SETTINGS)) as client:
                 job_id = client.post("/api/v1/analyses", json={"issue_url": TARGET.url}).json()["job_id"]

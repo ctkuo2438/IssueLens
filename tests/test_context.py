@@ -8,6 +8,7 @@ import unittest
 import httpx
 from openai.types.responses import ResponseReasoningItem
 
+from backend.app.agent import CANDIDATE_RESERVE_TOKENS, REPAIR_RESERVE_TOKENS
 from backend.app.context import ContextBuilder, REQUEST_MARGIN_TOKENS
 from test_mvp import ISSUE, SETTINGS, final_content, github_response, run_simulated_agent, simulated_response, tool_call
 
@@ -282,15 +283,17 @@ class FutureReserveTests(unittest.TestCase):
 class ContextAgentTests(unittest.IsolatedAsyncioTestCase):
     async def test_protected_evidence_that_cannot_fit_stops_before_paid_request(self):
         def handler(request):
+            if request.url.path.endswith("/labels"):
+                return github_response(request)
             return httpx.Response(200, json={**ISSUE, "body": "Export failure. " * 300})
 
-        responses = [simulated_response([tool_call("get_issue")]), simulated_response(content=final_content())]
+        responses = [simulated_response(content=final_content())]
         probe, _, _ = await run_simulated_agent(responses, handler=handler)
         budget = probe.context_builds[-1].estimated_tokens - 1
-        result, create, emit = await run_simulated_agent(responses[:1], settings=replace(SETTINGS, context_tokens=budget), handler=handler)
+        result, create, emit = await run_simulated_agent(responses, settings=replace(SETTINGS, context_tokens=budget), handler=handler)
         self.assertIsNone(result.content)
-        self.assertEqual(create.await_count, 1)
-        self.assertEqual(len(result.sources), 1)
+        create.assert_not_awaited()
+        self.assertEqual([source.kind for source in result.sources], ["issue", "repo_labels"])
         self.assertFalse(result.context_builds[-1].fits)
         self.assertFalse(result.context_builds[-1].sent)
         self.assertIn("not sent", result.limitations[-1])
@@ -304,16 +307,19 @@ class ContextAgentTests(unittest.IsolatedAsyncioTestCase):
                 return httpx.Response(200, json={**response.json(), "content": base64.b64encode(b"General project background. " * 100).decode()})
             return response
 
-        prefix = [simulated_response([tool_call("get_issue", call_id="issue")]), simulated_response([tool_call("get_repo_readme", call_id="readme")])]
+        prefix = [simulated_response([tool_call("get_repo_readme", call_id="readme")])]
         probe, _, _ = await run_simulated_agent([*prefix, simulated_response(content=final_content())], handler=handler)
-        budget = probe.context_builds[-1].estimated_tokens_before - 30
+        # Just too small for the full README with the final request's reserves, which include
+        # room for one optional tool result, so its excerpt must be omitted.
+        budget = probe.context_builds[-1].estimated_tokens_before + REPAIR_RESERVE_TOKENS + CANDIDATE_RESERVE_TOKENS - 30
         result, create, emit = await run_simulated_agent([
-            *prefix, simulated_response(content=final_content("S2")), simulated_response(content=final_content()),
+            *prefix, simulated_response(content=final_content("S3")), simulated_response(content=final_content()),
         ], settings=replace(SETTINGS, context_tokens=budget), handler=handler)
         self.assertIsNotNone(result.content)
-        self.assertEqual(create.await_count, 4)
-        self.assertTrue(result.sources[1].excerpt)
-        self.assertEqual(json.loads(create.call_args_list[2].kwargs["input"][-1]["output"])["source"]["excerpt"], "")
+        self.assertEqual(create.await_count, 3)
+        self.assertEqual(result.sources[2].kind, "readme")
+        self.assertTrue(result.sources[2].excerpt)
+        self.assertEqual(json.loads(create.call_args_list[1].kwargs["input"][-1]["output"])["source"]["excerpt"], "")
         self.assertTrue(any("omitted excerpt cannot support" in call.args[1] for call in emit.call_args_list))
         self.assertTrue(any("Context Builder omitted" in item for item in result.limitations))
         self.assertTrue(all(report.fits and report.sent for report in result.context_builds))

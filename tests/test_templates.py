@@ -318,8 +318,6 @@ class TemplateIntegrationTests(unittest.TestCase):
         content = final_content()
         content["known_facts"].append({"text": "The current bug form requires reproduction steps.", "source_ids": ["S4"]})
         result, _, _ = asyncio.run(run_simulated_agent([
-            simulated_response([tool_call("get_issue")]),
-            simulated_response([tool_call("get_repo_labels")]),
             simulated_response([tool_call("get_issue_templates")]),
             simulated_response([tool_call("search_issues", '{"query":"export"}', "call_search")]),
             simulated_response(content=content),

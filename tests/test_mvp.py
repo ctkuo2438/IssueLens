@@ -74,6 +74,8 @@ class OfflineEncoding:
 def github_response(request):
     if request.url.path.endswith("/comments"):
         return httpx.Response(200, json=[])
+    if request.url.path.endswith("/labels"):
+        return httpx.Response(200, json=[])
     if request.url.path.endswith("/readme"):
         return httpx.Response(200, json={
             "content": base64.b64encode(b"Project README").decode(), "encoding": "base64",
@@ -236,68 +238,82 @@ class AgentTests(unittest.IsolatedAsyncioTestCase):
         return await run_simulated_agent(responses, settings)
 
     async def test_skipping_similar_issue_search_preserves_analysis_with_a_limitation(self):
-        result, create, _ = await self.run_agent([
-            simulated_response([tool_call("get_issue")]), simulated_response(content=final_content()),
-        ])
+        result, create, _ = await self.run_agent([simulated_response(content=final_content())])
         self.assertIsNotNone(result.content)
-        self.assertEqual(result.usage.tool_calls, 1)
-        self.assertEqual(create.await_count, 2)
+        # The server read the issue and the label catalog; the model made one request.
+        self.assertEqual(result.usage.tool_calls, 2)
+        self.assertEqual(create.await_count, 1)
         self.assertEqual(create.call_args_list[0].kwargs["tool_choice"], "auto")
-        self.assertEqual(len(result.sources), 1)
+        self.assertEqual([source.kind for source in result.sources], ["issue", "repo_labels"])
         self.assertIn("A similar-issue search was not completed.", result.limitations)
 
-    async def test_multiple_decisions_preserve_state_and_match_call_ids(self):
+    async def test_server_lookups_precede_the_first_request_and_model_decisions_keep_their_state(self):
         reasoning = ResponseReasoningItem(id="rs_offline", type="reasoning", summary=[], encrypted_content="opaque-offline-state")
-        issue_call = tool_call("get_issue")
-        comments_call = tool_call("get_issue_comments", '{"page":1}', "call_offline_2")
-        result, create, _ = await run_simulated_agent([
-            simulated_response([reasoning, issue_call]), simulated_response([comments_call]),
-            simulated_response(content=final_content()),
+        readme_call = tool_call("get_repo_readme", "{}", "call_offline_2")
+        result, create, emit = await run_simulated_agent([
+            simulated_response([reasoning, readme_call]), simulated_response(content=final_content()),
         ], handler=commented_github_response)
+        first = create.call_args_list[0].kwargs["input"]
+        self.assertEqual([(item["type"], item["call_id"]) for item in first[1:]], [
+            ("function_call", "server_get_issue"), ("function_call_output", "server_get_issue"),
+            ("function_call", "server_get_issue_comments"), ("function_call_output", "server_get_issue_comments"),
+            ("function_call", "server_get_repo_labels"), ("function_call_output", "server_get_repo_labels"),
+        ])
+        self.assertEqual(json.loads(first[3]["arguments"]), {"page": 1})
+        self.assertIn(("status", (
+            "Reading the target issue, its first comments page if it has comments, "
+            "and the label catalog before the first model request."
+        )), [call.args for call in emit.call_args_list])
         replay = create.call_args_list[1].kwargs["input"]
-        self.assertEqual(replay[1], reasoning.to_dict())
-        self.assertEqual(replay[2], issue_call.to_dict())
-        self.assertEqual(replay[3]["call_id"], issue_call.call_id)
-        self.assertEqual(create.call_args_list[1].kwargs["tool_choice"], {"type": "function", "name": "get_issue_comments"})
-        last_replay = create.call_args_list[2].kwargs["input"]
-        self.assertEqual(last_replay[-1]["call_id"], comments_call.call_id)
-        self.assertEqual(result.usage.model_requests, 3)
-        self.assertEqual(result.usage.total_tokens, 75)
-        self.assertEqual(len(result.sources), 2)
+        self.assertEqual(replay[7], reasoning.to_dict())
+        self.assertEqual(replay[8], readme_call.to_dict())
+        self.assertEqual(replay[9]["call_id"], readme_call.call_id)
+        self.assertEqual(result.usage.model_requests, 2)
+        self.assertEqual(result.usage.total_tokens, 50)
+        self.assertEqual(result.usage.tool_calls, 4)
+        self.assertEqual([source.kind for source in result.sources], ["issue", "comment", "repo_labels", "readme"])
 
     async def test_fabricated_source_ids_require_a_correction(self):
         result, create, emit = await self.run_agent([
-            simulated_response([tool_call("get_issue")]),
             simulated_response(content=final_content("S999")), simulated_response(content=final_content()),
         ])
-        self.assertEqual(create.await_count, 3)
+        self.assertEqual(create.await_count, 2)
         self.assertIsNotNone(result.content)
         self.assertTrue(any(call.args[0] == "warning" for call in emit.call_args_list))
         self.assertIn("Available IDs", create.call_args.kwargs["instructions"])
 
-    async def test_no_final_analysis_without_successfully_reading_the_issue(self):
-        result, _, _ = await self.run_agent([simulated_response(content=final_content())])
+    async def test_no_model_request_without_successfully_reading_the_issue(self):
+        result, create, _ = await run_simulated_agent(
+            [simulated_response(content=final_content())],
+            handler=lambda request: httpx.Response(404, json={"message": "Not Found"}),
+        )
+        create.assert_not_awaited()
         self.assertIsNone(result.content)
-        self.assertIn("without successfully reading", result.limitations[0])
+        self.assertEqual(result.sources, [])
+        # Nothing else is read for an issue that cannot be read.
+        self.assertEqual(result.usage.tool_calls, 1)
+        self.assertEqual(result.limitations[-1], "The target issue could not be read, so no model request was sent.")
 
     async def test_tool_budget_disables_more_tools_and_marks_partial_work(self):
-        result, create, _ = await self.run_agent([
-            simulated_response([tool_call("get_issue")]), simulated_response(content=final_content()),
-        ], replace(SETTINGS, max_tool_calls=1))
+        result, create, _ = await self.run_agent(
+            [simulated_response(content=final_content())], replace(SETTINGS, max_tool_calls=1),
+        )
         self.assertEqual(create.call_args.kwargs["tool_choice"], "none")
         self.assertEqual(result.usage.tool_calls, 1)
-        self.assertTrue(result.limitations)
+        self.assertIn(
+            "The repository label catalog was not retrieved; label recommendations were not checked.", result.limitations,
+        )
 
     async def test_context_budget_stops_before_another_model_request(self):
         result, create, _ = await self.run_agent([], replace(SETTINGS, context_tokens=1))
         create.assert_not_awaited()
-        self.assertIn("context budget", result.limitations[0])
+        self.assertIn("context budget", result.limitations[-1])
 
     async def test_incomplete_responses_do_not_execute_tools(self):
-        result, _, _ = await self.run_agent([simulated_response([tool_call("get_issue")], status="incomplete")])
-        self.assertEqual(result.sources, [])
-        self.assertEqual(result.usage.tool_calls, 0)
-        self.assertIn("incomplete", result.limitations[0])
+        result, _, _ = await self.run_agent([simulated_response([tool_call("get_repo_readme")], status="incomplete")])
+        self.assertEqual([source.kind for source in result.sources], ["issue", "repo_labels"])
+        self.assertEqual(result.usage.tool_calls, 2)
+        self.assertIn("incomplete", result.limitations[-1])
 
 
 def offline_result():

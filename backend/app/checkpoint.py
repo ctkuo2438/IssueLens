@@ -15,7 +15,6 @@ from backend.app.models import AnalysisResult
 class PendingTools(BaseModel):
     calls: list[ResponseFunctionToolCall]
     required_action: str | None
-    require_comments: bool
     closing_for_repairs: bool
     at_limit: bool
 

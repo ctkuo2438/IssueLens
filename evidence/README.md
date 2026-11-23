@@ -20,6 +20,7 @@ M2 is frozen. Start with the [frozen acceptance review](m2/acceptance/20261110T0
 | --- | --- | --- |
 | [acceptance/20261110T065740_115528Z/](m2/acceptance/20261110T065740_115528Z/review.md) | Frozen acceptance on HTTPX #3602, pytest #14560, and Ruff #29177: [review](m2/acceptance/20261110T065740_115528Z/review.md), [raw report](m2/acceptance/20261110T065740_115528Z/report.json), [assistant source check](m2/acceptance/20261110T065740_115528Z/assistant-review.json), [protocol](m2/acceptance/20261110T065740_115528Z/protocol.json), [cases](m2/acceptance/20261110T065740_115528Z/cases.json), [selection](m2/acceptance/20261110T065740_115528Z/selection.json) | Real model and GitHub |
 | [evaluations/20261109T083809_862702Z/](m2/evaluations/20261109T083809_862702Z/report.json) | Latest run on five fixed fictional snapshots | Real model, fictional GitHub data |
+| [server-reads/20261123T194608Z/](m2/server-reads/20261123T194608Z/report.json), [server-reads/20261123T200214Z/](m2/server-reads/20261123T200214Z/report.json) | After the freeze: HTTPX #3602 at 12,000 with the server reads, before and after the optional-tool reserve fix | Real model and GitHub |
 | [steps/](m2/steps/) | One summary per development step, with the test counts and code fingerprints of that time (table below) | Mixed; each file says which parts were real |
 | [screenshots/](m2/screenshots/) | `live-*.jpg` from real feature checks; `*-offline.jpg` with fictional data and a simulated model | Mixed, by file name |
 
