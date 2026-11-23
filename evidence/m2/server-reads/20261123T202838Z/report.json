@@ -1,0 +1,604 @@
+{
+  "kind": "real model and GitHub, one run",
+  "purpose": "Check that OpenAI accepts the server's function calls and that model requests drop.",
+  "note": "Run after the optional-tool reserve fix, at the frozen acceptance's 12,000-token budget.",
+  "issue_url": "https://github.com/pytest-dev/pytest/issues/14560",
+  "started_at": "2026-11-23T20:28:18.952916+00:00",
+  "finished_at": "2026-11-23T20:28:38.899966+00:00",
+  "elapsed_seconds": 19.95,
+  "model": "gpt-5.6",
+  "reasoning_effort": "medium",
+  "context_tokens": 12000,
+  "github_authenticated": true,
+  "code": {
+    "base_commit": "fe40d9fd646d5050dd3aaa63aaa617bb19ba3d96",
+    "uncommitted_changes": true,
+    "agent_sha256": "06931d502e7be1f0b74fe2686a48cbbda2a1ec31ce43458b4a0cb37dcde2dcdd",
+    "prompt_sha256": "d34e0f6e5dcc38ba216cd2098bcb8e549140ed2169a03cde681efa1245652fa3",
+    "checkpoint_signature": "1cef6356321a3cd27e530ce00cbf0da7bedcbe1247a3855dc729d212b3802938"
+  },
+  "error": null,
+  "accepted_answer": true,
+  "usage": {
+    "model_requests": 3,
+    "tool_calls": 5,
+    "total_tokens": 22020,
+    "elapsed_seconds": 19.95
+  },
+  "stop_reason": "final_answer",
+  "trace": [
+    {
+      "kind": "tool",
+      "name": "get_issue",
+      "attempt_number": 1,
+      "outcome": "succeeded",
+      "reason": null,
+      "stop_reason": null,
+      "duration_ms": 329
+    },
+    {
+      "kind": "tool",
+      "name": "get_issue_comments",
+      "attempt_number": 2,
+      "outcome": "succeeded",
+      "reason": null,
+      "stop_reason": null,
+      "duration_ms": 317
+    },
+    {
+      "kind": "tool",
+      "name": "get_repo_labels",
+      "attempt_number": 3,
+      "outcome": "succeeded",
+      "reason": null,
+      "stop_reason": null,
+      "duration_ms": 307
+    },
+    {
+      "kind": "model",
+      "name": "responses.create",
+      "attempt_number": 1,
+      "outcome": "succeeded",
+      "reason": "The response requested tool calls.",
+      "stop_reason": null,
+      "duration_ms": 2883
+    },
+    {
+      "kind": "tool",
+      "name": "search_issues",
+      "attempt_number": 4,
+      "outcome": "succeeded",
+      "reason": null,
+      "stop_reason": null,
+      "duration_ms": 466
+    },
+    {
+      "kind": "model",
+      "name": "responses.create",
+      "attempt_number": 2,
+      "outcome": "succeeded",
+      "reason": "The response requested tool calls.",
+      "stop_reason": null,
+      "duration_ms": 1255
+    },
+    {
+      "kind": "tool",
+      "name": "get_related_issue",
+      "attempt_number": 5,
+      "outcome": "succeeded",
+      "reason": null,
+      "stop_reason": null,
+      "duration_ms": 379
+    },
+    {
+      "kind": "model",
+      "name": "responses.create",
+      "attempt_number": 3,
+      "outcome": "succeeded",
+      "reason": "The final answer passed validation.",
+      "stop_reason": null,
+      "duration_ms": 13371
+    }
+  ],
+  "requests": [
+    {
+      "number": 1,
+      "tool_choice": {
+        "type": "function",
+        "name": "search_issues"
+      },
+      "repairing": false,
+      "input_items": [
+        {
+          "role": "user"
+        },
+        {
+          "type": "function_call",
+          "call_id": "server_get_issue",
+          "name": "get_issue",
+          "arguments": "{}"
+        },
+        {
+          "type": "function_call_output",
+          "call_id": "server_get_issue"
+        },
+        {
+          "type": "function_call",
+          "call_id": "server_get_issue_comments",
+          "name": "get_issue_comments",
+          "arguments": "{\"page\": 1}"
+        },
+        {
+          "type": "function_call_output",
+          "call_id": "server_get_issue_comments"
+        },
+        {
+          "type": "function_call",
+          "call_id": "server_get_repo_labels",
+          "name": "get_repo_labels",
+          "arguments": "{}"
+        },
+        {
+          "type": "function_call_output",
+          "call_id": "server_get_repo_labels"
+        }
+      ]
+    },
+    {
+      "number": 2,
+      "tool_choice": {
+        "type": "function",
+        "name": "get_related_issue"
+      },
+      "repairing": false,
+      "input_items": [
+        {
+          "role": "user"
+        },
+        {
+          "type": "function_call",
+          "call_id": "server_get_issue",
+          "name": "get_issue",
+          "arguments": "{}"
+        },
+        {
+          "type": "function_call_output",
+          "call_id": "server_get_issue"
+        },
+        {
+          "type": "function_call",
+          "call_id": "server_get_issue_comments",
+          "name": "get_issue_comments",
+          "arguments": "{\"page\": 1}"
+        },
+        {
+          "type": "function_call_output",
+          "call_id": "server_get_issue_comments"
+        },
+        {
+          "type": "function_call",
+          "call_id": "server_get_repo_labels",
+          "name": "get_repo_labels",
+          "arguments": "{}"
+        },
+        {
+          "type": "function_call_output",
+          "call_id": "server_get_repo_labels"
+        },
+        {
+          "type": "function_call",
+          "call_id": "call_be0dd72c62fc404780a2113c9b8af75c",
+          "name": "search_issues",
+          "arguments": "{\"query\":\"_idval_from_value KeyError\"}"
+        },
+        {
+          "type": "function_call_output",
+          "call_id": "call_be0dd72c62fc404780a2113c9b8af75c"
+        }
+      ]
+    },
+    {
+      "number": 3,
+      "tool_choice": "none",
+      "repairing": false,
+      "input_items": [
+        {
+          "role": "user"
+        },
+        {
+          "type": "function_call",
+          "call_id": "server_get_issue",
+          "name": "get_issue",
+          "arguments": "{}"
+        },
+        {
+          "type": "function_call_output",
+          "call_id": "server_get_issue"
+        },
+        {
+          "type": "function_call",
+          "call_id": "server_get_issue_comments",
+          "name": "get_issue_comments",
+          "arguments": "{\"page\": 1}"
+        },
+        {
+          "type": "function_call_output",
+          "call_id": "server_get_issue_comments"
+        },
+        {
+          "type": "function_call",
+          "call_id": "server_get_repo_labels",
+          "name": "get_repo_labels",
+          "arguments": "{}"
+        },
+        {
+          "type": "function_call_output",
+          "call_id": "server_get_repo_labels"
+        },
+        {
+          "type": "function_call",
+          "call_id": "call_be0dd72c62fc404780a2113c9b8af75c",
+          "name": "search_issues",
+          "arguments": "{\"query\":\"_idval_from_value KeyError\"}"
+        },
+        {
+          "type": "function_call_output",
+          "call_id": "call_be0dd72c62fc404780a2113c9b8af75c"
+        },
+        {
+          "type": "function_call",
+          "call_id": "call_e56747eaa83949c296861e5b3e623d4c",
+          "name": "get_related_issue",
+          "arguments": "{\"issue_number\":10184}"
+        },
+        {
+          "type": "function_call_output",
+          "call_id": "call_e56747eaa83949c296861e5b3e623d4c"
+        }
+      ]
+    }
+  ],
+  "context_builds": [
+    {
+      "request_number": 1,
+      "phase": "investigation",
+      "estimated_tokens": 8278,
+      "budget_tokens": 12000,
+      "fits": true,
+      "sent": true,
+      "future_reserve_tokens": 3466
+    },
+    {
+      "request_number": 2,
+      "phase": "investigation",
+      "estimated_tokens": 8642,
+      "budget_tokens": 12000,
+      "fits": true,
+      "sent": true,
+      "future_reserve_tokens": 2912
+    },
+    {
+      "request_number": 3,
+      "phase": "investigation",
+      "estimated_tokens": 11035,
+      "budget_tokens": 12000,
+      "fits": false,
+      "sent": false,
+      "future_reserve_tokens": 709
+    },
+    {
+      "request_number": 3,
+      "phase": "investigation",
+      "estimated_tokens": 11035,
+      "budget_tokens": 12000,
+      "fits": true,
+      "sent": true,
+      "future_reserve_tokens": 0
+    }
+  ],
+  "comment_check": {
+    "status": "partial",
+    "reported_count": 11,
+    "attempted_pages": [
+      1
+    ],
+    "read_pages": [
+      1
+    ],
+    "failed_pages": [],
+    "retrieved_count": 10,
+    "source_ids": [
+      "S2",
+      "S3",
+      "S4",
+      "S5",
+      "S6",
+      "S7",
+      "S8",
+      "S9",
+      "S10",
+      "S11"
+    ],
+    "has_next_page": true,
+    "count_mismatch": false,
+    "complete": false
+  },
+  "similar_issue_check": {
+    "search_status": "candidates_found",
+    "attempted_queries": [
+      "_idval_from_value keyerror"
+    ],
+    "failed_queries": [],
+    "candidate_status": "read",
+    "attempted_candidate_numbers": [
+      10184
+    ],
+    "failed_candidate_numbers": [],
+    "read_candidate_numbers": [
+      10184
+    ],
+    "compared_candidate_numbers": [
+      10184
+    ],
+    "comparison_status": "compared"
+  },
+  "rejected_answers": [],
+  "limitations": [
+    "Context Builder omitted fetched excerpts from model input: S2, S3, S4, S5, S6, S7, S8, S9, S10, S11. Retrieved excerpts remain available in Sources; omitted content was not reviewed by the model.",
+    "S14: Collection error when HTTPError passed to parametrize was truncated to 1800 text tokens.",
+    "Only part of the comments was retrieved, or comment counts were inconsistent; coverage is incomplete."
+  ],
+  "sources": [
+    {
+      "id": "S1",
+      "kind": "issue",
+      "url": "https://github.com/pytest-dev/pytest/issues/14560"
+    },
+    {
+      "id": "S2",
+      "kind": "comment",
+      "url": "https://github.com/pytest-dev/pytest/issues/14560#issuecomment-4639384339"
+    },
+    {
+      "id": "S3",
+      "kind": "comment",
+      "url": "https://github.com/pytest-dev/pytest/issues/14560#issuecomment-4640261312"
+    },
+    {
+      "id": "S4",
+      "kind": "comment",
+      "url": "https://github.com/pytest-dev/pytest/issues/14560#issuecomment-4642049757"
+    },
+    {
+      "id": "S5",
+      "kind": "comment",
+      "url": "https://github.com/pytest-dev/pytest/issues/14560#issuecomment-4642749107"
+    },
+    {
+      "id": "S6",
+      "kind": "comment",
+      "url": "https://github.com/pytest-dev/pytest/issues/14560#issuecomment-4642860248"
+    },
+    {
+      "id": "S7",
+      "kind": "comment",
+      "url": "https://github.com/pytest-dev/pytest/issues/14560#issuecomment-4661745692"
+    },
+    {
+      "id": "S8",
+      "kind": "comment",
+      "url": "https://github.com/pytest-dev/pytest/issues/14560#issuecomment-4662819113"
+    },
+    {
+      "id": "S9",
+      "kind": "comment",
+      "url": "https://github.com/pytest-dev/pytest/issues/14560#issuecomment-4663591330"
+    },
+    {
+      "id": "S10",
+      "kind": "comment",
+      "url": "https://github.com/pytest-dev/pytest/issues/14560#issuecomment-4663698478"
+    },
+    {
+      "id": "S11",
+      "kind": "comment",
+      "url": "https://github.com/pytest-dev/pytest/issues/14560#issuecomment-4665134086"
+    },
+    {
+      "id": "S12",
+      "kind": "repo_labels",
+      "url": "https://github.com/pytest-dev/pytest/labels"
+    },
+    {
+      "id": "S13",
+      "kind": "search",
+      "url": "https://github.com/search?q=repo%3Apytest-dev%2Fpytest+is%3Aissue+in%3Atitle%2Cbody+%22_idval_from_value%22+%22KeyError%22&type=issues"
+    },
+    {
+      "id": "S14",
+      "kind": "related_issue",
+      "url": "https://github.com/pytest-dev/pytest/issues/10184"
+    }
+  ],
+  "content": {
+    "summary": {
+      "text": "The report describes collection failing while pytest generates IDs for a parameterized test containing a custom dict-wrapper object. Accessing the object's `__name__` through `getattr` raises `KeyError`; replacing it with a built-in dict reportedly avoids the failure.",
+      "source_ids": [
+        "S1"
+      ]
+    },
+    "known_facts": [
+      {
+        "text": "The traceback points to `_idval_from_value` in `_pytest/python.py`, specifically the attempt to evaluate `getattr(val, \"__name__\", None)`.",
+        "source_ids": [
+          "S1"
+        ]
+      },
+      {
+        "text": "The reporter says the test had passed about one week earlier without changes to the test script, but the visible report does not identify what environment or dependency changed.",
+        "source_ids": [
+          "S1"
+        ]
+      },
+      {
+        "text": "Issue #10184 reports a closely matching collection-time failure: parameter-ID generation accesses `__name__` on an `HTTPError`, whose delegated attribute lookup raises `KeyError`.",
+        "source_ids": [
+          "S14"
+        ]
+      },
+      {
+        "text": "The target issue is closed and currently carries `status: needs information`; closure alone does not establish that a fix was implemented or released.",
+        "source_ids": [
+          "S1"
+        ]
+      }
+    ],
+    "missing_information": [
+      "A minimal reproducer showing the custom wrapper's attribute-access methods, especially `__getattr__` or `__getattribute__`, is not present in the visible issue excerpt.",
+      "The exact pytest version and the dependency or interpreter changes made during the week before the regression are not established by the visible evidence."
+    ],
+    "draft_reply": "Thanks for the report. The traceback shows that collection failed while pytest was deriving an automatic parameter ID: it queried `__name__` on the parameter object, and the custom wrapper raised `KeyError` from that attribute lookup. This closely resembles #10184, where an `HTTPError` object failed at the same stage for the same kind of delegated attribute access.\n\nThe available evidence does not establish whether pytest changed during the preceding week or whether this behavior remains present in current releases. For future investigation, the most useful next step would be a minimal standalone test containing the wrapper class, particularly its `__getattr__`/`__getattribute__` implementation, together with the pytest versions before and after the failure began. As an immediate workaround, supplying explicit `ids=` values to `pytest.mark.parametrize` may avoid automatic ID derivation; could that be tested against the minimal reproducer?",
+    "limitations": [
+      "Only 10 of the issue's 11 reported comments were retrieved, and their excerpts were omitted from the available evidence, so the discussion and final closure rationale could not be assessed.",
+      "The related issue's comments and any linked changes were not retrieved.",
+      "Source code, commit history, releases, and runtime behavior were not inspected, so neither the current behavior nor a fix is confirmed."
+    ],
+    "comparisons": [
+      {
+        "issue_number": 10184,
+        "relationship": "possible_duplicate",
+        "reason": "Both reports fail during collection in `_idval_from_value` when automatic parameter-ID generation calls `getattr(value, \"__name__\", None)` and the parameter object's attribute delegation raises `KeyError`. The object types and missing dictionary keys differ, so the shared failure mechanism is strongly suggested but not confirmed as identical.",
+        "similarities": [
+          "Both involve objects supplied through `pytest.mark.parametrize`.",
+          "Both fail during collection while pytest generates parameter IDs.",
+          "Both tracebacks reach `_idval_from_value` and fail while probing `__name__`.",
+          "Both parameter objects raise `KeyError` during delegated attribute access."
+        ],
+        "differences": [
+          "The target uses a custom dict-wrapper and raises `KeyError: '__name__'`; #10184 uses `urllib.request.HTTPError` and raises `KeyError: 'file'`.",
+          "#10184 provides a complete standalone reproducer and identifies pytest 7.1.2, while those details are not present in the target's visible body."
+        ],
+        "source_ids": [
+          "S1",
+          "S14"
+        ]
+      }
+    ],
+    "label_recommendations": [
+      {
+        "name": "topic: parametrize",
+        "reason": "The failure occurs while processing a value passed to a parameterized test, directly matching the catalog description for issues related to `@pytest.mark.parametrize`.",
+        "source_ids": [
+          "S1",
+          "S12"
+        ]
+      }
+    ]
+  },
+  "events": [
+    {
+      "kind": "status",
+      "message": "Model: gpt-5.6; reasoning effort: medium; output limit: 2400 tokens including reasoning and visible text."
+    },
+    {
+      "kind": "status",
+      "message": "Reading the target issue, its first comments page if it has comments, and the label catalog before the first model request."
+    },
+    {
+      "kind": "tool",
+      "message": "Calling get_issue with {}."
+    },
+    {
+      "kind": "tool",
+      "message": "Finished get_issue; 1 sources collected."
+    },
+    {
+      "kind": "status",
+      "message": "Comment check: not_read; reported: 11; retrieved: 0; pages read: []; failed pages: []; complete: False."
+    },
+    {
+      "kind": "tool",
+      "message": "Calling get_issue_comments with {\"page\": 1}."
+    },
+    {
+      "kind": "tool",
+      "message": "Finished get_issue_comments; 11 sources collected."
+    },
+    {
+      "kind": "status",
+      "message": "Comment check: partial; reported: 11; retrieved: 10; pages read: [1]; failed pages: []; complete: False."
+    },
+    {
+      "kind": "tool",
+      "message": "Calling get_repo_labels with {}."
+    },
+    {
+      "kind": "tool",
+      "message": "Finished get_repo_labels; 12 sources collected."
+    },
+    {
+      "kind": "status",
+      "message": "Context request 1: estimated 8278/12000 input tokens including 1024 margin; 256 tokens reserved for repair feedback; 3466/3936 tokens reserved for future evidence and loop growth (minimum 512); 10 excerpts omitted; 0 repeated results reused."
+    },
+    {
+      "kind": "warning",
+      "message": "Context Builder omitted fetched excerpts from model input: S2, S3, S4, S5, S6, S7, S8, S9, S10, S11. Retrieved excerpts remain available in Sources; omitted content was not reviewed by the model."
+    },
+    {
+      "kind": "model",
+      "message": "Investigation step 1: choosing the next action."
+    },
+    {
+      "kind": "status",
+      "message": "Required lookup before finalization: search_issues."
+    },
+    {
+      "kind": "tool",
+      "message": "Calling search_issues with {\"query\":\"_idval_from_value KeyError\"}."
+    },
+    {
+      "kind": "tool",
+      "message": "Finished search_issues; 13 sources collected."
+    },
+    {
+      "kind": "status",
+      "message": "Similar-issue check: search=candidates_found; candidate=not_checked; read=[]; failed=[]."
+    },
+    {
+      "kind": "status",
+      "message": "Context request 2: estimated 8642/12000 input tokens including 1024 margin; 256 tokens reserved for repair feedback; 2912/2912 tokens reserved for future evidence and loop growth (minimum 2400); 0 excerpts omitted; 0 repeated results reused."
+    },
+    {
+      "kind": "model",
+      "message": "Investigation step 2: choosing the next action."
+    },
+    {
+      "kind": "status",
+      "message": "Required lookup before finalization: get_related_issue."
+    },
+    {
+      "kind": "tool",
+      "message": "Calling get_related_issue with {\"issue_number\":10184}."
+    },
+    {
+      "kind": "tool",
+      "message": "Finished get_related_issue; 14 sources collected."
+    },
+    {
+      "kind": "status",
+      "message": "Similar-issue check: search=candidates_found; candidate=read; read=[10184]; failed=[]."
+    },
+    {
+      "kind": "status",
+      "message": "Finalizing with existing evidence: the local context budget has no room for another tool result."
+    },
+    {
+      "kind": "status",
+      "message": "Context request 3: estimated 11035/12000 input tokens including 1024 margin; 256 tokens reserved for repair feedback; 0/0 tokens reserved for future evidence and loop growth (minimum 0); 0 excerpts omitted; 0 repeated results reused."
+    },
+    {
+      "kind": "model",
+      "message": "Investigation step 3: choosing the next action."
+    }
+  ]
+}

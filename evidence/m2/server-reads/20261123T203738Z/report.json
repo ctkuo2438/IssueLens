@@ -1,0 +1,732 @@
+{
+  "kind": "real model and GitHub, one run",
+  "purpose": "Check that OpenAI accepts the server's function calls and that model requests drop.",
+  "note": "Run after the optional-tool reserve fix, at the default 24,000-token budget, to compare with the 12,000 run of the same case.",
+  "issue_url": "https://github.com/pytest-dev/pytest/issues/14560",
+  "started_at": "2026-11-23T20:37:18.729212+00:00",
+  "finished_at": "2026-11-23T20:37:38.184059+00:00",
+  "elapsed_seconds": 19.45,
+  "model": "gpt-5.6",
+  "reasoning_effort": "medium",
+  "context_tokens": 24000,
+  "github_authenticated": true,
+  "code": {
+    "base_commit": "fe40d9fd646d5050dd3aaa63aaa617bb19ba3d96",
+    "uncommitted_changes": true,
+    "agent_sha256": "06931d502e7be1f0b74fe2686a48cbbda2a1ec31ce43458b4a0cb37dcde2dcdd",
+    "prompt_sha256": "d34e0f6e5dcc38ba216cd2098bcb8e549140ed2169a03cde681efa1245652fa3",
+    "checkpoint_signature": "fecf9e57b8439567b357109665cb6b42cea4c9b8daa48cab46496dffad320fda"
+  },
+  "error": null,
+  "accepted_answer": true,
+  "usage": {
+    "model_requests": 4,
+    "tool_calls": 6,
+    "total_tokens": 33224,
+    "elapsed_seconds": 19.45
+  },
+  "stop_reason": "final_answer",
+  "trace": [
+    {
+      "kind": "tool",
+      "name": "get_issue",
+      "attempt_number": 1,
+      "outcome": "succeeded",
+      "reason": null,
+      "stop_reason": null,
+      "duration_ms": 318
+    },
+    {
+      "kind": "tool",
+      "name": "get_issue_comments",
+      "attempt_number": 2,
+      "outcome": "succeeded",
+      "reason": null,
+      "stop_reason": null,
+      "duration_ms": 302
+    },
+    {
+      "kind": "tool",
+      "name": "get_repo_labels",
+      "attempt_number": 3,
+      "outcome": "succeeded",
+      "reason": null,
+      "stop_reason": null,
+      "duration_ms": 298
+    },
+    {
+      "kind": "model",
+      "name": "responses.create",
+      "attempt_number": 1,
+      "outcome": "succeeded",
+      "reason": "The response requested tool calls.",
+      "stop_reason": null,
+      "duration_ms": 2096
+    },
+    {
+      "kind": "tool",
+      "name": "search_issues",
+      "attempt_number": 4,
+      "outcome": "succeeded",
+      "reason": null,
+      "stop_reason": null,
+      "duration_ms": 772
+    },
+    {
+      "kind": "model",
+      "name": "responses.create",
+      "attempt_number": 2,
+      "outcome": "succeeded",
+      "reason": "The response requested tool calls.",
+      "stop_reason": null,
+      "duration_ms": 1733
+    },
+    {
+      "kind": "tool",
+      "name": "get_related_issue",
+      "attempt_number": 5,
+      "outcome": "succeeded",
+      "reason": null,
+      "stop_reason": null,
+      "duration_ms": 262
+    },
+    {
+      "kind": "model",
+      "name": "responses.create",
+      "attempt_number": 3,
+      "outcome": "succeeded",
+      "reason": "The response requested tool calls.",
+      "stop_reason": null,
+      "duration_ms": 1516
+    },
+    {
+      "kind": "tool",
+      "name": "get_issue_comments",
+      "attempt_number": 6,
+      "outcome": "succeeded",
+      "reason": null,
+      "stop_reason": null,
+      "duration_ms": 222
+    },
+    {
+      "kind": "model",
+      "name": "responses.create",
+      "attempt_number": 4,
+      "outcome": "succeeded",
+      "reason": "The final answer passed validation.",
+      "stop_reason": null,
+      "duration_ms": 11304
+    }
+  ],
+  "requests": [
+    {
+      "number": 1,
+      "tool_choice": {
+        "type": "function",
+        "name": "search_issues"
+      },
+      "repairing": false,
+      "input_items": [
+        {
+          "role": "user"
+        },
+        {
+          "type": "function_call",
+          "call_id": "server_get_issue",
+          "name": "get_issue",
+          "arguments": "{}"
+        },
+        {
+          "type": "function_call_output",
+          "call_id": "server_get_issue"
+        },
+        {
+          "type": "function_call",
+          "call_id": "server_get_issue_comments",
+          "name": "get_issue_comments",
+          "arguments": "{\"page\": 1}"
+        },
+        {
+          "type": "function_call_output",
+          "call_id": "server_get_issue_comments"
+        },
+        {
+          "type": "function_call",
+          "call_id": "server_get_repo_labels",
+          "name": "get_repo_labels",
+          "arguments": "{}"
+        },
+        {
+          "type": "function_call_output",
+          "call_id": "server_get_repo_labels"
+        }
+      ]
+    },
+    {
+      "number": 2,
+      "tool_choice": {
+        "type": "function",
+        "name": "get_related_issue"
+      },
+      "repairing": false,
+      "input_items": [
+        {
+          "role": "user"
+        },
+        {
+          "type": "function_call",
+          "call_id": "server_get_issue",
+          "name": "get_issue",
+          "arguments": "{}"
+        },
+        {
+          "type": "function_call_output",
+          "call_id": "server_get_issue"
+        },
+        {
+          "type": "function_call",
+          "call_id": "server_get_issue_comments",
+          "name": "get_issue_comments",
+          "arguments": "{\"page\": 1}"
+        },
+        {
+          "type": "function_call_output",
+          "call_id": "server_get_issue_comments"
+        },
+        {
+          "type": "function_call",
+          "call_id": "server_get_repo_labels",
+          "name": "get_repo_labels",
+          "arguments": "{}"
+        },
+        {
+          "type": "function_call_output",
+          "call_id": "server_get_repo_labels"
+        },
+        {
+          "type": "function_call",
+          "call_id": "call_ba5ec7582d9b4957a051462399907d2f",
+          "name": "search_issues",
+          "arguments": "{\"query\":\"getattr KeyError\"}"
+        },
+        {
+          "type": "function_call_output",
+          "call_id": "call_ba5ec7582d9b4957a051462399907d2f"
+        }
+      ]
+    },
+    {
+      "number": 3,
+      "tool_choice": "auto",
+      "repairing": false,
+      "input_items": [
+        {
+          "role": "user"
+        },
+        {
+          "type": "function_call",
+          "call_id": "server_get_issue",
+          "name": "get_issue",
+          "arguments": "{}"
+        },
+        {
+          "type": "function_call_output",
+          "call_id": "server_get_issue"
+        },
+        {
+          "type": "function_call",
+          "call_id": "server_get_issue_comments",
+          "name": "get_issue_comments",
+          "arguments": "{\"page\": 1}"
+        },
+        {
+          "type": "function_call_output",
+          "call_id": "server_get_issue_comments"
+        },
+        {
+          "type": "function_call",
+          "call_id": "server_get_repo_labels",
+          "name": "get_repo_labels",
+          "arguments": "{}"
+        },
+        {
+          "type": "function_call_output",
+          "call_id": "server_get_repo_labels"
+        },
+        {
+          "type": "function_call",
+          "call_id": "call_ba5ec7582d9b4957a051462399907d2f",
+          "name": "search_issues",
+          "arguments": "{\"query\":\"getattr KeyError\"}"
+        },
+        {
+          "type": "function_call_output",
+          "call_id": "call_ba5ec7582d9b4957a051462399907d2f"
+        },
+        {
+          "type": "function_call",
+          "call_id": "call_5747b69af6b4471d92bef111b54c033d",
+          "name": "get_related_issue",
+          "arguments": "{\"issue_number\":6321}"
+        },
+        {
+          "type": "function_call_output",
+          "call_id": "call_5747b69af6b4471d92bef111b54c033d"
+        }
+      ]
+    },
+    {
+      "number": 4,
+      "tool_choice": "auto",
+      "repairing": false,
+      "input_items": [
+        {
+          "role": "user"
+        },
+        {
+          "type": "function_call",
+          "call_id": "server_get_issue",
+          "name": "get_issue",
+          "arguments": "{}"
+        },
+        {
+          "type": "function_call_output",
+          "call_id": "server_get_issue"
+        },
+        {
+          "type": "function_call",
+          "call_id": "server_get_issue_comments",
+          "name": "get_issue_comments",
+          "arguments": "{\"page\": 1}"
+        },
+        {
+          "type": "function_call_output",
+          "call_id": "server_get_issue_comments"
+        },
+        {
+          "type": "function_call",
+          "call_id": "server_get_repo_labels",
+          "name": "get_repo_labels",
+          "arguments": "{}"
+        },
+        {
+          "type": "function_call_output",
+          "call_id": "server_get_repo_labels"
+        },
+        {
+          "type": "function_call",
+          "call_id": "call_ba5ec7582d9b4957a051462399907d2f",
+          "name": "search_issues",
+          "arguments": "{\"query\":\"getattr KeyError\"}"
+        },
+        {
+          "type": "function_call_output",
+          "call_id": "call_ba5ec7582d9b4957a051462399907d2f"
+        },
+        {
+          "type": "function_call",
+          "call_id": "call_5747b69af6b4471d92bef111b54c033d",
+          "name": "get_related_issue",
+          "arguments": "{\"issue_number\":6321}"
+        },
+        {
+          "type": "function_call_output",
+          "call_id": "call_5747b69af6b4471d92bef111b54c033d"
+        },
+        {
+          "type": "reasoning"
+        },
+        {
+          "type": "function_call",
+          "call_id": "call_8b101bf7bc864cce9ac3b441705866f0",
+          "name": "get_issue_comments",
+          "arguments": "{\"page\":2}"
+        },
+        {
+          "type": "function_call_output",
+          "call_id": "call_8b101bf7bc864cce9ac3b441705866f0"
+        }
+      ]
+    }
+  ],
+  "context_builds": [
+    {
+      "request_number": 1,
+      "phase": "investigation",
+      "estimated_tokens": 9009,
+      "budget_tokens": 24000,
+      "fits": true,
+      "sent": true,
+      "future_reserve_tokens": 3936
+    },
+    {
+      "request_number": 2,
+      "phase": "investigation",
+      "estimated_tokens": 10155,
+      "budget_tokens": 24000,
+      "fits": true,
+      "sent": true,
+      "future_reserve_tokens": 2912
+    },
+    {
+      "request_number": 3,
+      "phase": "investigation",
+      "estimated_tokens": 11137,
+      "budget_tokens": 24000,
+      "fits": true,
+      "sent": true,
+      "future_reserve_tokens": 2912
+    },
+    {
+      "request_number": 4,
+      "phase": "investigation",
+      "estimated_tokens": 12971,
+      "budget_tokens": 24000,
+      "fits": true,
+      "sent": true,
+      "future_reserve_tokens": 2912
+    }
+  ],
+  "comment_check": {
+    "status": "read",
+    "reported_count": 11,
+    "attempted_pages": [
+      1,
+      2
+    ],
+    "read_pages": [
+      1,
+      2
+    ],
+    "failed_pages": [],
+    "retrieved_count": 11,
+    "source_ids": [
+      "S2",
+      "S3",
+      "S4",
+      "S5",
+      "S6",
+      "S7",
+      "S8",
+      "S9",
+      "S10",
+      "S11",
+      "S15"
+    ],
+    "has_next_page": false,
+    "count_mismatch": false,
+    "complete": true
+  },
+  "similar_issue_check": {
+    "search_status": "candidates_found",
+    "attempted_queries": [
+      "getattr keyerror"
+    ],
+    "failed_queries": [],
+    "candidate_status": "read",
+    "attempted_candidate_numbers": [
+      6321
+    ],
+    "failed_candidate_numbers": [],
+    "read_candidate_numbers": [
+      6321
+    ],
+    "compared_candidate_numbers": [
+      6321
+    ],
+    "comparison_status": "compared"
+  },
+  "rejected_answers": [],
+  "limitations": [],
+  "sources": [
+    {
+      "id": "S1",
+      "kind": "issue",
+      "url": "https://github.com/pytest-dev/pytest/issues/14560"
+    },
+    {
+      "id": "S2",
+      "kind": "comment",
+      "url": "https://github.com/pytest-dev/pytest/issues/14560#issuecomment-4639384339"
+    },
+    {
+      "id": "S3",
+      "kind": "comment",
+      "url": "https://github.com/pytest-dev/pytest/issues/14560#issuecomment-4640261312"
+    },
+    {
+      "id": "S4",
+      "kind": "comment",
+      "url": "https://github.com/pytest-dev/pytest/issues/14560#issuecomment-4642049757"
+    },
+    {
+      "id": "S5",
+      "kind": "comment",
+      "url": "https://github.com/pytest-dev/pytest/issues/14560#issuecomment-4642749107"
+    },
+    {
+      "id": "S6",
+      "kind": "comment",
+      "url": "https://github.com/pytest-dev/pytest/issues/14560#issuecomment-4642860248"
+    },
+    {
+      "id": "S7",
+      "kind": "comment",
+      "url": "https://github.com/pytest-dev/pytest/issues/14560#issuecomment-4661745692"
+    },
+    {
+      "id": "S8",
+      "kind": "comment",
+      "url": "https://github.com/pytest-dev/pytest/issues/14560#issuecomment-4662819113"
+    },
+    {
+      "id": "S9",
+      "kind": "comment",
+      "url": "https://github.com/pytest-dev/pytest/issues/14560#issuecomment-4663591330"
+    },
+    {
+      "id": "S10",
+      "kind": "comment",
+      "url": "https://github.com/pytest-dev/pytest/issues/14560#issuecomment-4663698478"
+    },
+    {
+      "id": "S11",
+      "kind": "comment",
+      "url": "https://github.com/pytest-dev/pytest/issues/14560#issuecomment-4665134086"
+    },
+    {
+      "id": "S12",
+      "kind": "repo_labels",
+      "url": "https://github.com/pytest-dev/pytest/labels"
+    },
+    {
+      "id": "S13",
+      "kind": "search",
+      "url": "https://github.com/search?q=repo%3Apytest-dev%2Fpytest+is%3Aissue+in%3Atitle%2Cbody+%22getattr%22+%22KeyError%22&type=issues"
+    },
+    {
+      "id": "S14",
+      "kind": "related_issue",
+      "url": "https://github.com/pytest-dev/pytest/issues/6321"
+    },
+    {
+      "id": "S15",
+      "kind": "comment",
+      "url": "https://github.com/pytest-dev/pytest/issues/14560#issuecomment-4666490056"
+    }
+  ],
+  "content": {
+    "summary": {
+      "text": "The report concerns collection-time parameter-ID generation failing with KeyError('__name__') when a parametrized value is an instance of a dict-like custom class whose __getattr__ maps missing attributes to dictionary lookups. An older issue, #6321, reports effectively the same symptom and class behavior, making it a possible duplicate.",
+      "source_ids": [
+        "S1",
+        "S2",
+        "S5",
+        "S14"
+      ]
+    },
+    "known_facts": [
+      {
+        "text": "The reporter said replacing the custom wrapper instance with a normal dict allowed the tests to pass and that the same test had worked approximately one week earlier.",
+        "source_ids": [
+          "S1"
+        ]
+      },
+      {
+        "text": "The reporter later identified the relevant implementation detail: the class assigned or delegated __getattr__ and __setattr__ to item access, causing a missing __name__ lookup to raise KeyError.",
+        "source_ids": [
+          "S2",
+          "S5"
+        ]
+      },
+      {
+        "text": "A maintainer explained that missing attributes should not produce KeyError through __getattr__ and suggested supplying an explicit parametrization ID, with the concrete example pytest.param(MyBroken(), id=\"broken\").",
+        "source_ids": [
+          "S3",
+          "S4",
+          "S8",
+          "S10"
+        ]
+      },
+      {
+        "text": "The reporter said a workaround that restored normal behavior for attributes not already defined allowed the same instance to be used.",
+        "source_ids": [
+          "S7"
+        ]
+      },
+      {
+        "text": "A maintainer requested a minimal reproducer, but none appears in the complete retrieved discussion.",
+        "source_ids": [
+          "S4",
+          "S15"
+        ]
+      },
+      {
+        "text": "The issue was closed on June 9, 2026; the available evidence does not establish that pytest code was changed or that any fix was released.",
+        "source_ids": [
+          "S1"
+        ]
+      }
+    ],
+    "missing_information": [
+      "A minimal, self-contained reproducer showing the custom class and the exact @pytest.mark.parametrize call.",
+      "The pytest and Python versions from both the last working environment and the failing environment, including what package or environment changes occurred during that week.",
+      "Whether adding an explicit ID to the parameter, as suggested in the discussion, avoids the collection failure in the reporter's environment."
+    ],
+    "draft_reply": "Thanks for clarifying that the parametrized value was an instance whose `__getattr__` delegated to dictionary item access. That means pytest’s attempt to inspect `__name__` while generating a parameter ID can receive `KeyError` instead of the `AttributeError` expected for a missing Python attribute.\n\nThe suggested `id` is part of pytest’s public parametrization API, not a modification to pytest internals. For example:\n\n```python\n@pytest.mark.parametrize(\"value\", [pytest.param(MyClass(), id=\"custom-value\")])\ndef test_value(value):\n    ...\n```\n\nAlternatively, `__getattr__` should translate a missing dictionary key into `AttributeError`; the reporter indicated that restoring normal handling for undefined attributes also worked around the failure.\n\nThis also closely resembles #6321, which reported `KeyError: '__name__'` during ID generation for a parametrized dict subclass with custom `__getattr__`. If this report is revisited, please provide a minimal reproducer and the pytest versions from the working and failing environments so we can determine whether there was a separate regression beyond that existing behavior.",
+    "limitations": [
+      "No source code, commits, linked pull requests, or releases were inspected, and no reproduction was executed.",
+      "Only the title and body of candidate issue #6321 were available; its comments and any historical resolution were not reviewed.",
+      "The duplicate search used the recorded query “getattr KeyError”; it found a strong candidate but cannot rule out other related issues."
+    ],
+    "comparisons": [
+      {
+        "issue_number": 6321,
+        "relationship": "possible_duplicate",
+        "reason": "Both reports describe pytest failing during automatic parameter-ID generation when a parametrized instance has a dict-backed __getattr__ that raises KeyError for the missing __name__ attribute. The evidence strongly suggests the same failure mode, although the target lacks a complete reproducer and version history needed to confirm it.",
+        "similarities": [
+          "Both failures occur while parametrizing custom class instances.",
+          "Both trace the failure to pytest inspecting __name__ while resolving an automatic parameter ID.",
+          "Both involve dict-like classes whose __getattr__ returns item access and therefore raises KeyError('__name__').",
+          "Both reporters state that the behavior had worked previously."
+        ],
+        "differences": [
+          "Issue #6321 supplies a complete reproducer and identifies pytest 5.3.1 as failing after pytest 4.3.1; the target does not provide comparable pytest version details.",
+          "The target mentions Python 3.14 through its installation path, whereas #6321 reports Python 3.7.3."
+        ],
+        "source_ids": [
+          "S1",
+          "S14"
+        ]
+      }
+    ],
+    "label_recommendations": [
+      {
+        "name": "topic: parametrize",
+        "reason": "The failure occurs while pytest generates IDs for values supplied through parametrization, directly matching this label’s scope.",
+        "source_ids": [
+          "S1",
+          "S12"
+        ]
+      }
+    ]
+  },
+  "events": [
+    {
+      "kind": "status",
+      "message": "Model: gpt-5.6; reasoning effort: medium; output limit: 2400 tokens including reasoning and visible text."
+    },
+    {
+      "kind": "status",
+      "message": "Reading the target issue, its first comments page if it has comments, and the label catalog before the first model request."
+    },
+    {
+      "kind": "tool",
+      "message": "Calling get_issue with {}."
+    },
+    {
+      "kind": "tool",
+      "message": "Finished get_issue; 1 sources collected."
+    },
+    {
+      "kind": "status",
+      "message": "Comment check: not_read; reported: 11; retrieved: 0; pages read: []; failed pages: []; complete: False."
+    },
+    {
+      "kind": "tool",
+      "message": "Calling get_issue_comments with {\"page\": 1}."
+    },
+    {
+      "kind": "tool",
+      "message": "Finished get_issue_comments; 11 sources collected."
+    },
+    {
+      "kind": "status",
+      "message": "Comment check: partial; reported: 11; retrieved: 10; pages read: [1]; failed pages: []; complete: False."
+    },
+    {
+      "kind": "tool",
+      "message": "Calling get_repo_labels with {}."
+    },
+    {
+      "kind": "tool",
+      "message": "Finished get_repo_labels; 12 sources collected."
+    },
+    {
+      "kind": "status",
+      "message": "Context request 1: estimated 9009/24000 input tokens including 1024 margin; 256 tokens reserved for repair feedback; 3936/3936 tokens reserved for future evidence and loop growth (minimum 512); 0 excerpts omitted; 0 repeated results reused."
+    },
+    {
+      "kind": "model",
+      "message": "Investigation step 1: choosing the next action."
+    },
+    {
+      "kind": "status",
+      "message": "Required lookup before finalization: search_issues."
+    },
+    {
+      "kind": "tool",
+      "message": "Calling search_issues with {\"query\":\"getattr KeyError\"}."
+    },
+    {
+      "kind": "tool",
+      "message": "Finished search_issues; 13 sources collected."
+    },
+    {
+      "kind": "status",
+      "message": "Similar-issue check: search=candidates_found; candidate=not_checked; read=[]; failed=[]."
+    },
+    {
+      "kind": "status",
+      "message": "Context request 2: estimated 10155/24000 input tokens including 1024 margin; 256 tokens reserved for repair feedback; 2912/2912 tokens reserved for future evidence and loop growth (minimum 2400); 0 excerpts omitted; 0 repeated results reused."
+    },
+    {
+      "kind": "model",
+      "message": "Investigation step 2: choosing the next action."
+    },
+    {
+      "kind": "status",
+      "message": "Required lookup before finalization: get_related_issue."
+    },
+    {
+      "kind": "tool",
+      "message": "Calling get_related_issue with {\"issue_number\":6321}."
+    },
+    {
+      "kind": "tool",
+      "message": "Finished get_related_issue; 14 sources collected."
+    },
+    {
+      "kind": "status",
+      "message": "Similar-issue check: search=candidates_found; candidate=read; read=[6321]; failed=[]."
+    },
+    {
+      "kind": "status",
+      "message": "Context request 3: estimated 11137/24000 input tokens including 1024 margin; 256 tokens reserved for repair feedback; 2912/2912 tokens reserved for future evidence and loop growth (minimum 2400); 0 excerpts omitted; 0 repeated results reused."
+    },
+    {
+      "kind": "model",
+      "message": "Investigation step 3: choosing the next action."
+    },
+    {
+      "kind": "tool",
+      "message": "Calling get_issue_comments with {\"page\":2}."
+    },
+    {
+      "kind": "tool",
+      "message": "Finished get_issue_comments; 15 sources collected."
+    },
+    {
+      "kind": "status",
+      "message": "Comment check: read; reported: 11; retrieved: 11; pages read: [1, 2]; failed pages: []; complete: True."
+    },
+    {
+      "kind": "status",
+      "message": "Context request 4: estimated 12971/24000 input tokens including 1024 margin; 256 tokens reserved for repair feedback; 2912/2912 tokens reserved for future evidence and loop growth (minimum 2400); 0 excerpts omitted; 0 repeated results reused."
+    },
+    {
+      "kind": "model",
+      "message": "Investigation step 4: choosing the next action."
+    }
+  ]
+}
