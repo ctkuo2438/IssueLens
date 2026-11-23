@@ -1,0 +1,55 @@
+{
+  "recorded_utc": "20261123T234521Z",
+  "recorded_note": "When the user's pasted result was saved; the run happened shortly before.",
+  "scope": "Claude Code drives the v0.2.0 install from GitHub for one real analysis, closing the gap that v0.2.0 had been run only through probe scripts.",
+  "install": "claude mcp add --scope user issuelens -- uvx --from git+https://github.com/ctkuo2438/IssueLens@v0.2.0 issuelens-mcp; claude mcp list showed it connected",
+  "session": "An interactive Claude Code session started by the user after adding the server",
+  "client_version": "Claude Code 2.1.331 on this machine; the session's version was not recorded separately",
+  "settings": "~/.config/issuelens/.env (mode 600), read through HOME",
+  "prompt": "Use IssueLens to analyze https://github.com/pallets/flask/issues/6146 and tell me what information is still missing.",
+  "captured": "Claude Code's final message, pasted by the user, and the tool's JSON report, copied unchanged from the session transcript. The protocol log was not captured.",
+  "result_as_reported": {
+    "missing_information": "empty",
+    "similar_issue_found": "#4245, judged a different request",
+    "label": "docs",
+    "draft_reply": "asks the reporter to open a focused PR"
+  },
+  "assistant_source_check": {
+    "checked_on_utc": "20261123",
+    "method": "GitHub REST API: issue 6146, its comments and timeline, issue 4245, and a repository search for cloudflare",
+    "correct": [
+      "Title, open state, no labels and 5 comments",
+      "davidism (2026-08-31) noted the guide's example was missing; hoodmane (2026-09-01) said it had been merged",
+      "davidism (2026-10-30) called company links advertising-like but Cloudflare comparable in scale, and shared the donate page with no promise of service",
+      "davidism (2026-11-14) asked hoodmane to open a PR and pass on the donation link",
+      "#4245 is a closed 2021 issue about cherokee-project.com links supporting TLS, a different request"
+    ],
+    "not_in_report": [
+      "Seven pull requests adding Cloudflare Workers to the docs (#6147, #6150, #6151, #6155 to #6158) were closed with titles marked [rejected AI], and the issue timeline shows blocked users and deleted comments. search_issues queries is:issue and drops pull requests by design (backend/app/github.py), so the report could not see them; it stated that it did not look for pull requests."
+    ],
+    "kind": "assistant check, not human review"
+  },
+  "human_review": "pending",
+  "report": {
+    "status": "completed",
+    "known_facts": 4,
+    "missing_information": 0,
+    "similar_issues_compared": 1,
+    "label_recommendations": [
+      "docs"
+    ],
+    "sources": 10,
+    "limitations": 3,
+    "usage": {
+      "model_requests": 4,
+      "tool_calls": 6,
+      "total_tokens": 21183,
+      "elapsed_seconds": 17.85
+    }
+  },
+  "compared_with_probe_runs": {
+    "v0_1_0": "../../github-live/20261117T010102Z/summary.json: 6 model requests, 26,066 tokens",
+    "v0_2_0_before_tag": "../../release-live/20261123T230815Z/summary.json: 3 model requests, 15,440 tokens",
+    "this_run": "4 model requests and 21,183 tokens; the extra request read candidate #4245, which the model judged related but different"
+  }
+}
