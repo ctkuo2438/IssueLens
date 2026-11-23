@@ -65,6 +65,7 @@ M4 has no evidence folder. Its checks are offline and PostgreSQL tests linked fr
 | [installed-live/20261115T205301Z/](m5/installed-live/20261115T205301Z/summary.json) | One analysis from each client with the installed package; [claude-code/](m5/installed-live/20261115T205301Z/claude-code/report.json) and [codex/](m5/installed-live/20261115T205301Z/codex/report.json) each hold the report, sanitized protocol log, and final message | Real client |
 | [github-install.json](m5/github-install.json) | Release checks and installing `@v0.1.0` from GitHub | Real install, no analysis |
 | [github-live/20261117T010102Z/](m5/github-live/20261117T010102Z/summary.json) | One analysis through the `@v0.1.0` GitHub install, driven by a probe script: summary, report, protocol log | Real model and GitHub |
+| [release-live/20261123T230815Z/](m5/release-live/20261123T230815Z/summary.json) | The same analysis from the checkout before tagging `v0.2.0`, driven by a probe script: summary, report, protocol log | Real model and GitHub |
 
 <a id="retention"></a>
 ## Retention

@@ -1,0 +1,69 @@
+{
+  "finished_utc": "20261123T230815Z",
+  "finished_note": "The probe did not record its start; this is when it wrote protocol.jsonl, about 17 seconds after the server started.",
+  "scope": "One real analysis through the MCP server before tagging v0.2.0, on the issue the v0.1.0 GitHub live run used, to compare the release with v0.1.0.",
+  "code": "f0e276c on main with the version bumped to 0.2.0 in pyproject.toml and uv.lock, not yet committed; backend/ is identical to f0e276c.",
+  "server_command": "uv run --directory <checkout> --locked issuelens-mcp",
+  "environment": "only HOME and PATH (the uv directory and system directories); working directory outside the checkout",
+  "settings": "The checkout's .env, which sets OPENAI_API_KEY, GITHUB_TOKEN, OPENAI_MODEL and OPENAI_REASONING_EFFORT and leaves AGENT_CONTEXT_TOKENS at the 24,000 default. Database and OAuth settings in it are ignored by the MCP server.",
+  "client": "A probe script, not Claude Code or Codex. It sent initialize, notifications/initialized and one tools/call with a progress token, then closed stdin.",
+  "protocol_version": "2025-11-25",
+  "server_info": {
+    "name": "issuelens",
+    "title": "IssueLens",
+    "version": "0.2.0"
+  },
+  "ready_seconds": 0.867,
+  "ready_note": "From an already synced checkout environment, so it is not comparable to a uvx install start.",
+  "tool_call_seconds": 16.47,
+  "progress_notifications": 11,
+  "is_error": false,
+  "report": {
+    "issue_url": "https://github.com/pallets/flask/issues/6146",
+    "status": "completed",
+    "known_facts": 5,
+    "missing_information": 1,
+    "similar_issues_compared": 0,
+    "label_recommendations": [
+      "docs"
+    ],
+    "sources": 9,
+    "limitations": 3,
+    "usage": {
+      "model_requests": 3,
+      "tool_calls": 5,
+      "total_tokens": 15440,
+      "elapsed_seconds": 16.46
+    }
+  },
+  "compared_with_v0_1_0": {
+    "evidence": "../../github-live/20261117T010102Z/summary.json",
+    "model_requests": [
+      6,
+      3
+    ],
+    "total_tokens": [
+      26066,
+      15440
+    ],
+    "tool_call_seconds": [
+      21.9,
+      16.47
+    ],
+    "progress_notifications": [
+      14,
+      11
+    ],
+    "same": "status completed, the same 9 sources (the issue, five comments, the label catalog and two searches), no similar-issue candidate, and the docs label"
+  },
+  "observations": [
+    "The server read the issue, its comments page and the label catalog before the first model request, so the model made 3 requests instead of 6.",
+    "The summary, facts and label match the v0.1.0 report in substance; both cite the maintainer's comparison of Cloudflare with existing entries and the invitation to open a pull request."
+  ],
+  "human_review": "pending",
+  "not_verified": [
+    "The v0.2.0 install from GitHub, which needs the tag to be pushed",
+    "Claude Code or Codex driving this version",
+    "Analysis quality beyond this one issue"
+  ]
+}
