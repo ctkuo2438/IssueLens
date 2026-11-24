@@ -23,6 +23,12 @@ from backend.app.retry import (
 from backend.app.templates import parse_template
 
 
+COMMENTS_PER_PAGE = 10
+MAX_COMMENT_PAGE = 5
+# Comment authors whose association makes them the repository's maintainers.
+MAINTAINER_ASSOCIATIONS = frozenset({"OWNER", "MEMBER", "COLLABORATOR"})
+
+
 class ToolError(Exception):
     """An expected tool failure that can be returned to the agent."""
 
@@ -77,7 +83,7 @@ class EmptyArguments(BaseModel):
 
 
 class CommentArguments(EmptyArguments):
-    page: int = Field(ge=1, le=5)
+    page: int = Field(ge=1, le=MAX_COMMENT_PAGE)
 
     def cache_value(self) -> int | str:
         return self.page
@@ -147,6 +153,15 @@ class ToolSpec[A: EmptyArguments]:
         )
 
 
+class CommentAuthor(BaseModel):
+    """Who wrote a comment and when, so the conversation's latest turn can be named."""
+
+    source_id: str
+    author: str
+    association: str
+    created_at: str | None = None
+
+
 @dataclass
 class GitHubToolState:
     """Bounded evidence and tool bookkeeping, without the client or credentials.
@@ -177,6 +192,8 @@ class GitHubToolState:
     comment_attempted_pages: set[int] = field(default_factory=set)
     comment_failed_pages: set[int] = field(default_factory=set)
     comment_pages: dict[int, tuple[list[str], bool]] = field(default_factory=dict)
+    page_last_comments: dict[int, CommentAuthor] = field(default_factory=dict)
+    issue_state_reason: str | None = None
     cooldown_until: float | None = None
     repository_public: bool = False
 
@@ -258,6 +275,27 @@ class GitHubTools(GitHubToolState):
             read_pages=pages, failed_pages=sorted(self.comment_failed_pages), retrieved_count=len(source_ids),
             source_ids=source_ids, has_next_page=has_next, count_mismatch=mismatch, complete=complete,
         )
+
+    @property
+    def conversation(self) -> dict[str, Any]:
+        """Where the discussion stands: the issue's state and, once its last page is read, the latest comment."""
+        latest, known = None, False
+        if self.issue is not None and self.issue.comment_count == 0:
+            known = True
+        elif self.comment_pages:
+            page = max(self.comment_pages)
+            if not self.comment_pages[page][1] and page in self.page_last_comments:
+                latest, known = self.page_last_comments[page], True
+        return {
+            "issue_state": self.issue.state if self.issue is not None else None,
+            "state_reason": self.issue_state_reason,
+            "latest_comment_known": known,
+            "latest_comment": None if latest is None else {
+                **latest.model_dump(),
+                "by_issue_author": self.issue is not None and latest.author == self.issue.author,
+                "by_maintainer": latest.association in MAINTAINER_ASSOCIATIONS,
+            },
+        }
 
     async def _get(
         self, path: str, params: dict[str, int | str] | None = None, *, allow_not_found: bool = False,
@@ -346,7 +384,7 @@ class GitHubTools(GitHubToolState):
         if call.key in self.cache:
             cached = self.cache[call.key]
             if spec.reports_comment_check:
-                return {**cached, "comment_check": self.comment_check.model_dump()}
+                return {**cached, "comment_check": self.comment_check.model_dump(), "conversation": self.conversation}
             return cached
         result = await call.run(self, before_candidate_read)
         self.cache[call.key] = result
@@ -363,6 +401,7 @@ class GitHubTools(GitHubToolState):
         # GitHub documents user as nullable and each label as either a name or a label object.
         if (
             not isinstance(data.get("title"), str) or not isinstance(data.get("state"), str)
+            or (data.get("state_reason") is not None and not isinstance(data["state_reason"], str))
             or (data.get("body") is not None and not isinstance(data["body"], str))
             or (user is not None and not (isinstance(user, dict) and isinstance(user.get("login"), str)))
             or not isinstance(labels, list)
@@ -381,15 +420,19 @@ class GitHubTools(GitHubToolState):
             comment_count=comments,
             created_at=data.get("created_at"), closed_at=data.get("closed_at"),
         )
+        self.issue_state_reason = data.get("state_reason")
         source = self._source("issue", data["title"], self.target.url, data.get("body") or "(No issue body.)", 2400)
-        return {"issue": self.issue.model_dump(mode="json"), "source": source, "comment_check": self.comment_check.model_dump()}
+        return {
+            "issue": self.issue.model_dump(mode="json"), "source": source,
+            "comment_check": self.comment_check.model_dump(), "conversation": self.conversation,
+        }
 
     async def get_comments(self, page: int) -> dict[str, Any]:
         self.comment_attempted_pages.add(page)
         try:
             response = await self._get(
                 f"{self.target.api_path}/issues/{self.target.number}/comments",
-                {"per_page": 10, "page": page},
+                {"per_page": COMMENTS_PER_PAGE, "page": page},
             )
             data = response.json()
             if not isinstance(data, list) or not all(
@@ -414,11 +457,20 @@ class GitHubTools(GitHubToolState):
         ]
         has_next = "next" in response.links
         self.comment_pages[page] = ([comment["id"] for comment in comments], has_next)
+        if data:
+            last = data[-1]
+            self.page_last_comments[page] = CommentAuthor(
+                source_id=comments[-1]["id"], author=last["user"]["login"],
+                association=str(last.get("author_association", "NONE")),
+                created_at=last["created_at"] if isinstance(last.get("created_at"), str) else None,
+            )
         self.comment_failed_pages.discard(page)
-        if has_next and page == 5:
-            self.limitations.append("Only the first 50 comments can be read in this version.")
-        return {"page": page, "comments": comments, "has_next_page": has_next, "max_page": 5,
-                "comment_check": self.comment_check.model_dump()}
+        if has_next and page == MAX_COMMENT_PAGE:
+            self.limitations.append(
+                f"Only the first {MAX_COMMENT_PAGE * COMMENTS_PER_PAGE} comments can be read in this version.",
+            )
+        return {"page": page, "comments": comments, "has_next_page": has_next, "max_page": MAX_COMMENT_PAGE,
+                "comment_check": self.comment_check.model_dump(), "conversation": self.conversation}
 
     async def get_readme(self) -> dict[str, Any]:
         response = await self._get(f"{self.target.api_path}/readme")

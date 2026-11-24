@@ -261,7 +261,7 @@ class AgentTests(unittest.IsolatedAsyncioTestCase):
         ])
         self.assertEqual(json.loads(first[3]["arguments"]), {"page": 1})
         self.assertIn(("status", (
-            "Reading the target issue, its first comments page if it has comments, "
+            "Reading the target issue, its first and latest comments pages if it has comments, "
             "and the label catalog before the first model request."
         )), [call.args for call in emit.call_args_list])
         replay = create.call_args_list[1].kwargs["input"]

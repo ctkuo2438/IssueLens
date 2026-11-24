@@ -503,7 +503,8 @@ class FutureLookupReserveTests(unittest.IsolatedAsyncioTestCase):
                     } for index in range(8)])
                 response = super().respond(request)
                 if request.url.path.endswith("/issues/42"):
-                    return httpx.Response(200, json={**response.json(), "body": "Version 1.4 on Windows. Export closes the app. " * 80})
+                    # Below the issue excerpt's 2,400-token clip, leaving room under the 32,000-token maximum.
+                    return httpx.Response(200, json={**response.json(), "body": "Version 1.4 on Windows. Export closes the app. " * 40})
                 if request.url.path.endswith("/issues/41"):
                     return httpx.Response(200, json={**response.json(), "body": "Version 1.3 on Linux. Export closes the app. " * 80})
                 return response

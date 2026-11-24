@@ -9,17 +9,19 @@ from unittest.mock import AsyncMock, patch
 from fastapi.testclient import TestClient
 import httpx
 
+from backend.app.agent import fixed_lookups
 from backend.app.github import GitHubTools, ToolError
 from backend.app.main import create_app
-from backend.app.models import AnalysisContent, CommentCheck
+from backend.app.models import AnalysisContent, CommentCheck, IssueInfo
 from backend.app.quality import comment_claim_fields
 from test_mvp import COMMENT, ISSUE, SETTINGS, TARGET, commented_github_response, final_content, run_simulated_agent, simulated_response
 from test_required_lookups import PolicyServer, step
 
 
 class CommentServer:
-    def __init__(self, count=1):
+    def __init__(self, count=1, **issue):
         self.count = count
+        self.issue = issue
         self.pages = {1: ([COMMENT], False)}
         self.fail_page = None
         self.requests = []
@@ -35,7 +37,15 @@ class CommentServer:
             return httpx.Response(200, json=data, headers=headers)
         if request.url.path.endswith("/labels"):
             return httpx.Response(200, json=[])
-        return httpx.Response(200, json={**ISSUE, "comments": self.count})
+        return httpx.Response(200, json={**ISSUE, "comments": self.count, **self.issue})
+
+
+def thread(first_id, count, **comment):
+    """Comments with distinct IDs, by default the maintainer's request."""
+    return [{**COMMENT, "id": first_id + index, **comment} for index in range(count)]
+
+
+REPORTER_REPLY = {"user": {"login": "reporter"}, "author_association": "NONE", "created_at": "2026-11-02T00:00:00Z"}
 
 
 class CommentToolTests(unittest.IsolatedAsyncioTestCase):
@@ -122,6 +132,69 @@ class CommentToolTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.tools.comment_check.source_ids, ["S2"])
 
 
+class ConversationTests(unittest.IsolatedAsyncioTestCase):
+    """Where the discussion stands, as the tools report it for the draft reply."""
+
+    async def tools_for(self, server):
+        client = httpx.AsyncClient(base_url="https://api.github.com", transport=httpx.MockTransport(server.respond))
+        self.addAsyncCleanup(client.aclose)
+        return GitHubTools(client, TARGET, lambda text, limit: (text, False))
+
+    async def test_the_latest_comment_is_known_once_the_last_page_is_read(self):
+        server = CommentServer(count=11, state="closed", state_reason="not_planned")
+        server.pages = {1: (thread(110, 10), True), 2: (thread(120, 1, **REPORTER_REPLY), False)}
+        self.tools = await self.tools_for(server)
+        issue = await self.tools.execute("get_issue", "{}")
+        self.assertEqual(issue["conversation"], {
+            "issue_state": "closed", "state_reason": "not_planned", "latest_comment_known": False, "latest_comment": None,
+        })
+        first = await self.tools.execute("get_issue_comments", '{"page":1}')
+        self.assertFalse(first["conversation"]["latest_comment_known"])
+        last = await self.tools.execute("get_issue_comments", '{"page":2}')
+        self.assertEqual(last["conversation"]["latest_comment"], {
+            "source_id": last["comments"][-1]["id"], "author": "reporter", "association": "NONE",
+            "created_at": "2026-11-02T00:00:00Z", "by_issue_author": True, "by_maintainer": False,
+        })
+        # A repeated lookup answers from the cache with the current conversation.
+        again = await self.tools.execute("get_issue_comments", '{"page":1}')
+        self.assertTrue(again["conversation"]["latest_comment_known"])
+
+    async def test_a_maintainer_reply_is_named_as_the_latest_turn(self):
+        self.tools = await self.tools_for(CommentServer())
+        await self.tools.execute("get_issue", "{}")
+        page = await self.tools.execute("get_issue_comments", '{"page":1}')
+        latest = page["conversation"]["latest_comment"]
+        self.assertEqual((latest["author"], latest["by_maintainer"], latest["by_issue_author"]), ("maintainer", True, False))
+        self.assertEqual((page["conversation"]["issue_state"], page["conversation"]["state_reason"]), ("open", None))
+
+    async def test_an_issue_without_comments_has_no_latest_comment(self):
+        self.tools = await self.tools_for(CommentServer(count=0))
+        issue = await self.tools.execute("get_issue", "{}")
+        self.assertEqual(
+            (issue["conversation"]["latest_comment_known"], issue["conversation"]["latest_comment"]), (True, None),
+        )
+
+    async def test_a_malformed_state_reason_is_invalid_issue_data(self):
+        self.tools = await self.tools_for(CommentServer(state_reason=3))
+        with self.assertRaises(ToolError):
+            await self.tools.execute("get_issue", "{}")
+
+
+class FixedLookupTests(unittest.TestCase):
+    def test_the_first_and_latest_comments_pages_follow_the_reported_count(self):
+        def comment_pages(count):
+            issue = IssueInfo(title="t", url=TARGET.url, number=42, state="open", author="reporter", labels=[], comment_count=count)
+            return [arguments for _, name, arguments in fixed_lookups(issue) if name == "get_issue_comments"]
+
+        self.assertEqual(comment_pages(0), [])
+        self.assertEqual(comment_pages(10), ['{"page": 1}'])
+        self.assertEqual(comment_pages(11), ['{"page": 1}', '{"page": 2}'])
+        self.assertEqual(comment_pages(23), ['{"page": 1}', '{"page": 3}'])
+        # Only five pages can be read, so a longer thread's latest comments stay unread.
+        self.assertEqual(comment_pages(500), ['{"page": 1}', '{"page": 5}'])
+        self.assertEqual(fixed_lookups(None), [("server_get_issue", "get_issue", "{}")])
+
+
 class CommentClaimTests(unittest.TestCase):
     def content(self, text):
         content = AnalysisContent.model_validate(final_content())
@@ -162,6 +235,24 @@ class CommentAgentTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(create.call_args.kwargs["tool_choice"], "auto")
         self.assertEqual(result.comment_check.status, "read")
         self.assertTrue(any("Comment check: read" in call.args[1] for call in emit.call_args_list))
+
+    async def test_the_latest_comments_page_is_read_with_the_first(self):
+        server = CommentServer(count=23)
+        server.pages = {
+            1: (thread(110, 10), True), 2: (thread(120, 10), True), 3: (thread(130, 3, **REPORTER_REPLY), False),
+        }
+        _, create, _ = await run_simulated_agent([simulated_response(content=final_content())], handler=server.respond)
+        pages = [req.url.params["page"] for req in server.requests if req.url.path.endswith("/comments")]
+        self.assertEqual(pages, ["1", "3"])
+        first_input = create.call_args_list[0].kwargs["input"]
+        self.assertEqual([item["call_id"] for item in first_input if item.get("type") == "function_call"], [
+            "server_get_issue", "server_get_issue_comments", "server_get_issue_comments_latest", "server_get_repo_labels",
+        ])
+        latest = next(
+            json.loads(item["output"]) for item in first_input
+            if item.get("type") == "function_call_output" and item["call_id"] == "server_get_issue_comments_latest"
+        )
+        self.assertEqual(latest["conversation"]["latest_comment"]["author"], "reporter")
 
     async def test_zero_count_skips_the_comment_lookup(self):
         server = CommentServer(count=0)

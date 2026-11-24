@@ -11,10 +11,13 @@ from openai.types.responses import FunctionToolParam, ResponseInputParam, Respon
 from openai.types.responses.response_input_param import FunctionCallOutput
 from pydantic import BaseModel, Field, NonNegativeInt
 
+from backend.app.github import MAINTAINER_ASSOCIATIONS
 from backend.app.models import ContextBuildReport, ContextSourceDecision
 
 REQUEST_MARGIN_TOKENS = 1024
 STOP_WORDS = {"the", "and", "for", "with", "from", "this", "that", "does", "issue"}
+# A comment excerpt starts with its author's association line.
+MAINTAINER_LINES = frozenset(f"Author association: {name}" for name in MAINTAINER_ASSOCIATIONS)
 
 
 def _source_rows(payload: dict[str, Any]) -> list[dict[str, Any]]:
@@ -171,7 +174,7 @@ class ContextBuilder:
                 priority = {"readme": 0, "issue_template": 1}.get(row["kind"])
                 if row["kind"] == "comment":
                     association = row["excerpt"].split("\n", 1)[0]
-                    maintainer = association in {"Author association: OWNER", "Author association: MEMBER", "Author association: COLLABORATOR"}
+                    maintainer = association in MAINTAINER_LINES
                     overlap = len(focus_words & _words(row["excerpt"]))
                     priority = 10 + 2 * overlap + 3 * maintainer
                     decision.reason = f"Comment heuristic: {overlap} matching title terms; maintainer association: {maintainer}."

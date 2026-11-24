@@ -1,0 +1,96 @@
+{
+  "run_utc": "20261124T213104Z",
+  "kind": "real model and GitHub, one run per issue at the 24,000 default budget",
+  "change": "Uncommitted change on top of bc1d4d6: the server also reads the latest comments page, tool results carry a conversation summary (issue state, state_reason, latest comment author and role), and the prompt says the draft is the next comment in the thread.",
+  "code": {
+    "flask": {
+      "base_commit": "bc1d4d651711e6be624e6de035d720bddd95d319",
+      "uncommitted_changes": true,
+      "agent_sha256": "eddc998db16feb3e29c5779c04791407bd5a4a8b47249e63a7641a8d32822577",
+      "prompt_sha256": "c09fd96b3be93f8321910c55ce7ac319cd77323e6692d3f6929cd6db3c3babb8",
+      "checkpoint_signature": "47437e783dc71e9ef1504dcf190e623eada2dd0074b03ac0e9e3bb67c4ac051e"
+    },
+    "pytest": {
+      "base_commit": "bc1d4d651711e6be624e6de035d720bddd95d319",
+      "uncommitted_changes": true,
+      "agent_sha256": "eddc998db16feb3e29c5779c04791407bd5a4a8b47249e63a7641a8d32822577",
+      "prompt_sha256": "c09fd96b3be93f8321910c55ce7ac319cd77323e6692d3f6929cd6db3c3babb8",
+      "checkpoint_signature": "47437e783dc71e9ef1504dcf190e623eada2dd0074b03ac0e9e3bb67c4ac051e"
+    }
+  },
+  "cases": {
+    "flask": {
+      "issue_url": "https://github.com/pallets/flask/issues/6146",
+      "accepted_answer": true,
+      "usage": {
+        "model_requests": 3,
+        "tool_calls": 5,
+        "total_tokens": 16196,
+        "elapsed_seconds": 16.57
+      },
+      "server_calls_before_first_request": [
+        "server_get_issue",
+        "server_get_issue_comments",
+        "server_get_repo_labels"
+      ],
+      "comment_check": {
+        "status": "read",
+        "read_pages": [
+          1
+        ],
+        "retrieved_count": 5,
+        "reported_count": 5
+      },
+      "compared_candidates": [],
+      "draft_before": {
+        "evidence": "../../../m5/release-live/20261123T230815Z/report.json",
+        "text": "Thanks for adding the previously missing example. Given that Cloudflare is comparable in scale to the platforms already listed, the next step would be to open a focused PR adding the deployment-guide link to the Hosting Platforms documentation. Separately, and without any promise of service in return, please pass https://palletsprojects.com/donate to the appropriate team at Cloudflare. Would you be willing to open that PR and share the donation link?"
+      },
+      "draft_after": "Just following up on the PR invitation above. If you’re still interested, please go ahead with the documentation PR and pass the Pallets donation link to the appropriate team at Cloudflare."
+    },
+    "pytest": {
+      "issue_url": "https://github.com/pytest-dev/pytest/issues/14560",
+      "accepted_answer": true,
+      "usage": {
+        "model_requests": 4,
+        "tool_calls": 7,
+        "total_tokens": 38604,
+        "elapsed_seconds": 26.28
+      },
+      "server_calls_before_first_request": [
+        "server_get_issue",
+        "server_get_issue_comments",
+        "server_get_issue_comments_latest",
+        "server_get_repo_labels"
+      ],
+      "comment_check": {
+        "status": "read",
+        "read_pages": [
+          1,
+          2
+        ],
+        "retrieved_count": 11,
+        "reported_count": 11
+      },
+      "compared_candidates": [
+        10184
+      ],
+      "draft_before": {
+        "evidence": "../../server-reads/20261123T203738Z/report.json",
+        "text": "Thanks for clarifying that the parametrized value was an instance whose `__getattr__` delegated to dictionary item access. That means pytest’s attempt to inspect `__name__` while generating a parameter ID can receive `KeyError` instead of the `AttributeError` expected for a missing Python attribute.\n\nThe suggested `id` is part of pytest’s public parametrization API, not a modification to pytest internals. For example:\n\n```python\n@pytest.mark.parametrize(\"value\", [pytest.param(MyClass(), id=\"custom-value\")])\ndef test_value(value):\n    ...\n```\n\nAlternatively, `__getattr__` should translate a missing dictionary key into `AttributeError`; the reporter indicated that restoring normal handling for undefined attributes also worked around the failure.\n\nThis also closely resembles #6321, which reported `KeyError: '__name__'` during ID generation for a parametrized dict subclass with custom `__getattr__`. If this report is revisited, please provide a minimal reproducer and the pytest versions from the working and failing environments so we can determine whether there was a separate regression beyond that existing behavior."
+      },
+      "draft_after": "For later readers: this occurs while pytest is generating display IDs for parametrized values and probes the value’s `__name__`. In this report, the custom instance’s `__getattr__` delegated to item lookup and raised `KeyError` for a missing attribute; normal attribute lookup is expected to signal a missing attribute with `AttributeError`.\n\nAn explicit ID does not require modifying pytest internals. It can be supplied where the parameter is declared, for example:\n\n```python\n@pytest.mark.parametrize(\"value\", [pytest.param(DotDict(...), id=\"dotdict-case\")])\ndef test_something(value):\n    ...\n```\n\nAlternatively, the custom `__getattr__` implementation should translate missing keys into `AttributeError`. Because no minimal reproducer or exact before/after pytest versions were provided, the claimed regression could not be established from this thread."
+    }
+  },
+  "observations": [
+    "Flask #6146 is open and its latest comment is the maintainer's invitation, so the new draft is a one-sentence follow-up instead of restating the invitation and asking again.",
+    "pytest #14560 is closed as not planned after a maintainer's note on tone, so the new draft is a closing note for later readers instead of thanking the reporter and asking for a reproducer.",
+    "The server read pytest's latest comments page before the first model request, so all 11 comments were read without a model request for page 2.",
+    "The pytest draft still restates the workarounds a maintainer had already given, as a summary for later readers, and does not point to the compared duplicate.",
+    "This pytest run compared #10184 rather than #6321, which another run found: candidate choice varies between runs."
+  ],
+  "limits": [
+    "One run per issue shows behavior, not accuracy",
+    "Human review pending"
+  ]
+}

@@ -25,10 +25,11 @@ from backend.app.checkpoint import AgentCheckpoint, CheckpointWriter, PendingToo
 from backend.app.config import Settings
 from backend.app.context import BuiltContext, ContextBuilder
 from backend.app.github import (
-    GitHubTools, RepositoryNotPublicError, SearchArguments, TOOLS, ToolError, TransientToolError,
+    COMMENTS_PER_PAGE, MAX_COMMENT_PAGE, GitHubTools, RepositoryNotPublicError, SearchArguments, TOOLS, ToolError,
+    TransientToolError,
 )
 from backend.app.models import (
-    AnalysisContent, AnalysisResult, ContextBuildReport, EventKind, IssueTarget, RejectedAnswer,
+    AnalysisContent, AnalysisResult, ContextBuildReport, EventKind, IssueInfo, IssueTarget, RejectedAnswer,
 )
 from backend.app.retry import TransientFailure, openai_transient_failure
 from backend.app.trace import TraceLog
@@ -47,8 +48,24 @@ RETRY_BUDGET_NAMES = {
     "candidate_read_budget": "candidate-read budget",
 }
 Clip = Callable[[str, int], tuple[str, bool]]
-# Lookups that need no judgment. The server makes them, in order, before the first model request.
-FIXED_LOOKUPS = (("get_issue", "{}"), ("get_issue_comments", '{"page": 1}'), ("get_repo_labels", "{}"))
+
+
+def fixed_lookups(issue: IssueInfo | None) -> list[tuple[str, str, str]]:
+    """The lookups that need no judgment, as (call ID, tool, arguments), in the order the server makes them.
+
+    The issue comes first; the rest depend on it. With more than one comments page, the
+    latest page is read too, because it shows where the discussion stands now.
+    """
+    lookups = [("server_get_issue", "get_issue", "{}")]
+    if issue is None:
+        return lookups
+    if issue.comment_count:
+        lookups.append(("server_get_issue_comments", "get_issue_comments", '{"page": 1}'))
+        latest_page = min(-(-issue.comment_count // COMMENTS_PER_PAGE), MAX_COMMENT_PAGE)
+        if latest_page > 1:
+            lookups.append(("server_get_issue_comments_latest", "get_issue_comments", json.dumps({"page": latest_page})))
+    lookups.append(("server_get_repo_labels", "get_repo_labels", "{}"))
+    return lookups
 
 
 def checkpoint_signature(settings: Settings) -> str:
@@ -668,7 +685,7 @@ class AgentRun:
         return await self._read_fixed_evidence(context, history)
 
     async def _read_fixed_evidence(self, context: ContextBuilder, history: ResponseInputParam) -> AnalysisResult | None:
-        """Read the target issue, page 1 of its comments and the label catalog before the first model request.
+        """Read the target issue, its first and latest comments pages and the label catalog before the first model request.
 
         These lookups take no judgment, so the server makes them rather than spending a model
         request on each. They are ordinary tool calls: they count toward the tool-call budget,
@@ -680,19 +697,14 @@ class AgentRun:
             return None
         # Each lookup has a fixed call ID, so a resumed run skips the ones already in its history.
         made = {item.get("call_id") for item in history if item.get("type") == "function_call"}
-        for name, arguments in FIXED_LOOKUPS:
-            issue = self.tools.issue
-            if name != "get_issue":
-                if issue is None:
-                    break
-                if name == "get_issue_comments" and issue.comment_count == 0:
-                    continue
-            call = ResponseFunctionToolCall(type="function_call", call_id=f"server_{name}", name=name, arguments=arguments)
-            if call.call_id in made:
-                continue
+        # Each pass makes one more lookup, so the loop ends after at most every lookup once.
+        while due := [lookup for lookup in fixed_lookups(self.tools.issue) if lookup[0] not in made]:
+            call_id, name, arguments = due[0]
+            made.add(call_id)
+            call = ResponseFunctionToolCall(type="function_call", call_id=call_id, name=name, arguments=arguments)
             if name == "get_issue":
                 self.emit("status", (
-                    "Reading the target issue, its first comments page if it has comments, "
+                    "Reading the target issue, its first and latest comments pages if it has comments, "
                     "and the label catalog before the first model request."
                 ))
             history.append(cast(ResponseInputItemParam, call.to_dict()))
