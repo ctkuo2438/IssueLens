@@ -1,0 +1,22 @@
+{
+  "reviewed_utc": "20261124T214600Z",
+  "reviewer": "the project's user, reading as the maintainer",
+  "kind": "human review",
+  "method": "Each new draft was shown in full with the thread's state; the reviewer chose post as is, post with edits, or would not post.",
+  "cases": {
+    "flask": {
+      "issue_url": "https://github.com/pallets/flask/issues/6146",
+      "thread_state": "open; the latest comment is the maintainer's invitation to open a docs PR and pass on the donation link",
+      "draft": "Just following up on the PR invitation above. If you’re still interested, please go ahead with the documentation PR and pass the Pallets donation link to the appropriate team at Cloudflare.",
+      "decision": "post as is"
+    },
+    "pytest": {
+      "issue_url": "https://github.com/pytest-dev/pytest/issues/14560",
+      "thread_state": "closed as not planned; the last comment is a maintainer's note on tone and the missing reproducer",
+      "draft": "For later readers: this occurs while pytest is generating display IDs for parametrized values and probes the value’s `__name__`. In this report, the custom instance’s `__getattr__` delegated to item lookup and raised `KeyError` for a missing attribute; normal attribute lookup is expected to signal a missing attribute with `AttributeError`.\n\nAn explicit ID does not require modifying pytest internals. It can be supplied where the parameter is declared, for example:\n\n```python\n@pytest.mark.parametrize(\"value\", [pytest.param(DotDict(...), id=\"dotdict-case\")])\ndef test_something(value):\n    ...\n```\n\nAlternatively, the custom `__getattr__` implementation should translate missing keys into `AttributeError`. Because no minimal reproducer or exact before/after pytest versions were provided, the claimed regression could not be established from this thread.",
+      "decision": "post as is",
+      "note": "The reviewer accepted that the note for later readers restates the workarounds maintainers had already given."
+    }
+  },
+  "scope": "Two drafts from one run each; this reviews these drafts, not draft quality in general."
+}
