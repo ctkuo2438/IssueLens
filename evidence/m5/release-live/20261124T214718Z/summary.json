@@ -1,0 +1,56 @@
+{
+  "finished_utc": "20261124T214718Z",
+  "finished_note": "When the probe wrote protocol.jsonl, about 17 seconds after the server started.",
+  "scope": "One real analysis through the MCP server before tagging v0.3.0, on the issue the earlier release checks used.",
+  "code": "f956a89 on main with the version bumped to 0.3.0 in pyproject.toml and uv.lock, not yet committed; backend/ is identical to f956a89.",
+  "server_command": "uv run --directory <checkout> --locked issuelens-mcp",
+  "environment": "only HOME and PATH (the uv directory and system directories); working directory outside the checkout",
+  "settings": "The checkout's .env, which sets OPENAI_API_KEY, GITHUB_TOKEN, OPENAI_MODEL and OPENAI_REASONING_EFFORT and leaves AGENT_CONTEXT_TOKENS at the 24,000 default.",
+  "client": "A probe script: initialize, notifications/initialized and one tools/call with a progress token, then stdin closed.",
+  "protocol_version": "2025-11-25",
+  "server_info": {
+    "name": "issuelens",
+    "title": "IssueLens",
+    "version": "0.3.0"
+  },
+  "tool_call_seconds": 16.43,
+  "progress_notifications": 11,
+  "is_error": false,
+  "report": {
+    "status": "completed",
+    "sources": 9,
+    "limitations": 2,
+    "label_recommendations": [
+      "docs"
+    ],
+    "similar_issues_compared": 0,
+    "usage": {
+      "model_requests": 3,
+      "tool_calls": 5,
+      "total_tokens": 16304,
+      "elapsed_seconds": 16.42
+    }
+  },
+  "draft_reply": "@hoodmane, just a gentle follow-up on David’s question above: are you still interested in taking this forward?",
+  "compared_with_v0_2_0": {
+    "evidence": "../20261123T230815Z/summary.json",
+    "model_requests": [
+      3,
+      3
+    ],
+    "total_tokens": [
+      15440,
+      16304
+    ],
+    "draft": "v0.2.0 restated the maintainer's invitation and asked again; v0.3.0 sends a one-line follow-up, because the latest comment is the maintainer's invitation still waiting on the reporter."
+  },
+  "observations": [
+    "The conversation-aware draft rule holds through the MCP server.",
+    "The draft mentions the reporter and calls the maintainer 'David', a name the model inferred from the login davidism."
+  ],
+  "human_review": "pending for this draft; the user reviewed the drafts in ../../../m2/conversation-drafts/20261124T213104Z/review.json",
+  "not_verified": [
+    "The v0.3.0 install from GitHub, which needs the tag",
+    "Claude Code or Codex driving v0.3.0"
+  ]
+}

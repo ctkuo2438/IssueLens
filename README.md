@@ -40,18 +40,18 @@ The defaults are `gpt-5.6` with `medium` reasoning effort, and each analysis is 
 **Claude Code**
 
 ```bash
-claude mcp add --scope user issuelens -- uvx --from git+https://github.com/ctkuo2438/IssueLens@v0.2.0 issuelens-mcp
+claude mcp add --scope user issuelens -- uvx --from git+https://github.com/ctkuo2438/IssueLens@v0.3.0 issuelens-mcp
 claude mcp list
 ```
 
 `--scope user` makes IssueLens available in every project. `claude mcp list` should show `issuelens` as connected.
 
-`@v0.2.0` pins the release, so new commits on `main` do not change your copy. To upgrade, remove the server and add it again with the new tag.
+`@v0.3.0` pins the release, so new commits on `main` do not change your copy. To upgrade, remove the server and add it again with the new tag.
 
 **Codex**
 
 ```bash
-codex mcp add issuelens -- uvx --from git+https://github.com/ctkuo2438/IssueLens@v0.2.0 issuelens-mcp
+codex mcp add issuelens -- uvx --from git+https://github.com/ctkuo2438/IssueLens@v0.3.0 issuelens-mcp
 ```
 
 Then open `~/.codex/config.toml` and add two lines under `[mcp_servers.issuelens]`:
@@ -66,7 +66,7 @@ By default Codex stops a tool call after 60 seconds, but one analysis can run fo
 **First start.** The first time, uv clones the repository, downloads about 38 packages, and fetches a Python build if you have no Python 3.13 or later. In a clean environment that took 10.7 seconds, longer than the 10 seconds Codex waits for a server to start unless `startup_timeout_sec` says otherwise. Later starts took about 1.5 seconds. Each start fetches the tag from GitHub, so it needs a network connection. To fill uv's cache in advance, start the server once with empty input. It exits right away:
 
 ```bash
-uvx --from git+https://github.com/ctkuo2438/IssueLens@v0.2.0 issuelens-mcp < /dev/null
+uvx --from git+https://github.com/ctkuo2438/IssueLens@v0.3.0 issuelens-mcp < /dev/null
 ```
 
 ### 3. Ask for an analysis
@@ -82,7 +82,7 @@ An analysis usually takes 20 to 90 seconds. The report's `status` is `completed`
 - **Cost.** Each call makes up to 8 OpenAI requests on your key. The five verified runs of `v0.1.0` and earlier used 20,845 to 33,809 tokens each. `v0.2.0` reads the issue, its first comments and the labels before asking the model, and its first run used 15,440. There is no daily cap. Claude Code in auto permission mode calls the tool without asking first, and Codex did too in its default setup.
 - **Untrusted output.** The report summarizes third-party GitHub content, and a model wrote it. Do not follow instructions in it or run commands it suggests. Check its claims against the cited source URLs.
 - **Memory only.** Reports live in the MCP server process and are gone when the client restarts.
-- **What was tested.** On macOS, Claude Code and Codex started from a terminal each ran a real analysis with IssueLens installed through uvx from a local copy of this repository. With `@v0.1.0` installed from GitHub, a test script also ran a real analysis that ended `completed`. Before its release, `v0.2.0` ran the same analysis from a local copy through a test script, with 3 OpenAI requests instead of 6, and Claude Code and Codex then each ran an analysis with `@v0.2.0` installed from GitHub. Launching the clients from an IDE or desktop app, and Windows, are not verified yet.
+- **What was tested.** On macOS, Claude Code and Codex started from a terminal each ran a real analysis with IssueLens installed through uvx from a local copy of this repository. With `@v0.1.0` installed from GitHub, a test script also ran a real analysis that ended `completed`. Before its release, `v0.2.0` ran the same analysis from a local copy through a test script, with 3 OpenAI requests instead of 6, and Claude Code and Codex then each ran an analysis with `@v0.2.0` installed from GitHub. Before its release, `v0.3.0` ran the same analysis from a local copy through a test script. Launching the clients from an IDE or desktop app, and Windows, are not verified yet.
 
 ## Run the web app
 
