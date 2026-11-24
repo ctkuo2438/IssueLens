@@ -52,6 +52,7 @@ M4 has no evidence folder. Its checks are offline and PostgreSQL tests linked fr
 | [release-live/20261123T230815Z/](m5/release-live/20261123T230815Z/summary.json) | The same analysis from the checkout before tagging `v0.2.0`, driven by a probe script: summary, report, protocol log | Real model and GitHub |
 | [release-live/20261124T214718Z/](m5/release-live/20261124T214718Z/summary.json) | The same analysis before tagging `v0.3.0`: summary, report, protocol log | Real model and GitHub |
 | [github-install-v0.2.0.json](m5/github-install-v0.2.0.json) | Installing `@v0.2.0` from GitHub with an empty uv cache, then a second start, and listing the tool | Real install, no analysis |
+| [github-install-v0.3.0.json](m5/github-install-v0.3.0.json) | The same install check for `@v0.3.0` | Real install, no analysis |
 | [claude-code-v0.2.0/20261123T234521Z/](m5/claude-code-v0.2.0/20261123T234521Z/summary.json) | Claude Code drives the `@v0.2.0` GitHub install for one analysis: the pasted final message, the JSON report from the session transcript, and a summary with an assistant source check | Real client |
 | [codex-v0.2.0/20261124T015051Z/](m5/codex-v0.2.0/20261124T015051Z/summary.json) | Codex drives the `@v0.2.0` GitHub install for one analysis: the pasted transcript and answer, the JSON report from the session log, and a summary with its approval and progress observations | Real client |
 
