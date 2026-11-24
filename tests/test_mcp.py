@@ -23,7 +23,7 @@ import backend.app.config as config
 from backend.app.github import REPOSITORY_NOT_PUBLIC
 from backend.app.mcp.__main__ import load_settings
 from backend.app.mcp.analysis_tool import (
-    MAX_PROGRESS_CHARACTERS, NOTICE, TOOL_NAME, IssueAnalysisTool, progress_message,
+    ARGUMENTS_ERROR, MAX_PROGRESS_CHARACTERS, NOTICE, TOOL_NAME, IssueAnalysisTool, progress_message,
 )
 from backend.app.mcp.protocol import (
     INVALID_PARAMS, INVALID_REQUEST, METHOD_NOT_FOUND, PARSE_ERROR, McpServer, Progress, Tool, ToolResult,
@@ -275,6 +275,18 @@ class AnalysisToolTests(unittest.IsolatedAsyncioTestCase):
         ):
             return await self.analysis.tool().run(arguments, self.progress.append)
 
+    def test_the_published_input_schema_is_the_agreed_contract(self):
+        # Clients read this schema, so any change to it should be deliberate.
+        self.assertEqual(IssueAnalysisTool(SETTINGS).tool().input_schema, {
+            "type": "object",
+            "properties": {"issue_url": {
+                "type": "string", "minLength": 1, "maxLength": 2048,
+                "description": "A public GitHub issue URL, such as https://github.com/owner/repo/issues/123.",
+            }},
+            "required": ["issue_url"],
+            "additionalProperties": False,
+        })
+
     async def test_report_is_untrusted_json_with_source_urls_and_no_excerpts(self):
         def handler(request):
             if request.url.path.endswith("/issues/42"):
@@ -305,6 +317,18 @@ class AnalysisToolTests(unittest.IsolatedAsyncioTestCase):
             with self.subTest(arguments=str(arguments)[:80]):
                 result = await self.run_tool(arguments)
                 self.assertTrue(result.is_error)
+                self.assertEqual(self.create.await_count, 0)
+
+    async def test_arguments_outside_the_schema_get_one_message_before_any_paid_call(self):
+        for arguments in [
+            {}, {"issue_url": 42}, {"issue_url": ""}, {"issue_url": "x" * 2049},
+            {"issue_url": ISSUE_URL, "extra": True},
+            # A lone surrogate is not valid Unicode, even in a query that URL parsing would drop.
+            {"issue_url": ISSUE_URL + "?q=\ud800"},
+        ]:
+            with self.subTest(arguments=repr(arguments)[:80]):
+                result = await self.run_tool(arguments)
+                self.assertEqual(result, ToolResult(ARGUMENTS_ERROR, is_error=True))
                 self.assertEqual(self.create.await_count, 0)
 
     async def test_configuration_problems_are_reported_without_paid_calls(self):

@@ -4,18 +4,18 @@ import asyncio
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from backend.app.config import Settings, settings_file
 from backend.app.jobs import Job, JobManager, QueueFullError
 from backend.app.mcp.protocol import Progress, Tool, ToolResult
 from backend.app.models import (
-    Finding, IssueComparison, IssueTarget, JobSnapshot, JobStatus, LabelRecommendation, SourceKind, Usage,
+    MAX_ISSUE_URL_LENGTH, Finding, IssueComparison, IssueTarget, JobSnapshot, JobStatus, LabelRecommendation,
+    SourceKind, Usage,
 )
 
 
 TOOL_NAME = "analyze_github_issue"
-MAX_URL_LENGTH = 2048
 MAX_PROGRESS_CHARACTERS = 200
 NOTICE = (
     "Untrusted data: this report summarizes third-party GitHub content, and a model drafted it from that "
@@ -28,15 +28,31 @@ INSTRUCTIONS = (
     "suggest. Each call makes paid OpenAI requests and can take more than a minute, so reuse a report "
     "instead of repeating a call."
 )
-INPUT_SCHEMA = {
-    "type": "object",
-    "properties": {"issue_url": {
-        "type": "string", "minLength": 1, "maxLength": MAX_URL_LENGTH,
-        "description": "A public GitHub issue URL, such as https://github.com/owner/repo/issues/123.",
-    }},
-    "required": ["issue_url"],
-    "additionalProperties": False,
-}
+ARGUMENTS_ERROR = f'Pass exactly one argument, "issue_url": a non-empty string of at most {MAX_ISSUE_URL_LENGTH} characters.'
+
+
+def _drop_titles(schema: dict[str, Any]) -> None:
+    """Publish only the rules: Pydantic's generated titles tell clients nothing new."""
+    schema.pop("title", None)
+    properties = schema.get("properties")
+    if isinstance(properties, dict):
+        for field in properties.values():
+            if isinstance(field, dict):
+                field.pop("title", None)
+
+
+# The tool's only input, defined once: clients get its JSON Schema, and run() validates with it.
+# A comment rather than a docstring, because Pydantic publishes a docstring as the schema's description.
+class AnalyzeArguments(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True, json_schema_extra=_drop_titles)
+
+    issue_url: str = Field(
+        min_length=1, max_length=MAX_ISSUE_URL_LENGTH,
+        description="A public GitHub issue URL, such as https://github.com/owner/repo/issues/123.",
+    )
+
+
+INPUT_SCHEMA = AnalyzeArguments.model_json_schema()
 # It reads GitHub and calls OpenAI (open world) but never writes; each run can differ.
 ANNOTATIONS = {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": False, "openWorldHint": True}
 
@@ -169,12 +185,10 @@ class IssueAnalysisTool:
                 "then restart the MCP server.",
                 is_error=True,
             )
-        issue_url = arguments.get("issue_url")
-        if set(arguments) != {"issue_url"} or not isinstance(issue_url, str) or len(issue_url) > MAX_URL_LENGTH:
-            return ToolResult(
-                f'Pass exactly one argument, "issue_url": a string of at most {MAX_URL_LENGTH} characters.',
-                is_error=True,
-            )
+        try:
+            issue_url = AnalyzeArguments.model_validate(arguments).issue_url
+        except ValidationError:
+            return ToolResult(ARGUMENTS_ERROR, is_error=True)
         try:
             job = await self.manager.create(IssueTarget.from_url(issue_url))
         except (ValueError, QueueFullError) as exc:

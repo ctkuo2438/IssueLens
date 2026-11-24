@@ -41,7 +41,7 @@ npm --prefix frontend run api:types
 | 4. Tool registry | Adding a tool took five edits that had to agree, and `GitHubToolState` copied 24 fields by hand. | Each tool is one `ToolSpec`, `TOOLS` and dispatch are derived from them, and `GitHubTools` inherits its state dataclass. | `d95353e` |
 | 5. Agent loop | `_investigate` was a 340-line method with complexity 45. | `plan_request` decides what each request may do without changing state, and returns a frozen `RequestPlan`. The loop calls named steps, and its complexity is 14. | `c3b2832` |
 | 6. Frontend types | The frontend copied about 90 lines of API types by hand, looser than the backend's. | `frontend/openapi.json` is exported from the API, and `openapi-typescript` generates `frontend/app/openapi.ts`. `ApiModel` marks fields with defaults as required in responses. | `9753c52` |
-| 7. Smaller items | `page.tsx` is one large component, DELETE means cancel, SSE polls, the MCP schema is duplicated, some comments repeat the code, and `quality.py` relies on regexes. | Not started. | - |
+| 7. Smaller items | `page.tsx` is one large component, DELETE means cancel, SSE polls, the MCP schema is duplicated, some comments repeat the code, and `quality.py` relies on regexes. | MCP schema: `AnalyzeArguments` publishes the input schema and checks each call, a contract test pins the published schema, and `models.py`'s `MAX_ISSUE_URL_LENGTH` is the one URL length limit for the tool and the web API. The rest is not started. | - |
 
 ## Layer 2: static checks
 
@@ -158,6 +158,7 @@ The recording and comparison scripts were temporary and are not kept.
 | First CI run | GitHub Actions | The frontend job and the database tests passed. `test_progress_follows_the_activity_log` failed on Python 3.13.14, where one `asyncio.sleep(0)` no longer gave the progress reporter enough loop turns; it passed on the local 3.13.7. The simulated request now waits for the reporter, at most 100 turns. The fixed test passes on both versions, and a reporter that reports the oldest event, or only the final one, fails it on both. | Run 45281201396, [test_mcp.py](../tests/test_mcp.py) |
 | Lint batch 2 | offline recording | Five new tests covered the last unreached lines and branches of both methods and passed on the old code. Recordings of the old code matched each other and the new code: 4,450 records over 408 tests. Swapping the two event messages of a finished tool call passed every test but changed the recording; swapping the limitation groups failed a new test and the recording. | [test_comments.py](../tests/test_comments.py), [test_labels.py](../tests/test_labels.py), [test_retry.py](../tests/test_retry.py), [test_checkpoint.py](../tests/test_checkpoint.py) |
 | Lint batch 3 | offline recording, real PostgreSQL | Five new tests covered `_run`'s unreached paths and passed on the old code: a failed checkpoint write, a job cancelled while waiting for a slot, a resumed job without runtime left, a lost OpenAI connection, and an unexpected error. The last unreached branch, a timeout before the run exists, cannot happen. Recordings of the old code matched each other and the new code: 4,847 records over 413 tests, none skipped. Three planted bugs changed the recording; one of them, leaving the failure reason out of the limitations, passed every test until the new tests asserted it. | [test_jobs.py](../tests/test_jobs.py), [test_retry.py](../tests/test_retry.py) |
+| MCP input schema | offline differential | The generated schema equals the hand-written one, which a contract test now pins; a class docstring that leaked into it as a description was caught by that test. Over 20,005 random JSON arguments, the old and new checks disagreed only on an empty URL and on lone surrogates, which the old check passed to URL parsing; a lone surrogate in a query even reached an analysis. Both are now refused with the common message, and a test pins that. | [test_mcp.py](../tests/test_mcp.py) |
 | Template parser split | offline differential | The old and new parsers agreed on 20,002 templates. A planted note-order change was caught while the template tests passed. | Commit message of `a3e58b2` |
 | GitHub status and template reading | offline | The new tests pass on the old code, and six planted bugs each fail one. | [test_github_status.py](../tests/test_github_status.py), [test_templates.py](../tests/test_templates.py) |
 | Full suite | real PostgreSQL | Passes with `ISSUELENS_TEST_DATABASE_URL` set, none skipped. | [M3 setup](m3.md#setup) |
@@ -210,6 +211,7 @@ Exercise: in `page.tsx`, replace the brand link's `<a>` with `<Link>` from `next
 - CI: run every check in GitHub Actions, with the tests against PostgreSQL.
 - Batch 2: split `snapshot` and `_execute_tool`, leaving 8 exceptions.
 - Batch 3: split `jobs.py`'s `_run`, leaving 7 exceptions.
+- Item 7, MCP schema: one model defines the tool's input schema and its argument check.
 
 ## Next step
 

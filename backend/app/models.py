@@ -7,6 +7,9 @@ from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+# The longest issue URL either entry point, the web API or the MCP tool, accepts.
+MAX_ISSUE_URL_LENGTH = 2048
+
 
 class ApiModel(BaseModel):
     """Data the API sends. The frontend's types are generated from these models.
@@ -50,7 +53,7 @@ class IssueTarget(BaseModel):
 
 class AnalysisRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    issue_url: str = Field(min_length=1, max_length=2048)
+    issue_url: str = Field(min_length=1, max_length=MAX_ISSUE_URL_LENGTH)
 
     @field_validator("issue_url")
     @classmethod
