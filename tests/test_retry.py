@@ -11,7 +11,7 @@ from unittest.mock import AsyncMock, patch
 
 from fastapi.testclient import TestClient
 import httpx
-from openai import APIStatusError, AuthenticationError, RateLimitError
+from openai import APIConnectionError, APIStatusError, AuthenticationError, RateLimitError
 
 from backend.app.agent import AgentRun, checkpoint_signature
 from backend.app.checkpoint import AgentCheckpoint
@@ -245,6 +245,24 @@ class RetryAPITests(unittest.TestCase):
                 self.assertEqual(trace["stop_reason"], "model_request_failed")
                 self.assertEqual((attempt["outcome"], attempt["stop_reason"]), ("failed", "non_retryable_failure"))
                 self.assertNotIn("Private upstream response", json.dumps(trace))
+
+    def test_lost_openai_connection_keeps_the_server_reads_and_names_the_problem(self):
+        request = httpx.Request("POST", "https://api.openai.com/v1/responses")
+        snapshot, calls, waits, trace = self.analyze([APIConnectionError(request=request), APIConnectionError(request=request)])
+        self.assertEqual((snapshot["status"], calls, waits), ("partial", 2, 1))
+        self.assertEqual(snapshot["error"], "Could not complete the OpenAI request. Check connectivity and try again.")
+        self.assertEqual(snapshot["result"]["limitations"][-1], snapshot["error"])
+        self.assertEqual(trace["stop_reason"], "retry_exhausted")
+
+    def test_unexpected_error_keeps_the_evidence_and_logs_only_its_type(self):
+        with self.assertLogs("backend.app.jobs", level="ERROR") as logs:
+            snapshot, calls, _, trace = self.analyze([RuntimeError("Private upstream detail")])
+        self.assertEqual((snapshot["status"], calls), ("partial", 1))
+        self.assertEqual(snapshot["error"], "The analysis could not be completed. Check server configuration and try again.")
+        self.assertEqual(snapshot["result"]["limitations"][-1], snapshot["error"])
+        self.assertEqual(trace["stop_reason"], "unexpected_error")
+        self.assertEqual(logs.output, ["ERROR:backend.app.jobs:Analysis failed with RuntimeError"])
+        self.assertNotIn("Private upstream detail", json.dumps(snapshot) + json.dumps(trace))
 
     def test_github_retry_uses_the_existing_tool_budget(self):
         label_requests = []

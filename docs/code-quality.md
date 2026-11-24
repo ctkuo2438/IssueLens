@@ -10,7 +10,7 @@ In November 2026 the codebase was reviewed one layer at a time, following the in
 
 Each layer catches what the one above lets through. The more the upper layers check mechanically, the less depends on review.
 
-Layer 1, architecture and API design, has six of its seven items done. Layer 2 adds Python and frontend lint with complexity and length limits. Eight Python functions and the frontend's `Home` remain marked as exceptions. CI runs every check on each push to `main` and each pull request. Batch 2 is done, batches 3 and 4 remain, and item 7 and layers 3 to 5 have not started. Every change kept the API, the `JobSnapshot` contract, the model's prompts and tools, and `checkpoint_signature` unchanged.
+Layer 1, architecture and API design, has six of its seven items done. Layer 2 adds Python and frontend lint with complexity and length limits. Seven Python functions and the frontend's `Home` remain marked as exceptions. CI runs every check on each push to `main` and each pull request. Batches 2 and 3 are done, batch 4 remains, and item 7 and layers 3 to 5 have not started. Every change kept the API, the `JobSnapshot` contract, the model's prompts and tools, and `checkpoint_signature` unchanged.
 
 ## Use
 
@@ -90,14 +90,13 @@ The container matches the [M3 setup](m3.md#setup): the `issuelens` role, trust a
 
 Split a function that exceeds a limit. If splitting would harm the code's structure, mark it with `# noqa: <code> - <reason>` instead, and name the new exception in your report. `AGENTS.md` asks agents to follow the same rule.
 
-The functions that exceeded a limit when it was set are marked `predates the lint limits`. Eight remain:
+The functions that exceeded a limit when it was set are marked `predates the lint limits`. Seven remain:
 
 | Function | Limits | Plan |
 | --- | --- | --- |
 | `main.py` `create_app` | C901, PLR0915 | Keep. The score is the sum of its nested route handlers, and each handler is under the limits. |
 | `agent.py` `_investigate` | C901, PLR0915 | Keep. Its remaining branches are the loop's early exits and continues. |
 | `scripts/evaluate.py` `main`, `scripts/acceptance.py` `main` | PLR0915 | Keep. They are frozen M2 runners. |
-| `jobs.py` `_run` | C901, PLR0915 | Batch 3. |
 | `context.py` `build` | C901, PLR0915 | Batch 4. |
 | `tests/test_checkpoint.py` `check_restart`, `run_fixture_worker` | C901, PLR0915 | Last, or keep. |
 
@@ -126,12 +125,21 @@ Batch 2 split two `agent.py` methods, each from a complexity of 15:
 | `snapshot` (now 5) | `_lookup_limitations` names unfinished comment, search and label lookups; `_record_comparisons` records which candidates the answer compared; `_comparison_limitations` names the similar-issue gaps. They run in the old order, so limitations keep their order. |
 | `_execute_tool` (now 9) | `_check_tool_policy` refuses calls the lookup policy forbids, `_exhausted_tool_budget` names the budget a retry would exceed, and `_finish_tool_call` closes the trace attempt and reports the result. |
 
+Batch 3 split `jobs.py`'s `_run`, from a complexity of 20 and 67 statements to 11 and 41:
+
+| Part | Now |
+| --- | --- |
+| Status of a returned run | `outcome(result, stop_reason)`: completed, partial, or failed with the repository or no-evidence error. |
+| OpenAI failure message | `openai_error_message(exc)`. |
+| Evidence after a failure | `snapshot_after_failure(run, error)`, shared by the OpenAI and unexpected-error handlers. |
+| Starting the run | `_new_run` announces a fresh start and creates the `AgentRun` after the slot is taken, because its clock starts then; `_run_within_runtime` runs it for the job time that remains. |
+
 ## How refactors were verified
 
-The agent loop split and lint batches 1 and 2 had to keep behavior identical. Four methods were combined:
+The agent loop split and lint batches 1 to 3 had to keep behavior identical. Four methods were combined:
 
 - **Tests before the change.** Paths that no test reached got new tests, which had to pass on the old code first. This way they describe the existing behavior.
-- **Behavior recording.** A scratch script records every `AgentRun` while the whole suite runs. It captures each event, saved checkpoint and model request, plus the result and the trace. Clock values are normalized, and `PYTHONHASHSEED=0` fixes set order. Two recordings of the old code must match each other before the new code's recording is compared. Each run uses a fresh bytecode cache (`PYTHONPYCACHEPREFIX`): a planted edit that keeps the file's size, made within a second of the last compile, otherwise runs the stale `.pyc`.
+- **Behavior recording.** A scratch script records every `AgentRun` while the whole suite runs. It captures each event, saved checkpoint and model request, plus the result and the trace. For batch 3 it also records each job's events, final status, error and raised exception, and runs with PostgreSQL so the Worker's paths are included. Clock values are normalized, and `PYTHONHASHSEED=0` fixes set order. Two recordings of the old code must match each other before the new code's recording is compared. Each run uses a fresh bytecode cache (`PYTHONPYCACHEPREFIX`): a planted edit that keeps the file's size, made within a second of the last compile, otherwise runs the stale `.pyc`.
 - **Differential testing.** For a pure function, the old and new versions run on the same fixture and randomly generated inputs, and every result is compared.
 - **Planted bugs.** Each check is shown to fail on a deliberate break. Some breaks pass the tests but not the recording or the comparison, which shows that those two are stricter than the tests.
 
@@ -149,6 +157,7 @@ The recording and comparison scripts were temporary and are not kept.
 | CI | offline simulation | A clean clone with an empty environment passed every CI step against the local PostgreSQL 14: 403 tests with none skipped, ruff, Pyright, typegen, the type check and lint. The skip guard passes `OK` and fails `OK (skipped=28)` and a test failure under the runner's `bash -eo pipefail`. | [ci.yml](../.github/workflows/ci.yml) |
 | First CI run | GitHub Actions | The frontend job and the database tests passed. `test_progress_follows_the_activity_log` failed on Python 3.13.14, where one `asyncio.sleep(0)` no longer gave the progress reporter enough loop turns; it passed on the local 3.13.7. The simulated request now waits for the reporter, at most 100 turns. The fixed test passes on both versions, and a reporter that reports the oldest event, or only the final one, fails it on both. | Run 45281201396, [test_mcp.py](../tests/test_mcp.py) |
 | Lint batch 2 | offline recording | Five new tests covered the last unreached lines and branches of both methods and passed on the old code. Recordings of the old code matched each other and the new code: 4,450 records over 408 tests. Swapping the two event messages of a finished tool call passed every test but changed the recording; swapping the limitation groups failed a new test and the recording. | [test_comments.py](../tests/test_comments.py), [test_labels.py](../tests/test_labels.py), [test_retry.py](../tests/test_retry.py), [test_checkpoint.py](../tests/test_checkpoint.py) |
+| Lint batch 3 | offline recording, real PostgreSQL | Five new tests covered `_run`'s unreached paths and passed on the old code: a failed checkpoint write, a job cancelled while waiting for a slot, a resumed job without runtime left, a lost OpenAI connection, and an unexpected error. The last unreached branch, a timeout before the run exists, cannot happen. Recordings of the old code matched each other and the new code: 4,847 records over 413 tests, none skipped. Three planted bugs changed the recording; one of them, leaving the failure reason out of the limitations, passed every test until the new tests asserted it. | [test_jobs.py](../tests/test_jobs.py), [test_retry.py](../tests/test_retry.py) |
 | Template parser split | offline differential | The old and new parsers agreed on 20,002 templates. A planted note-order change was caught while the template tests passed. | Commit message of `a3e58b2` |
 | GitHub status and template reading | offline | The new tests pass on the old code, and six planted bugs each fail one. | [test_github_status.py](../tests/test_github_status.py), [test_templates.py](../tests/test_templates.py) |
 | Full suite | real PostgreSQL | Passes with `ISSUELENS_TEST_DATABASE_URL` set, none skipped. | [M3 setup](m3.md#setup) |
@@ -164,7 +173,7 @@ The recording and comparison scripts were temporary and are not kept.
 - Complexity and statement counts ignore nesting depth. `quality.py`'s `label_consistency_fields` nests five levels deep and still passes both limits.
 - ruff's statement count differs slightly from pylint's, for example in nested functions, so counts near 50 can differ by a few.
 - These paths still have no test: `_get`'s network errors, a timeout right after a model retry, and a model response without usage.
-- The behavior recording wraps `AgentRun` methods by name, such as `_model_request`, `snapshot` and `_execute_tool`. A rename breaks the script, not the app.
+- The behavior recording wraps `AgentRun` and `JobManager` methods by name, such as `_model_request`, `snapshot`, `_execute_tool` and `_finish`. A rename breaks the script, not the app.
 - The frontend has no tests, so lint and types check its code but not its behavior. The brand link's reason comes from the Next.js documentation and was not checked in a browser.
 - `react-hooks/set-state-in-effect` reports only the first call in an effect, so the marker on the mount effect also hides any later call in it.
 - `eslint-config-next` brings its own rule list, unlike ruff's explicit `select`. The lockfile pins it, but a version update can add rules.
@@ -182,7 +191,7 @@ The recording and comparison scripts were temporary and are not kept.
 - **SHA pins versus version tags:** a SHA always runs the same code. A tag gets fixes automatically but can be moved to different code.
 - **Following a lint rule versus marking it:** a rule states the usual case. The brand link and the mount effect are deliberate exceptions, and following the rule there would change what the page does.
 
-Exercise: remove the marker on `jobs.py`'s `_run` and run `uv run --locked ruff check` to see its scores. Restore the marker, move the status decision after a finished run into its own function, and run ruff again. If `_run` drops to a complexity of 12 and 50 statements or fewer, RUF100 asks you to remove the marker.
+Exercise: remove the marker on `context.py`'s `build` and run `uv run --locked ruff check` to see its scores, 29 and 101. Restore the marker and read `build` from top to bottom, writing one line for each stage it goes through. Each line is a candidate function for batch 4.
 
 Exercise: in `page.tsx`, replace the brand link's `<a>` with `<Link>` from `next/link` and remove its marker. Open an analysis, select the logo, and check whether the old result stays on screen while the address shows `/`.
 
@@ -200,7 +209,8 @@ Exercise: in `page.tsx`, replace the brand link's `<a>` with `<Link>` from `next
 - `9580db7`: Lint the frontend with ESLint and the backend's limits, marking `Home` and two deliberate patterns.
 - CI: run every check in GitHub Actions, with the tests against PostgreSQL.
 - Batch 2: split `snapshot` and `_execute_tool`, leaving 8 exceptions.
+- Batch 3: split `jobs.py`'s `_run`, leaving 7 exceptions.
 
 ## Next step
 
-Lint batch 3, `jobs.py`'s `_run`. It runs every MCP analysis, and with batch 4's `context.py` `build` it is one of the last two functions on that path over the limits.
+Lint batch 4, `context.py`'s `build`, the largest remaining function at a complexity of 29 and 101 statements. It decides which evidence fits each model request's budget, so its recording must cover every omission and reserve case.

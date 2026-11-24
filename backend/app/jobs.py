@@ -46,6 +46,36 @@ class Job:
         self.changed.set()
 
 
+def outcome(result: AnalysisResult, stop_reason: str | None) -> tuple[JobStatus, str | None]:
+    """The status of a run that returned, and the error when it found no evidence."""
+    if result.content is not None and not result.limitations:
+        return "completed", None
+    if result.sources:
+        return "partial", None
+    if stop_reason == "repository_not_public":
+        return "failed", REPOSITORY_NOT_PUBLIC
+    if stop_reason == "repository_check_failed":
+        return "failed", REPOSITORY_CHECK_FAILED
+    return "failed", "No issue evidence could be retrieved. Check the URL and the activity log."
+
+
+def openai_error_message(exc: Exception) -> str:
+    """Name what the operator can do about an OpenAI failure, without the upstream response."""
+    if isinstance(exc, AuthenticationError):
+        return "OpenAI rejected OPENAI_API_KEY. Check the server configuration."
+    if isinstance(exc, RateLimitError):
+        return "OpenAI quota or rate limit reached. Check billing or try later."
+    if isinstance(exc, (APITimeoutError, APIConnectionError)):
+        return "Could not complete the OpenAI request. Check connectivity and try again."
+    return "OpenAI rejected the request. Check model access and server configuration."
+
+
+def snapshot_after_failure(run: AgentRun | None, error: str) -> tuple[AnalysisResult | None, JobStatus]:
+    """Keep what a failed run collected; with sources, the job is partial rather than failed."""
+    result = run.snapshot(error) if run else None
+    return result, "partial" if result and result.sources else "failed"
+
+
 def has_update(snapshot: JobSnapshot, after: int) -> bool:
     """Whether a reader that has seen events up to `after` has something new to read."""
     return snapshot.status in TERMINAL_STATUSES or bool(snapshot.events and snapshot.events[-1].id > after)
@@ -134,7 +164,7 @@ class JobManager:
         job.snapshot = final
         job.changed.set()
 
-    async def _run(self, job: Job, checkpoint: AgentCheckpoint | None, save_checkpoint: CheckpointWriter | None) -> None:  # noqa: C901, PLR0915 - predates the lint limits
+    async def _run(self, job: Job, checkpoint: AgentCheckpoint | None, save_checkpoint: CheckpointWriter | None) -> None:
         run: AgentRun | None = None
         result: AnalysisResult | None = None
         final_status: JobStatus = "failed"
@@ -147,28 +177,10 @@ class JobManager:
                 if checkpoint and checkpoint.finished:
                     result = checkpoint.result
                 else:
-                    if checkpoint is None or not checkpoint.result.usage.model_requests:
-                        job.emit("status", "Reading evidence and investigating the issue.")
-                    target = IssueTarget.from_url(job.snapshot.issue_url)
-                    run = AgentRun(
-                        target, self.settings, job.emit,
-                        checkpoint=checkpoint, save_checkpoint=save_checkpoint, trace=job.trace,
-                    )
-                    elapsed = checkpoint.elapsed_seconds() if checkpoint else 0
-                    remaining = self.settings.runtime_seconds - elapsed
-                    if remaining <= 0:
-                        raise TimeoutError
-                    result = await asyncio.wait_for(run.run(), timeout=remaining)
-                if result.content is not None and not result.limitations:
-                    final_status = "completed"
-                elif result.sources:
-                    final_status = "partial"
-                elif job.trace.stop_reason == "repository_not_public":
-                    error = REPOSITORY_NOT_PUBLIC
-                elif job.trace.stop_reason == "repository_check_failed":
-                    error = REPOSITORY_CHECK_FAILED
-                else:
-                    error = "No issue evidence could be retrieved. Check the URL and the activity log."
+                    # The run is created after the slot is taken, because its clock starts then.
+                    run = self._new_run(job, checkpoint, save_checkpoint)
+                    result = await self._run_within_runtime(run, checkpoint)
+                final_status, error = outcome(result, job.trace.stop_reason)
         except asyncio.CancelledError:
             if job.suspended:
                 raise
@@ -186,28 +198,34 @@ class JobManager:
             # reconnects and resumes from the last checkpoint, or stops.
             raise
         except (AuthenticationError, RateLimitError, APITimeoutError, APIConnectionError, APIStatusError) as exc:
-            if isinstance(exc, AuthenticationError):
-                message = "OpenAI rejected OPENAI_API_KEY. Check the server configuration."
-            elif isinstance(exc, RateLimitError):
-                message = "OpenAI quota or rate limit reached. Check billing or try later."
-            elif isinstance(exc, (APITimeoutError, APIConnectionError)):
-                message = "Could not complete the OpenAI request. Check connectivity and try again."
-            else:
-                message = "OpenAI rejected the request. Check model access and server configuration."
             job.trace.stop_reason = job.trace.stop_reason or "model_request_failed"
             job.trace.finish("failed", stop_reason=job.trace.stop_reason)
-            error = message
-            result = run.snapshot(message) if run else None
-            final_status = "partial" if result and result.sources else "failed"
+            error = openai_error_message(exc)
+            result, final_status = snapshot_after_failure(run, error)
         except Exception as exc:
             # Keep upstream response bodies and credentials out of API errors and logs.
             logger.error("Analysis failed with %s", type(exc).__name__)
             job.trace.stop_reason = "unexpected_error"
             job.trace.finish("failed", stop_reason="unexpected_error")
             error = "The analysis could not be completed. Check server configuration and try again."
-            result = run.snapshot(error) if run else None
-            final_status = "partial" if result and result.sources else "failed"
+            result, final_status = snapshot_after_failure(run, error)
         self._finish(job, final_status, result, error)
+
+    def _new_run(self, job: Job, checkpoint: AgentCheckpoint | None, save_checkpoint: CheckpointWriter | None) -> AgentRun:
+        if checkpoint is None or not checkpoint.result.usage.model_requests:
+            job.emit("status", "Reading evidence and investigating the issue.")
+        target = IssueTarget.from_url(job.snapshot.issue_url)
+        return AgentRun(
+            target, self.settings, job.emit, checkpoint=checkpoint, save_checkpoint=save_checkpoint, trace=job.trace,
+        )
+
+    async def _run_within_runtime(self, run: AgentRun, checkpoint: AgentCheckpoint | None) -> AnalysisResult:
+        """Run for the job time that remains, counting the time a resumed job already used."""
+        elapsed = checkpoint.elapsed_seconds() if checkpoint else 0
+        remaining = self.settings.runtime_seconds - elapsed
+        if remaining <= 0:
+            raise TimeoutError
+        return await asyncio.wait_for(run.run(), timeout=remaining)
 
     async def cancel(self, job: Job, *, suspend: bool = False) -> None:
         async with job.cancel_lock:
