@@ -14,6 +14,7 @@ from backend.app.main import create_app
 from backend.app.models import AnalysisContent, CommentCheck
 from backend.app.quality import comment_claim_fields
 from test_mvp import COMMENT, ISSUE, SETTINGS, TARGET, commented_github_response, final_content, run_simulated_agent, simulated_response
+from test_required_lookups import PolicyServer, step
 
 
 class CommentServer:
@@ -168,6 +169,25 @@ class CommentAgentTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(any(req.url.path.endswith("/comments") for req in server.requests))
         self.assertEqual(result.comment_check.status, "not_read")
         self.assertFalse(any("comments" in item for item in result.limitations))
+
+    async def test_count_mismatch_is_reported_as_partial_coverage(self):
+        server = CommentServer(count=2)
+        result, _, _ = await run_simulated_agent([simulated_response(content=final_content())], handler=server.respond)
+        self.assertEqual(result.comment_check.status, "partial")
+        self.assertIn(
+            "Only part of the comments was retrieved, or comment counts were inconsistent; coverage is incomplete.",
+            result.limitations,
+        )
+
+    async def test_lookup_gaps_are_listed_before_comparison_gaps(self):
+        # Partial comments are a lookup gap; an uncompared search candidate is a comparison gap.
+        result, _, _ = await run_simulated_agent([
+            step("search_issues", query="export crash"), simulated_response(content=final_content()),
+        ], handler=PolicyServer(comments=2).respond)
+        self.assertEqual(result.limitations, [
+            "Only part of the comments was retrieved, or comment counts were inconsistent; coverage is incomplete.",
+            "Search candidates were found, but no grounded comparison was completed.",
+        ])
 
     async def test_failed_lookup_requests_bounded_correction_for_false_absence(self):
         server = CommentServer()

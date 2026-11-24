@@ -74,6 +74,25 @@ class RetryAgentTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(any("OpenAI returned a response to the retry" in item.args[1] for item in emit.call_args_list))
         wait.assert_awaited_once()
 
+    async def test_tool_retry_stops_when_the_wait_uses_up_the_job_time(self):
+        readme_requests = 0
+
+        def respond(request):
+            nonlocal readme_requests
+            if request.url.path.endswith("/readme"):
+                readme_requests += 1
+                return httpx.Response(503)
+            return github_response(request)
+
+        async def wait_past_the_deadline(run, retry):
+            run.started -= run.settings.runtime_seconds + 1
+
+        with patch.object(AgentRun, "_wait_for_retry", new=wait_past_the_deadline), self.assertRaises(TimeoutError):
+            await run_simulated_agent([
+                simulated_response([tool_call("get_repo_readme")]), simulated_response(content=final_content()),
+            ], handler=respond)
+        self.assertEqual(readme_requests, 1)
+
     async def interrupt_and_resume(self, responses, handler=github_response, settings=SETTINGS):
         saved = None
 

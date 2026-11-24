@@ -119,36 +119,15 @@ class AgentRun:
 
 
     # The snapshot method collects the current state of the analysis and returns it as an AnalysisResult object.
-    def snapshot(self, reason: str | None = None, *, stop_reason: str | None = None) -> AnalysisResult:  # noqa: C901 - predates the lint limits
+    def snapshot(self, reason: str | None = None, *, stop_reason: str | None = None) -> AnalysisResult:
         if stop_reason is not None:
             self.trace.stop_reason = stop_reason
         if self.tools is not None:
             self._copy_evidence(self.result)
             self.result.limitations = list(dict.fromkeys(self.result.limitations + self.tools.limitations))
-            comments = self.result.comment_check
-            if comments.status == "not_read" and comments.reported_count:
-                self.result.limitations.append("The target reports comments, but no comments lookup was attempted.")
-            elif comments.status == "failed":
-                self.result.limitations.append("The comments lookup failed; comment absence was not established.")
-            elif comments.status == "partial":
-                self.result.limitations.append("Only part of the comments was retrieved, or comment counts were inconsistent; coverage is incomplete.")
-            if self.tools.issue is not None and not self.tools.searches:
-                self.result.limitations.append("A similar-issue search was not completed.")
-            if self.tools.issue is not None and self.tools.labels_source_id is None:
-                self.result.limitations.append("The repository label catalog was not retrieved; label recommendations were not checked.")
-            compared = {item.issue_number for item in self.result.content.comparisons} if self.result.content else set()
-            similar = self.result.similar_issue_check
-            similar.compared_candidate_numbers = sorted(compared)
-            if similar.read_candidate_numbers:
-                similar.comparison_status = "compared" if set(similar.read_candidate_numbers) <= compared else "partial"
-            if similar.search_status == "partial" and not self.tools.candidates and self.required_lookup() is not None:
-                self.result.limitations.append("The empty-search check is partial: a second distinct successful query was not completed, or a query failed.")
-            if similar.candidate_status == "failed":
-                self.result.limitations.append("Candidate body retrieval failed; an unread candidate cannot support a comparison.")
-            if self.tools.candidates and not compared:
-                self.result.limitations.append("Search candidates were found, but no grounded comparison was completed.")
-            if any(candidate.source_id and candidate.number not in compared for candidate in self.tools.candidates.values()):
-                self.result.limitations.append("Some full candidate reads were not included in the final comparisons.")
+            self.result.limitations.extend(self._lookup_limitations())
+            compared = self._record_comparisons()
+            self.result.limitations.extend(self._comparison_limitations(compared))
         elif self.checkpoint and self.checkpoint.tools:
             self.result.limitations.extend(self.checkpoint.tools.limitations)
         if reason and reason not in self.result.limitations:
@@ -156,6 +135,47 @@ class AgentRun:
         self.result.limitations = list(dict.fromkeys(self.result.limitations))
         self.result.usage.elapsed_seconds = round(time.monotonic() - self.started, 2)
         return self.result
+
+    def _lookup_limitations(self) -> list[str]:
+        """Name the comment, search and label lookups that did not run or did not finish."""
+        assert self.tools is not None
+        limitations = []
+        comments = self.result.comment_check
+        if comments.status == "not_read" and comments.reported_count:
+            limitations.append("The target reports comments, but no comments lookup was attempted.")
+        elif comments.status == "failed":
+            limitations.append("The comments lookup failed; comment absence was not established.")
+        elif comments.status == "partial":
+            limitations.append("Only part of the comments was retrieved, or comment counts were inconsistent; coverage is incomplete.")
+        if self.tools.issue is not None and not self.tools.searches:
+            limitations.append("A similar-issue search was not completed.")
+        if self.tools.issue is not None and self.tools.labels_source_id is None:
+            limitations.append("The repository label catalog was not retrieved; label recommendations were not checked.")
+        return limitations
+
+    def _record_comparisons(self) -> set[int]:
+        """Record which candidates the answer compared, and return their issue numbers."""
+        compared = {item.issue_number for item in self.result.content.comparisons} if self.result.content else set()
+        similar = self.result.similar_issue_check
+        similar.compared_candidate_numbers = sorted(compared)
+        if similar.read_candidate_numbers:
+            similar.comparison_status = "compared" if set(similar.read_candidate_numbers) <= compared else "partial"
+        return compared
+
+    def _comparison_limitations(self, compared: set[int]) -> list[str]:
+        """Name the similar-issue checks that stayed incomplete or that the answer did not use."""
+        assert self.tools is not None
+        limitations = []
+        similar = self.result.similar_issue_check
+        if similar.search_status == "partial" and not self.tools.candidates and self.required_lookup() is not None:
+            limitations.append("The empty-search check is partial: a second distinct successful query was not completed, or a query failed.")
+        if similar.candidate_status == "failed":
+            limitations.append("Candidate body retrieval failed; an unread candidate cannot support a comparison.")
+        if self.tools.candidates and not compared:
+            limitations.append("Search candidates were found, but no grounded comparison was completed.")
+        if any(candidate.source_id and candidate.number not in compared for candidate in self.tools.candidates.values()):
+            limitations.append("Some full candidate reads were not included in the final comparisons.")
+        return limitations
 
 
     # The citation_requirements method exposes server-owned source roles without inventing or adding citations.
@@ -377,7 +397,7 @@ class AgentRun:
         self.emit("warning", f"{name}: {message}")
         return {"error": message}
 
-    async def _execute_tool(  # noqa: C901 - predates the lint limits
+    async def _execute_tool(
         self, context: ContextBuilder, history: ResponseInputParam, pending: PendingTools, retry: ScheduledRetry | None,
     ) -> dict[str, Any]:
         assert self.tools is not None
@@ -397,20 +417,10 @@ class AgentRun:
             self.emit("tool", f"Calling {call.name} with {call.arguments}.")
             await save_attempt()
             try:
-                if pending.required_action and call.name != pending.required_action:
-                    raise ToolError(f"The minimum-lookup policy requires {pending.required_action} first.")
-                if (
-                    retry is None and pending.required_action == "search_issues"
-                    and SearchArguments.model_validate_json(call.arguments).query.casefold() in self.tools.search_attempts
-                ):
-                    raise ToolError("Use a distinct broader query; a cached repeat does not complete the empty-search check.")
+                self._check_tool_policy(call, pending, retry)
                 output = await self.tools.execute(call.name, call.arguments, before_candidate_read=save_attempt)
             except TransientToolError as exc:
-                exhausted_budget = None
-                if self.result.usage.tool_calls >= self.settings.max_tool_calls:
-                    exhausted_budget = "tool_call_budget"
-                elif call.name == "get_related_issue" and self.tools.candidate_reads >= self.settings.max_candidate_reads:
-                    exhausted_budget = "candidate_read_budget"
+                exhausted_budget = self._exhausted_tool_budget(call.name)
                 retry = self._plan_retry(call.name, exc.failure, retry, exhausted_budget=exhausted_budget)
                 if retry is None:
                     return self._tool_failure(call.name, str(exc))
@@ -420,19 +430,46 @@ class AgentRun:
                 self.trace.finish("failed", reason=message, stop_reason="non_retryable_failure")
                 return self._tool_failure(call.name, message)
             else:
-                partial = (
-                    (name == "get_repo_labels" and self.tools.labels_complete is False)
-                    or output.get("complete") is False
-                    or (name == "search_issues" and output.get("search", {}).get("incomplete_results") is True)
-                )
-                if partial:
-                    self.trace.finish("partial", reason="The lookup returned partial data.")
-                else:
-                    self.trace.finish("succeeded")
-                if retry is not None:
-                    self.emit("status", f"The retry for {call.name} succeeded.")
-                self.emit("tool", f"Finished {call.name}; {len(self.tools.sources)} sources collected.")
-                return output
+                return self._finish_tool_call(call, name, output, retry)
+
+    def _check_tool_policy(self, call: ResponseFunctionToolCall, pending: PendingTools, retry: ScheduledRetry | None) -> None:
+        """Refuse a call that the minimum-lookup policy does not allow, before it reaches GitHub."""
+        assert self.tools is not None
+        if pending.required_action and call.name != pending.required_action:
+            raise ToolError(f"The minimum-lookup policy requires {pending.required_action} first.")
+        if (
+            retry is None and pending.required_action == "search_issues"
+            and SearchArguments.model_validate_json(call.arguments).query.casefold() in self.tools.search_attempts
+        ):
+            raise ToolError("Use a distinct broader query; a cached repeat does not complete the empty-search check.")
+
+    def _exhausted_tool_budget(self, name: str) -> str | None:
+        """Name the budget that a retry of this tool would exceed, if any."""
+        assert self.tools is not None
+        if self.result.usage.tool_calls >= self.settings.max_tool_calls:
+            return "tool_call_budget"
+        if name == "get_related_issue" and self.tools.candidate_reads >= self.settings.max_candidate_reads:
+            return "candidate_read_budget"
+        return None
+
+    def _finish_tool_call(
+        self, call: ResponseFunctionToolCall, name: str, output: dict[str, Any], retry: ScheduledRetry | None,
+    ) -> dict[str, Any]:
+        """Close the call's trace attempt, as partial when the lookup returned partial data."""
+        assert self.tools is not None
+        partial = (
+            (name == "get_repo_labels" and self.tools.labels_complete is False)
+            or output.get("complete") is False
+            or (name == "search_issues" and output.get("search", {}).get("incomplete_results") is True)
+        )
+        if partial:
+            self.trace.finish("partial", reason="The lookup returned partial data.")
+        else:
+            self.trace.finish("succeeded")
+        if retry is not None:
+            self.emit("status", f"The retry for {call.name} succeeded.")
+        self.emit("tool", f"Finished {call.name}; {len(self.tools.sources)} sources collected.")
+        return output
 
     async def _complete_tool_round(
         self, context: ContextBuilder, history: ResponseInputParam, pending: PendingTools,

@@ -14,6 +14,7 @@ from pydantic import ValidationError
 
 from backend.app.github import GitHubTools, ToolError
 from backend.app.main import create_app
+from backend.app.trace import TraceLog
 from test_mvp import ISSUE, SETTINGS, TARGET, final_content, run_simulated_agent, simulated_response, tool_call
 
 
@@ -138,6 +139,21 @@ class LabelAgentTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(first[-1]["call_id"], "server_get_repo_labels")
         self.assertIn("Repository label catalog", first[-1]["output"])
         self.assertIn("model request 2 of 8", create.call_args.kwargs["instructions"])
+
+    async def test_catalog_with_more_pages_is_traced_as_a_partial_lookup(self):
+        def respond(request):
+            if request.url.path.endswith("/labels"):
+                more = {"Link": f'<https://api.github.com{TARGET.api_path}/labels?page=2>; rel="next"'}
+                return httpx.Response(200, json=FIXTURE["labels"], headers=more)
+            return label_github_response(request)
+
+        trace = TraceLog()
+        result, _, _ = await run_simulated_agent(
+            [*label_prefix(), simulated_response(content=final_content())], handler=respond, trace=trace,
+        )
+        (attempt,) = [item for item in trace.attempts if item.name == "get_repo_labels"]
+        self.assertEqual((attempt.outcome, attempt.reason), ("partial", "The lookup returned partial data."))
+        self.assertFalse(result.labels_complete)
 
     async def test_exhausted_validation_explains_why_suggestions_were_not_accepted(self):
         content = label_content()

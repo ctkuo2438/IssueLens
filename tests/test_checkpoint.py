@@ -22,6 +22,7 @@ import psycopg
 from backend.app.agent import AgentRun, checkpoint_signature
 from backend.app.checkpoint import AgentCheckpoint
 from backend.app.config import ROOT
+from backend.app.github import GitHubToolState
 from backend.app.models import JobSnapshot, TERMINAL_STATUSES
 from backend.app.worker import serve
 from test_mvp import (
@@ -34,6 +35,17 @@ REPLAY_TOKEN = "opaque-fixture-reasoning"
 
 
 class AgentCheckpointTests(unittest.IsolatedAsyncioTestCase):
+    def test_a_run_stopped_before_its_tools_start_keeps_the_saved_tool_limitations(self):
+        # The job runner does this when a resumed job has no runtime left.
+        checkpoint = AgentCheckpoint.start(checkpoint_signature(SETTINGS))
+        checkpoint.result.limitations = ["Earlier limitation."]
+        checkpoint.tools = GitHubToolState(limitations=["Saved tool limitation.", "Earlier limitation."])
+        run = AgentRun(TARGET, SETTINGS, lambda *_: None, checkpoint=checkpoint)
+        result = run.snapshot("The job runtime limit was reached.")
+        self.assertEqual(
+            result.limitations, ["Earlier limitation.", "Saved tool limitation.", "The job runtime limit was reached."],
+        )
+
     async def test_interrupted_repair_keeps_its_evidence_feedback_and_used_attempt(self):
         settings = replace(SETTINGS, max_iterations=4)
         saved = None
