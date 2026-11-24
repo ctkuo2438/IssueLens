@@ -463,9 +463,6 @@ export default function Home() {
 
       <main>
         <section className={`intro ${job ? "compact" : ""}`}>
-          <div className="eyebrow">
-            <span className="tiny-line" /> LESS GUESSWORK. MORE CONTEXT.
-          </div>
           <h1>
             A clearer view
             <br className="desktop-break" /> of <span>every issue.</span>
@@ -483,8 +480,8 @@ export default function Home() {
               <Icon name="github" />
             </span>
             <div>
-              <h2 id="input-heading">Start with an issue</h2>
-              <p>Paste a public GitHub issue URL to investigate.</p>
+              <h2 id="input-heading">{signInRequired ? "Sign in to start" : "Start with an issue"}</h2>
+              {signInRequired && <p>Your analyses stay private to your GitHub account.</p>}
             </div>
             <span className="read-only">
               <Icon name="check" size={13} /> Read-only
@@ -508,23 +505,31 @@ export default function Home() {
                 autoComplete="off"
                 spellCheck={false}
               />
-              <button
-                className="primary-button"
-                disabled={active || session === null || signInRequired || health?.openai_configured === false}
-                type="submit"
-              >
-                {active ? (
-                  <>
-                    <span className="spinner" />
-                    Investigating
-                  </>
-                ) : (
-                  <>
-                    Analyze issue
-                    <Icon name="arrow" size={17} />
-                  </>
-                )}
-              </button>
+              {signInRequired ? (
+                // Sign-in comes first, so the main action says what to do instead of being disabled.
+                <a className="primary-button" href={loginHref}>
+                  <Icon name="github" size={17} />
+                  Sign in with GitHub
+                </a>
+              ) : (
+                <button
+                  className="primary-button"
+                  disabled={active || session === null || health?.openai_configured === false}
+                  type="submit"
+                >
+                  {active ? (
+                    <>
+                      <span className="spinner" />
+                      Investigating
+                    </>
+                  ) : (
+                    <>
+                      Analyze issue
+                      <Icon name="arrow" size={17} />
+                    </>
+                  )}
+                </button>
+              )}
             </div>
             <div className="input-footnote">
               <span>
@@ -538,14 +543,14 @@ export default function Home() {
                   Try an example <span>↗</span>
                 </button>
               </span>
-              <span className="service-status">
-                <span
-                  className={`status-dot ${health?.openai_configured && session && !signInRequired ? "online" : ""}`}
-                />
-                {signInRequired ? "Sign in to analyze" : health && session
-                  ? health.openai_configured ? "Ready to investigate" : "API key needed"
-                  : "Connecting to API"}
-              </span>
+              {!signInRequired && (
+                <span className="service-status">
+                  <span className={`status-dot ${health?.openai_configured && session ? "online" : ""}`} />
+                  {health && session
+                    ? health.openai_configured ? "Ready to investigate" : "API key needed"
+                    : "Connecting to API"}
+                </span>
+              )}
             </div>
           </form>
           {!signInRequired && health?.openai_configured === false && (
@@ -591,25 +596,6 @@ export default function Home() {
               </span>
             </div>
             <h2>Good answers start with good evidence.</h2>
-            <p>
-              Your investigation will appear here.
-              <br />
-              Every finding connects back to its source.
-            </p>
-            <div className="feature-row">
-              <span>
-                <Icon name="file" size={15} />
-                Issue & discussion
-              </span>
-              <span>
-                <Icon name="spark" size={15} />
-                Similar issue comparison
-              </span>
-              <span>
-                <Icon name="copy" size={15} />
-                Ready-to-copy reply
-              </span>
-            </div>
           </section>
         )}
 
